@@ -20,7 +20,7 @@ func main() {
 	c.AddFunc("0 0 * * *", func() { animedb.UpdateDB(db) })
 	c.Start()
 
-	go server.StartHttp(db)
+	go server.StartHttp(db, server.Oauth2Config)
 
 	sigchnl := make(chan os.Signal, 1)
 	signal.Notify(sigchnl, syscall.SIGINT)

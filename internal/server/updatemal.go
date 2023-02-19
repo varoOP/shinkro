@@ -17,10 +17,8 @@ func UpdateMal(p *plex.PlexWebhook, client *http.Client, db *sql.DB) {
 
 	s := NewShow(p.Metadata.GUID)
 	malid := s.GetMalID(db)
-	fmt.Printf("%+v", s)
-	fmt.Println("malid:", malid)
 
-	if s.Ep.Season == 1 {
+	if s.Ep.Season == 1 && malid != 0 {
 
 		endpoint := fmt.Sprintf("https://api.myanimelist.net/v2/anime/%v/my_list_status", malid)
 
@@ -48,4 +46,5 @@ func UpdateMal(p *plex.PlexWebhook, client *http.Client, db *sql.DB) {
 		}
 		log.Println(string(body))
 	}
+
 }

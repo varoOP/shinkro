@@ -3,16 +3,14 @@ package server
 import (
 	"database/sql"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/varoOP/shinkuro/pkg/plex"
-	"golang.org/x/oauth2"
 )
 
-func test(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *http.Client) {
 
 	var p plex.PlexWebhook
 
@@ -28,57 +26,19 @@ func test(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		log.Fatalln(err.Error())
 	}
 
-	if p.Event != "media.scrobble" || !strings.Contains(p.Metadata.GUID, "hama") {
+	if p.Event != "media.scrobble" || !strings.Contains(p.Metadata.GUID, "hama") || p.Account.Title != "RudeusGreyrat" {
 		return
 	}
 
-	UpdateMal(&p, Oauth2Client, db)
+	UpdateMal(&p, client, db)
 
 }
 
-func Authorize(w http.ResponseWriter, r *http.Request, cfg *oauth2.Config) {
-
-	var (
-		GrantType  oauth2.AuthCodeOption = oauth2.SetAuthURLParam("grant_type", "authorization_code")
-		CodeVerify oauth2.AuthCodeOption = oauth2.SetAuthURLParam("code_verifier", Pkce)
-	)
-
-	r.ParseForm()
-
-	s := r.Form.Get("state")
-	if s != State {
-		http.Error(w, "State invalid!", http.StatusBadRequest)
-		return
-	}
-
-	code := r.Form.Get("code")
-	if code == "" {
-		http.Error(w, "Code not found!", http.StatusBadRequest)
-		return
-	}
-
-	token, err := cfg.Exchange(r.Context(), code, GrantType, CodeVerify)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	TokenCh <- token
-	io.WriteString(w, "Token saved!\n")
-}
-
-func StartHttp(db *sql.DB, cfg *oauth2.Config) {
+func StartHttp(db *sql.DB, client *http.Client) {
 
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		test(w, r, db)
+		test(w, r, db, client)
 	})
-
-	http.HandleFunc("/oauth2", func(w http.ResponseWriter, r *http.Request) {
-		Authorize(w, r, cfg)
-	})
-
-	go func() {
-		Oauth2Client = NewOauth2Client(cfg)
-	}()
-
+	log.Println("Started listening on 7011.")
 	log.Fatal(http.ListenAndServe(":7011", nil))
 }

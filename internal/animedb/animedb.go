@@ -22,26 +22,6 @@ func NewDB(DSN string) *sql.DB {
 	return db
 }
 
-func CreateDB(db *sql.DB) {
-
-	if err := checkDB(db); err != nil {
-		UpdateDB(db)
-	}
-
-}
-
-func checkDB(db *sql.DB) error {
-
-	sqlstmt := `SELECT * from anime;`
-
-	_, err := db.Query(sqlstmt)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func UpdateDB(db *sql.DB) {
 
 	m := manami.NewManami()

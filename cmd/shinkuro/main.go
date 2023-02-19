@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,19 +15,23 @@ import (
 func main() {
 
 	db := animedb.NewDB("file:./anime.db?cache=shared&mode=rwc&_journal_mode=WAL")
-	animedb.CreateDB(db)
+	animedb.UpdateDB(db)
 
 	c := cron.New()
 	c.AddFunc("0 0 * * *", func() { animedb.UpdateDB(db) })
 	c.Start()
 
-	go server.StartHttp(db, server.Oauth2Config)
+	client := server.NewOauth2Client(context.Background())
+
+	go server.StartHttp(db, client)
 
 	sigchnl := make(chan os.Signal, 1)
-	signal.Notify(sigchnl, syscall.SIGINT)
-	<-sigchnl
-	db.Close()
-	fmt.Println("\nExited after closing db.")
-	os.Exit(0)
+	signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM)
+
+	for range sigchnl {
+		db.Close()
+		log.Println("Exited after closing db.")
+		os.Exit(1)
+	}
 
 }

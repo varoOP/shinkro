@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 type ConfigPath struct {
 	Dsn    string
@@ -11,13 +14,10 @@ type ConfigPath struct {
 
 func NewConfigPath(dir string) *ConfigPath {
 	p := &ConfigPath{}
-	p.Dsn = fmt.Sprintf("file:%v/shinkuro.db?cache=shared&mode=rwc&_journal_mode=WAL", dir)
-	p.Config = makePath(dir, "config.toml")
-	p.Token = makePath(dir, "token.json")
-	p.Log = makePath(dir, "shinkuro.log")
+	dsn := filepath.Join(dir, "shinkuro.db")
+	p.Dsn = fmt.Sprintf("file:%v?cache=shared&mode=rwc&_journal_mode=WAL", dsn)
+	p.Config = filepath.Join(dir, "config.toml")
+	p.Token = filepath.Join(dir, "token.json")
+	p.Log = filepath.Join(dir, "shinkuro.log")
 	return p
-}
-
-func makePath(dir, base string) string {
-	return fmt.Sprintf("%v/%v", dir, base)
 }

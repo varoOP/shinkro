@@ -24,6 +24,13 @@ func NewDB(DSN string) *sql.DB {
 
 func UpdateDB(db *sql.DB) {
 
+	err := checkDB(db)
+	if err != nil {
+		log.Println("Creating DB")
+	} else {
+		log.Println("Updating DB")
+	}
+
 	m := manami.NewManami()
 	al := animelist.NewAnimeList()
 	am := makeAnimeMap(m, al)
@@ -35,7 +42,7 @@ func UpdateDB(db *sql.DB) {
 		tvdb_id INTEGER
 	);`
 
-	_, err := db.Exec(scheme)
+	_, err = db.Exec(scheme)
 	check(err)
 
 	var addAnime = `INSERT OR REPLACE INTO anime (
@@ -56,4 +63,18 @@ func UpdateDB(db *sql.DB) {
 
 	}
 
+	log.Println("DB operation complete")
+
+}
+
+func checkDB(db *sql.DB) error {
+
+	sqlstmt := `SELECT * from anime;`
+
+	_, err := db.Query(sqlstmt)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

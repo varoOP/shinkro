@@ -1,9 +1,10 @@
 package plex
 
 type PlexWebhook struct {
-	Event   string `json:"event"`
-	User    bool   `json:"user"`
-	Owner   bool   `json:"owner"`
+	Rating  float32 `json:"rating,omitempty"`
+	Event   string  `json:"event"`
+	User    bool    `json:"user"`
+	Owner   bool    `json:"owner"`
 	Account struct {
 		Id           int    `json:"id"`
 		ThumbnailUrl string `json:"thumb"`
@@ -20,28 +21,51 @@ type PlexWebhook struct {
 		UUID          string `json:"uuid"`
 	} `json:"Player"`
 	Metadata struct {
-		LibraryType          string `json:"librarySectionType"`
-		RatingKey            string `json:"ratingKey"`
-		Key                  string `json:"key"`
-		ParentRatingKey      string `json:"parentRatingKey"`
-		GrandparentRatingKey string `json:"grandparentRatingKey"`
-		GUID                 string `json:"guid"`
-		LibrarySectionId     int    `json:"librarySectionID"`
-		Type                 string `json:"type"`
-		Title                string `json:"title"`
-		GrandParentKey       string `json:"grandparentKey"`
-		ParentKey            string `json:"parentKey"`
-		GrandParentTitle     string `json:"grandparentTitle"`
-		ParentTitle          string `json:"parentTitle"`
-		Summary              string `json:"summary"`
-		Index                int    `json:"index"`
-		ParentIndex          int    `json:"parentIndex"`
-		Thumbnail            string `json:"thumb"`
-		Art                  string `json:"art"`
-		ParentThumb          string `json:"parentThumb"`
-		GrandparentThumb     string `json:"grandparentThumb"`
-		GrandparentArt       string `json:"grandparentArt"`
-		AddedAt              int    `json:"addedAt"`
-		UpdatedAt            int    `json:"updatedAt"`
-	} `json:"Metadata"`
+		LibrarySectionType    string  `json:"librarySectionType,omitempty"`
+		RatingKey             string  `json:"ratingKey,omitempty"`
+		Key                   string  `json:"key,omitempty"`
+		SkipParent            bool    `json:"skipParent,omitempty"`
+		ParentRatingKey       string  `json:"parentRatingKey,omitempty"`
+		GrandparentRatingKey  string  `json:"grandparentRatingKey,omitempty"`
+		GUID                  string  `json:"guid,omitempty"`
+		ParentGUID            string  `json:"parentGuid,omitempty"`
+		GrandparentGUID       string  `json:"grandparentGuid,omitempty"`
+		Type                  string  `json:"type,omitempty"`
+		Title                 string  `json:"title,omitempty"`
+		GrandparentKey        string  `json:"grandparentKey,omitempty"`
+		ParentKey             string  `json:"parentKey,omitempty"`
+		LibrarySectionTitle   string  `json:"librarySectionTitle,omitempty"`
+		LibrarySectionID      int     `json:"librarySectionID,omitempty"`
+		LibrarySectionKey     string  `json:"librarySectionKey,omitempty"`
+		GrandparentTitle      string  `json:"grandparentTitle,omitempty"`
+		ParentTitle           string  `json:"parentTitle,omitempty"`
+		ContentRating         string  `json:"contentRating,omitempty"`
+		Summary               string  `json:"summary,omitempty"`
+		Index                 int     `json:"index,omitempty"`
+		ParentIndex           int     `json:"parentIndex,omitempty"`
+		Rating                float64 `json:"rating,omitempty"`
+		Year                  int     `json:"year,omitempty"`
+		Thumb                 string  `json:"thumb,omitempty"`
+		Art                   string  `json:"art,omitempty"`
+		GrandparentThumb      string  `json:"grandparentThumb,omitempty"`
+		GrandparentArt        string  `json:"grandparentArt,omitempty"`
+		OriginallyAvailableAt string  `json:"originallyAvailableAt,omitempty"`
+		AddedAt               int     `json:"addedAt,omitempty"`
+		UpdatedAt             int     `json:"updatedAt,omitempty"`
+		Director              []struct {
+			ID     int    `json:"id,omitempty"`
+			Filter string `json:"filter,omitempty"`
+			Tag    string `json:"tag,omitempty"`
+		} `json:"Director,omitempty"`
+		Writer []struct {
+			ID     int    `json:"id,omitempty"`
+			Filter string `json:"filter,omitempty"`
+			Tag    string `json:"tag,omitempty"`
+		} `json:"Writer,omitempty"`
+		Producer []struct {
+			ID     int    `json:"id,omitempty"`
+			Filter string `json:"filter,omitempty"`
+			Tag    string `json:"tag,omitempty"`
+		} `json:"Producer,omitempty"`
+	} `json:"Metadata,omitempty"`
 }

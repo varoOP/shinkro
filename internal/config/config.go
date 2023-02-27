@@ -2,22 +2,62 @@ package config
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"path/filepath"
+
+	"github.com/knadh/koanf"
+	"github.com/knadh/koanf/parsers/toml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/spf13/pflag"
 )
 
-type ConfigPath struct {
+type Config struct {
 	Dsn    string
 	Config string
 	Token  string
 	Log    string
+	Addr   string
+	K      *koanf.Koanf
+	Logger *os.File
 }
 
-func NewConfigPath(dir string) *ConfigPath {
-	p := &ConfigPath{}
+func NewConfig() *Config {
+
+	c := &Config{}
+
+	var (
+		dir string
+		err error
+	)
+
+	c.K = koanf.New(".")
+
+	pflag.StringVar(&dir, "config", ".", "Absolute path to shinkuro's configuration directory")
+
+	pflag.Parse()
+
 	dsn := filepath.Join(dir, "shinkuro.db")
-	p.Dsn = fmt.Sprintf("file:%v?cache=shared&mode=rwc&_journal_mode=WAL", dsn)
-	p.Config = filepath.Join(dir, "config.toml")
-	p.Token = filepath.Join(dir, "token.json")
-	p.Log = filepath.Join(dir, "shinkuro.log")
-	return p
+	c.Dsn = fmt.Sprintf("file:%v?cache=shared&mode=rwc&_journal_mode=WAL", dsn)
+	c.Config = filepath.Join(dir, "config.toml")
+	c.Token = filepath.Join(dir, "token.json")
+	c.Log = filepath.Join(dir, "shinkuro.log")
+
+	if err := c.K.Load(file.Provider(c.Config), toml.Parser()); err != nil {
+		log.Fatalf("Error loading configuration: %v", err)
+	}
+
+	c.Addr = fmt.Sprintf("%v:%v", c.K.String("host"), c.K.Int("port"))
+
+	c.Logger, err = os.OpenFile(c.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	mw := io.MultiWriter(os.Stdout, c.Logger)
+
+	log.SetOutput(mw)
+
+	return c
 }

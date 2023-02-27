@@ -87,12 +87,16 @@ func UpdateMal(ctx context.Context, p *plex.PlexWebhook, client *mal.Client, db 
 		a := getAnimeMT(title, se)
 		for _, v := range a.Seasons {
 			if s.Ep.Season == v.Season {
-				status, _, err := client.Anime.UpdateMyListStatus(ctx, v.MalID, mal.Score(p.Rating))
-				log.Printf("%+v\n", *status)
-				if err != nil {
-					log.Println(err)
+				if s.Ep.No >= v.Start {
+					malid = v.MalID
 				}
 			}
+		}
+
+		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.Score(p.Rating))
+		log.Printf("%+v\n", *status)
+		if err != nil {
+			log.Println(err)
 		}
 	}
 

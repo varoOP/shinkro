@@ -45,7 +45,7 @@ func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *mal.Client
 		return
 	}
 
-	if p.Event == "media.pause" || p.Event == "media.rate" {
+	if p.Event == "media.scrobble" || p.Event == "media.rate" {
 		UpdateMal(r.Context(), &p, client, db, se)
 	}
 

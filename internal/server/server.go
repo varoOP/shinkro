@@ -60,7 +60,7 @@ func UpdateMal(ctx context.Context, p *plex.PlexWebhook, client *mal.Client, db 
 	if s.Ep.Season == 1 && malid != 0 && p.Event == "media.scrobble" && !inSeasonMap(title, se) {
 
 		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(s.Ep.No))
-		log.Printf("%+v\n", *status)
+		log.Printf("%v - %+v\n", title, *status)
 		if err != nil {
 			log.Println(err)
 		}
@@ -71,13 +71,13 @@ func UpdateMal(ctx context.Context, p *plex.PlexWebhook, client *mal.Client, db 
 
 		a := getAnimeMT(title, se)
 
-		tempUpdate(ctx, &a, client, s.Ep.Season, s.Ep.No)
+		tempUpdate(ctx, &a, client, s.Ep.Season, s.Ep.No, title)
 
 	}
 
 	if p.Event == "media.rate" && s.Ep.Season == 1 && malid != 0 && !inSeasonMap(title, se) {
 		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.Score(p.Rating))
-		log.Printf("%+v\n", *status)
+		log.Printf("%v - %+v\n", title, *status)
 		if err != nil {
 			log.Println(err)
 		}
@@ -94,7 +94,7 @@ func UpdateMal(ctx context.Context, p *plex.PlexWebhook, client *mal.Client, db 
 		}
 
 		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.Score(p.Rating))
-		log.Printf("%+v\n", *status)
+		log.Printf("%v - %+v\n", title, *status)
 		if err != nil {
 			log.Println(err)
 		}
@@ -144,7 +144,7 @@ func isMultiSeason(a *animedb.AnimeMT) bool {
 	return false
 }
 
-func tempUpdate(ctx context.Context, a *animedb.AnimeMT, client *mal.Client, season, ep int) {
+func tempUpdate(ctx context.Context, a *animedb.AnimeMT, client *mal.Client, season, ep int, title string) {
 
 	var malid int
 	var start int
@@ -165,7 +165,7 @@ func tempUpdate(ctx context.Context, a *animedb.AnimeMT, client *mal.Client, sea
 		}
 
 		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(ep-start+1))
-		log.Printf("%+v\n", *status)
+		log.Printf("%v - %+v\n", title, *status)
 		if err != nil {
 			log.Println(err)
 		}
@@ -183,7 +183,7 @@ func tempUpdate(ctx context.Context, a *animedb.AnimeMT, client *mal.Client, sea
 		}
 
 		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(start+ep-1))
-		log.Printf("%+v\n", *status)
+		log.Printf("%v - %+v\n", title, *status)
 		if err != nil {
 			log.Println(err)
 		}

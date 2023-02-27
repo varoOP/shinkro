@@ -22,6 +22,9 @@ func main() {
 	db := animedb.NewDB(cfg.Dsn)
 	animedb.UpdateDB(db)
 
+	se := &animedb.SeasonMap{}
+	se.GetSeasonMap(cfg.Map)
+
 	c := cron.New()
 	c.AddFunc("0 0 * * *", func() { animedb.UpdateDB(db) })
 	c.Start()
@@ -29,7 +32,7 @@ func main() {
 	oauth_client := server.NewOauth2Client(context.Background(), cfg.K.String("mal_client_id"), cfg.K.String("mal_client_secret"), cfg.Token)
 	client := mal.NewClient(oauth_client)
 
-	go server.StartHttp(db, client, cfg)
+	go server.StartHttp(db, client, cfg, se)
 
 	sigchnl := make(chan os.Signal, 1)
 	signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)

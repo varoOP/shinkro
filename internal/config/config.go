@@ -19,6 +19,7 @@ type Config struct {
 	Token  string
 	Log    string
 	Addr   string
+	Map    string
 	K      *koanf.Koanf
 	Logger *os.File
 }
@@ -43,6 +44,7 @@ func NewConfig() *Config {
 	c.Config = filepath.Join(dir, "config.toml")
 	c.Token = filepath.Join(dir, "token.json")
 	c.Log = filepath.Join(dir, "shinkuro.log")
+	c.Map = filepath.Join(dir, "tvdb-mal.yml")
 
 	if err := c.K.Load(file.Provider(c.Config), toml.Parser()); err != nil {
 		log.Fatalf("Error loading configuration: %v", err)

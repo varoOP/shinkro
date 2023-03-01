@@ -9,10 +9,10 @@ import (
 )
 
 type SeasonMap struct {
-	Anime []AnimeMT `yaml:"anime"`
+	Anime []AnimeSeasons `yaml:"anime"`
 }
 
-type AnimeMT struct {
+type AnimeSeasons struct {
 	Title   string `yaml:"title"`
 	Seasons []struct {
 		Season int `yaml:"season"`

@@ -16,7 +16,7 @@ import (
 
 func StartHttp(db *sql.DB, client *mal.Client, cfg *config.Config, se *animedb.SeasonMap) {
 
-	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		test(w, r, db, client, se)
 	})
 
@@ -26,7 +26,7 @@ func StartHttp(db *sql.DB, client *mal.Client, cfg *config.Config, se *animedb.S
 
 func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *mal.Client, se *animedb.SeasonMap) {
 
-	var p plex.PlexWebhook
+	p := &plex.PlexWebhook{}
 
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
@@ -39,89 +39,88 @@ func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *mal.Client
 		return
 	}
 
-	err = json.Unmarshal([]byte(payloadstring), &p)
+	err = json.Unmarshal([]byte(payloadstring), p)
 	if err != nil {
 		log.Println("Couldn't parse payload from Plex", err)
 		return
 	}
 
-	if p.Event == "media.scrobble" || p.Event == "media.rate" {
-		UpdateMal(r.Context(), &p, client, db, se)
+	if p.Event == "media.pause" || p.Event == "media.rate" {
+		UpdateMal(r.Context(), p, client, db, se)
 	}
 
 }
 
-func UpdateMal(ctx context.Context, p *plex.PlexWebhook, client *mal.Client, db *sql.DB, se *animedb.SeasonMap) {
+func UpdateMal(ctx context.Context, p *plex.PlexWebhook, c *mal.Client, db *sql.DB, se *animedb.SeasonMap) {
 
+	var malid int
 	s := NewShow(p.Metadata.GUID)
-	malid := s.GetMalID(db)
 	title := p.Metadata.GrandparentTitle
+	inMap, a := getAnimeMap(title, se)
 
-	if s.Ep.Season == 1 && malid != 0 && p.Event == "media.scrobble" && !inSeasonMap(title, se) {
+	switch p.Event {
+	case "media.pause":
+		if inMap {
 
-		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(s.Ep.No))
-		log.Printf("%v - %+v\n", title, *status)
-		if err != nil {
-			log.Println(err)
-		}
+			TvdbtoMal(ctx, a, c, s.Ep.Season, s.Ep.No, title)
 
-	}
+		} else {
+			if s.Ep.Season == 1 {
 
-	if p.Event == "media.scrobble" && inSeasonMap(title, se) {
-
-		a := getAnimeMT(title, se)
-
-		tempUpdate(ctx, &a, client, s.Ep.Season, s.Ep.No, title)
-
-	}
-
-	if p.Event == "media.rate" && s.Ep.Season == 1 && malid != 0 && !inSeasonMap(title, se) {
-		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.Score(p.Rating))
-		log.Printf("%v - %+v\n", title, *status)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-
-	if p.Event == "media.rate" && inSeasonMap(title, se) {
-		a := getAnimeMT(title, se)
-		for _, v := range a.Seasons {
-			if s.Ep.Season == v.Season {
-				if s.Ep.No >= v.Start {
-					malid = v.MalID
-				}
+				malid = s.GetMalID(db)
+				UpdateWatchStatus(ctx, c, title, malid, s.Ep.No)
 			}
 		}
+	case "media.rate":
+		if inMap {
 
-		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.Score(p.Rating))
-		log.Printf("%v - %+v\n", title, *status)
-		if err != nil {
-			log.Println(err)
+			malid, _ := getStartID(a, s.Ep.Season, s.Ep.No, isMultiSeason(a))
+			UpdateRating(ctx, c, title, malid, p.Rating)
+
+		} else {
+			if s.Ep.Season == 1 {
+
+				malid = s.GetMalID(db)
+				UpdateRating(ctx, c, title, malid, p.Rating)
+			}
 		}
 	}
-
 }
 
-func inSeasonMap(title string, s *animedb.SeasonMap) bool {
-	for _, val := range s.Anime {
-		if title == val.Title {
-			return true
+func getAnimeMap(title string, s *animedb.SeasonMap) (bool, *animedb.AnimeMT) {
+
+	var inmap bool
+	a := &animedb.AnimeMT{}
+
+	for i, anime := range s.Anime {
+		if title == anime.Title {
+
+			inmap = true
+			a.Title = s.Anime[i].Title
+			a.Seasons = s.Anime[i].Seasons
+			return inmap, a
 		}
+		inmap = false
 	}
-	return false
+	return inmap, a
 }
 
-func getAnimeMT(title string, s *animedb.SeasonMap) animedb.AnimeMT {
+func TvdbtoMal(ctx context.Context, a *animedb.AnimeMT, c *mal.Client, season, ep int, title string) {
 
-	var a animedb.AnimeMT
+	if !isMultiSeason(a) {
 
-	for i, val := range s.Anime {
-		if title == val.Title {
-			a = s.Anime[i]
-		}
+		malid, start := getStartID(a, season, ep, false)
+
+		UpdateWatchStatus(ctx, c, title, malid, ep-start+1)
+
+	} else {
+
+		malid, start := getStartID(a, season, ep, true)
+
+		UpdateWatchStatus(ctx, c, title, malid, start+ep-1)
+
 	}
 
-	return a
 }
 
 func isMultiSeason(a *animedb.AnimeMT) bool {
@@ -144,54 +143,75 @@ func isMultiSeason(a *animedb.AnimeMT) bool {
 	return false
 }
 
-func tempUpdate(ctx context.Context, a *animedb.AnimeMT, client *mal.Client, season, ep int, title string) {
+/* func checkComplete (ctx context.Context, client *mal.Client, malid int) {
+
+} */
+
+func UpdateWatchStatus(ctx context.Context, c *mal.Client, title string, malid, ep int) {
+
+	if !MalID(malid, title) {
+		return
+	}
+
+	status, _, err := c.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(ep))
+	if err != nil {
+		log.Println(err)
+	} else {
+		log.Printf("%v - %+v\n", title, *status)
+	}
+}
+
+func UpdateRating(ctx context.Context, c *mal.Client, title string, malid int, r float32) {
+
+	if !MalID(malid, title) {
+		return
+	}
+
+	status, _, err := c.Anime.UpdateMyListStatus(ctx, malid, mal.Score(r))
+	if err != nil {
+		log.Println(err)
+	} else {
+		log.Printf("%v - %+v\n", title, *status)
+	}
+}
+
+func getStartID(a *animedb.AnimeMT, season, ep int, multi bool) (id, s int) {
 
 	var malid int
 	var start int
 
-	if !isMultiSeason(a) {
-
-		for _, val := range a.Seasons {
-			if season == val.Season {
-				if ep >= val.Start {
-					malid = val.MalID
-					start = val.Start
+	for _, anime := range a.Seasons {
+		if season == anime.Season {
+			if multi {
+				malid = anime.MalID
+				start = anime.Start
+			} else {
+				if ep >= anime.Start {
+					malid = anime.MalID
+					start = anime.Start
 				}
 			}
 		}
-
-		if start == 0 {
-			start++
-		}
-
-		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(ep-start+1))
-		log.Printf("%v - %+v\n", title, *status)
-		if err != nil {
-			log.Println(err)
-		}
-
-	} else {
-		for _, val := range a.Seasons {
-			if season == val.Season {
-				malid = val.MalID
-				start = val.Start
-			}
-		}
-
-		if start == 0 {
-			start++
-		}
-
-		status, _, err := client.Anime.UpdateMyListStatus(ctx, malid, mal.AnimeStatusWatching, mal.NumEpisodesWatched(start+ep-1))
-		log.Printf("%v - %+v\n", title, *status)
-		if err != nil {
-			log.Println(err)
-		}
-
 	}
 
+	start = updateStart(start)
+
+	return malid, start
 }
 
-/* func checkComplete (ctx context.Context, client *mal.Client, malid int) {
+func updateStart(s int) int {
+	if s == 0 {
+		return 1
+	}
+	return s
+}
 
-} */
+func MalID(malid int, title string) bool {
+
+	if malid == 0 {
+		log.Printf("mal_id of %v not found. Update the mapping.\n", title)
+		return false
+	}
+
+	return true
+}

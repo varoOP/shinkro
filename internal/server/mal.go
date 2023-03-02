@@ -13,14 +13,19 @@ import (
 
 func UpdateMal(ctx context.Context, p *plex.PlexWebhook, c *mal.Client, db *sql.DB, se *animedb.SeasonMap) {
 
-	var malid int
 	s := NewShow(p.Metadata.GUID)
+
+	if s.Ep.No == -1 || s.Ep.Season == -1 {
+		return
+	}
+
+	var malid int
 	title := p.Metadata.GrandparentTitle
-	titleS := fmt.Sprintf("%v - %v", p.Metadata.GrandparentTitle, s.Ep.Season)
+	titleS := fmt.Sprintf("%v Season %v", p.Metadata.GrandparentTitle, s.Ep.Season)
 	inMap, a := getAnimeMap(title, se)
 
 	switch p.Event {
-	case "media.pause":
+	case "media.scrobble":
 		if inMap {
 
 			tvdbtoMal(ctx, a, c, s.Ep.Season, s.Ep.No, title)
@@ -54,7 +59,7 @@ func getAnimeMap(title string, s *animedb.SeasonMap) (bool, *animedb.AnimeSeason
 	a := &animedb.AnimeSeasons{}
 
 	for i, anime := range s.Anime {
-		if title == anime.Title {
+		if title == anime.Title || checkSynonyms(anime.Synonyms, title) {
 
 			inmap = true
 			a.Title = s.Anime[i].Title
@@ -90,7 +95,7 @@ func isMultiSeason(a *animedb.AnimeSeasons) bool {
 	var malid int
 
 	for _, v := range a.Seasons {
-		if v.Season == 1 {
+		if v.Season == 1 || v.Season == 0 {
 			malid = v.MalID
 		}
 		if malid == v.MalID {
@@ -124,7 +129,7 @@ func updateWatchStatus(ctx context.Context, c *mal.Client, title string, malid, 
 	if err != nil {
 		log.Println(err)
 	} else {
-		log.Printf("%v - %+v\n", title, *l)
+		log.Printf("%v - {Status:%v Score:%v EpisodesWatched:%v}\n", title, l.Status, l.Score, l.NumEpisodesWatched)
 	}
 }
 
@@ -150,7 +155,7 @@ func updateRating(ctx context.Context, c *mal.Client, title string, malid int, r
 	if err != nil {
 		log.Println(err)
 	} else {
-		log.Printf("%v - %+v\n", title, *l)
+		log.Printf("%v - {Status:%v Score:%v EpisodesWatched:%v}\n", title, l.Status, l.Score, l.NumEpisodesWatched)
 	}
 }
 
@@ -193,4 +198,14 @@ func malID(malid int, title string) bool {
 	}
 
 	return true
+}
+
+func checkSynonyms(s []string, title string) bool {
+
+	for _, v := range s {
+		if v == title {
+			return true
+		}
+	}
+	return false
 }

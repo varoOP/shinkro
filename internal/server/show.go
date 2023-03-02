@@ -25,24 +25,32 @@ func NewShow(guid string) *Show {
 
 	s := &Show{}
 
-	r := regexp.MustCompile(`^com.plexapp.agents.hama://(tvdb|anidb)-([0-9]+)(?:/([0-9]+)/([0-9]+))?\?lang=\w{2}$`)
+	r := regexp.MustCompile(`//(.* ?)-(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
+
 	matches := r.FindStringSubmatch(guid)
+
+	if len(matches) == 0 {
+		log.Println("Unable to parse guid:", guid)
+		return &Show{
+			"", -1, Episode{-1, -1},
+		}
+	}
 
 	s.IdSource = matches[1]
 
 	s.Id, err = strconv.Atoi(matches[2])
 	if err != nil {
-		log.Fatalf("error converting anime id from string to inr: %v", err)
+		log.Fatalf("error converting anime id from string to int: %v", err)
 	}
 
 	s.Ep.Season, err = strconv.Atoi(matches[3])
 	if err != nil {
-		s.Ep.Season = 0
+		s.Ep.Season = -1
 	}
 
 	s.Ep.No, err = strconv.Atoi(matches[4])
 	if err != nil {
-		s.Ep.No = 0
+		s.Ep.No = -1
 	}
 
 	return s

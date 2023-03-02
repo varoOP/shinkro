@@ -13,8 +13,9 @@ type SeasonMap struct {
 }
 
 type AnimeSeasons struct {
-	Title   string `yaml:"title"`
-	Seasons []struct {
+	Title    string   `yaml:"title"`
+	Synonyms []string `yaml:"synonyms,omitempty"`
+	Seasons  []struct {
 		Season int `yaml:"season"`
 		MalID  int `yaml:"mal-id"`
 		Start  int `yaml:"start,omitempty"`

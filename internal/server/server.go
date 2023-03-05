@@ -45,8 +45,18 @@ func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *mal.Client
 		return
 	}
 
-	if p.Event == "media.scrobble" || p.Event == "media.rate" {
-		UpdateMal(r.Context(), p, client, db, se)
-	}
+	if (p.Event == "media.scrobble" || p.Event == "media.rate") && p.Metadata.Type == "episode" {
 
+		am, ctx, err := NewAnimeUpdate(r.Context(), p, client, db, se)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		err = am.SendUpdate(ctx)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
 }

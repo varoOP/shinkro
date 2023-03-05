@@ -1,25 +1,21 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 )
 
 type Show struct {
-	IdSource string
-	Id       int
-	Ep       Episode
+	idSource string
+	id       int
+	season   int
+	ep       int
 }
 
-type Episode struct {
-	Season int
-	No     int
-}
-
-func NewShow(guid string) *Show {
+func NewShow(ctx context.Context, guid string) (*Show, error) {
 
 	var err error
 
@@ -27,45 +23,42 @@ func NewShow(guid string) *Show {
 
 	r := regexp.MustCompile(`//(.* ?)-(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
 
-	matches := r.FindStringSubmatch(guid)
-
-	if len(matches) == 0 {
-		log.Println("Unable to parse guid:", guid)
-		return &Show{
-			"", -1, Episode{-1, -1},
-		}
+	if !r.MatchString(guid) {
+		return s, fmt.Errorf("unable to parse GUID: %v", guid)
 	}
 
-	s.IdSource = matches[1]
+	m := r.FindStringSubmatch(guid)
 
-	s.Id, err = strconv.Atoi(matches[2])
+	s.idSource = m[1]
+
+	s.id, err = strconv.Atoi(m[2])
 	if err != nil {
-		log.Fatalf("error converting anime id from string to int: %v", err)
+		return s, err
 	}
 
-	s.Ep.Season, err = strconv.Atoi(matches[3])
+	s.season, err = strconv.Atoi(m[3])
 	if err != nil {
-		s.Ep.Season = -1
+		return s, err
 	}
 
-	s.Ep.No, err = strconv.Atoi(matches[4])
+	s.ep, err = strconv.Atoi(m[4])
 	if err != nil {
-		s.Ep.No = -1
+		return s, err
 	}
 
-	return s
+	return s, nil
 }
 
-func (s *Show) GetMalID(db *sql.DB) int {
+func (s *Show) GetMalID(ctx context.Context, db *sql.DB) (int, error) {
 
 	var malid int
-	sqlstmt := fmt.Sprintf("SELECT mal_id from anime where %v_id=?;", s.IdSource)
+	sqlstmt := fmt.Sprintf("SELECT mal_id from anime where %v_id=?;", s.idSource)
 
-	row := db.QueryRow(sqlstmt, s.Id)
+	row := db.QueryRow(sqlstmt, s.id)
 	err := row.Scan(&malid)
 	if err != nil {
-		return 0
+		return -1, fmt.Errorf("mal_id of %v %v not found in DB", s.idSource, s.id)
 	}
 
-	return malid
+	return malid, nil
 }

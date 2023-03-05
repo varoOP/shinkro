@@ -9,12 +9,6 @@ import (
 	"github.com/varoOP/shinkuro/pkg/manami"
 )
 
-func check(err error) {
-	if err != nil {
-		log.Fatalf("database error: %v", err)
-	}
-}
-
 func NewDB(DSN string) *sql.DB {
 
 	db, err := sql.Open("sqlite3", DSN)
@@ -63,6 +57,8 @@ func UpdateDB(db *sql.DB) {
 
 	}
 
+	m, al, am = nil, nil, nil
+
 	log.Println("DB operation complete")
 
 }
@@ -77,4 +73,10 @@ func checkDB(db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func check(err error) {
+	if err != nil {
+		log.Fatalf("database error: %v", err)
+	}
 }

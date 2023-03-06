@@ -11,16 +11,16 @@ import (
 )
 
 type AnimeUpdate struct {
-	c      *mal.Client
-	db     *sql.DB
-	a      *animedb.AnimeSeasons
-	title  string
-	event  string
-	inMap  bool
-	s      *Show
-	malid  int
-	start  int
-	rating float32
+	client       *mal.Client
+	db           *sql.DB
+	animeSeasons *animedb.AnimeSeasons
+	title        string
+	event        string
+	inMap        bool
+	show         *Show
+	malid        int
+	start        int
+	rating       float32
 }
 
 type MyList struct {
@@ -72,8 +72,8 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			}
 
 		} else {
-			if am.s.season == 1 {
-				am.malid, err = am.s.GetMalID(ctx, am.db)
+			if am.show.season == 1 {
+				am.malid, err = am.show.GetMalID(ctx, am.db)
 				if err != nil {
 					return err
 				}
@@ -86,15 +86,15 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	case "media.rate":
 
 		if am.inMap {
-			am.getStartID(ctx, am.a.IsMultiSeason(ctx))
+			am.getStartID(ctx, am.animeSeasons.IsMultiSeason(ctx))
 			err = am.updateRating(ctx, am.rating)
 			if err != nil {
 				return err
 			}
 		} else {
-			if am.s.season == 1 {
+			if am.show.season == 1 {
 
-				am.malid, err = am.s.GetMalID(ctx, am.db)
+				am.malid, err = am.show.GetMalID(ctx, am.db)
 				if err != nil {
 					return err
 				}
@@ -130,10 +130,10 @@ func checkAnimeMap(ctx context.Context, title string, s *animedb.SeasonMap) (boo
 
 func (am *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
 
-	if !am.a.IsMultiSeason(ctx) {
+	if !am.animeSeasons.IsMultiSeason(ctx) {
 
 		am.getStartID(ctx, false)
-		am.s.ep = am.s.ep - am.start + 1
+		am.show.ep = am.show.ep - am.start + 1
 		err := am.updateWatchStatus(ctx)
 		if err != nil {
 			return err
@@ -142,7 +142,7 @@ func (am *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
 	} else {
 
 		am.getStartID(ctx, true)
-		am.s.ep = am.start + am.s.ep - 1
+		am.show.ep = am.start + am.show.ep - 1
 		err := am.updateWatchStatus(ctx)
 		if err != nil {
 			return err
@@ -159,7 +159,7 @@ func (am *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 	}
 
 	var options []mal.UpdateMyAnimeListStatusOption
-	options = append(options, mal.NumEpisodesWatched(am.s.ep))
+	options = append(options, mal.NumEpisodesWatched(am.show.ep))
 
 	if ml.status == mal.AnimeStatusCompleted {
 		options = append(options, mal.IsRewatching(true))
@@ -167,7 +167,7 @@ func (am *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 
 	ml.status = mal.AnimeStatusWatching
 
-	if ml.epNum == am.s.ep {
+	if ml.epNum == am.show.ep {
 		ml.status = mal.AnimeStatusCompleted
 		if ml.isRewatch {
 			options = append(options, mal.IsRewatching(false))
@@ -178,7 +178,7 @@ func (am *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 
 	options = append(options, ml.status)
 
-	l, _, err := am.c.Anime.UpdateMyListStatus(ctx, am.malid, options...)
+	l, _, err := am.client.Anime.UpdateMyListStatus(ctx, am.malid, options...)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (am *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 
 func (am *AnimeUpdate) checkAnime(ctx context.Context) (*MyList, error) {
 
-	a, _, err := am.c.Anime.Details(ctx, am.malid, mal.Fields{"num_episodes", "title", "my_list_status"})
+	a, _, err := am.client.Anime.Details(ctx, am.malid, mal.Fields{"num_episodes", "title", "my_list_status"})
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (am *AnimeUpdate) updateRating(ctx context.Context, r float32) error {
 		return err
 	}
 
-	l, _, err := am.c.Anime.UpdateMyListStatus(ctx, am.malid, mal.Score(r))
+	l, _, err := am.client.Anime.UpdateMyListStatus(ctx, am.malid, mal.Score(r))
 	if err != nil {
 		return err
 	}
@@ -223,13 +223,13 @@ func (am *AnimeUpdate) updateRating(ctx context.Context, r float32) error {
 
 func (am *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 
-	for _, anime := range am.a.Seasons {
-		if am.s.season == anime.Season {
+	for _, anime := range am.animeSeasons.Seasons {
+		if am.show.season == anime.Season {
 			if multi {
 				am.malid = anime.MalID
 				am.start = anime.Start
 			} else {
-				if am.s.ep >= anime.Start {
+				if am.show.ep >= anime.Start {
 					am.malid = anime.MalID
 					am.start = anime.Start
 				}

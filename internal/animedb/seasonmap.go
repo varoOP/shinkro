@@ -14,13 +14,15 @@ type SeasonMap struct {
 }
 
 type AnimeSeasons struct {
-	Title    string   `yaml:"title"`
-	Synonyms []string `yaml:"synonyms,omitempty"`
-	Seasons  []struct {
-		Season int `yaml:"season"`
-		MalID  int `yaml:"mal-id"`
-		Start  int `yaml:"start,omitempty"`
-	} `yaml:"seasons"`
+	Title    string    `yaml:"title"`
+	Synonyms []string  `yaml:"synonyms,omitempty"`
+	Seasons  []Seasons `yaml:"seasons"`
+}
+
+type Seasons struct {
+	Season int `yaml:"season"`
+	MalID  int `yaml:"mal-id"`
+	Start  int `yaml:"start,omitempty"`
 }
 
 func (s *SeasonMap) GetSeasonMap(path string) {

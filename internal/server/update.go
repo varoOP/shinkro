@@ -23,6 +23,14 @@ type AnimeUpdate struct {
 	rating float32
 }
 
+type MyList struct {
+	status     mal.AnimeStatus
+	isRewatch  bool
+	rewatchNum int
+	epNum      int
+	title      string
+}
+
 func NewAnimeUpdate(ctx context.Context, p *plex.PlexWebhook, c *mal.Client, db *sql.DB, sm *animedb.SeasonMap) (*AnimeUpdate, context.Context, error) {
 
 	am := &AnimeUpdate{}
@@ -145,40 +153,61 @@ func (am *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
 
 func (am *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 
-	status := mal.AnimeStatusWatching
-
-	n, t, err := am.checkAnime(ctx)
+	ml, err := am.checkAnime(ctx)
 	if err != nil {
 		return err
 	}
 
-	if n == am.s.ep {
-		status = mal.AnimeStatusCompleted
+	var options []mal.UpdateMyAnimeListStatusOption
+	options = append(options, mal.NumEpisodesWatched(am.s.ep))
+
+	if ml.status == mal.AnimeStatusCompleted {
+		options = append(options, mal.IsRewatching(true))
 	}
 
-	l, _, err := am.c.Anime.UpdateMyListStatus(ctx, am.malid, status, mal.NumEpisodesWatched(am.s.ep))
+	ml.status = mal.AnimeStatusWatching
+
+	if ml.epNum == am.s.ep {
+		ml.status = mal.AnimeStatusCompleted
+		if ml.isRewatch {
+			options = append(options, mal.IsRewatching(false))
+			ml.rewatchNum++
+			options = append(options, mal.NumTimesRewatched(ml.rewatchNum))
+		}
+	}
+
+	options = append(options, ml.status)
+
+	l, _, err := am.c.Anime.UpdateMyListStatus(ctx, am.malid, options...)
 	if err != nil {
 		return err
 	}
-	log.Printf("%v - {Status:%v Score:%v Episodes Watched:%v}\n", t, l.Status, l.Score, l.NumEpisodesWatched)
+
+	logUpdate(ml, l)
 	return nil
 }
 
-func (am *AnimeUpdate) checkAnime(ctx context.Context) (int, string, error) {
+func (am *AnimeUpdate) checkAnime(ctx context.Context) (*MyList, error) {
 
-	a, _, err := am.c.Anime.Details(ctx, am.malid, mal.Fields{"num_episodes", "title"})
+	a, _, err := am.c.Anime.Details(ctx, am.malid, mal.Fields{"num_episodes", "title", "my_list_status"})
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
 
-	return a.NumEpisodes, a.Title, nil
+	ml := &MyList{
+		status:     a.MyListStatus.Status,
+		isRewatch:  a.MyListStatus.IsRewatching,
+		rewatchNum: a.MyListStatus.NumTimesRewatched,
+		epNum:      a.NumEpisodes,
+		title:      a.Title,
+	}
+
+	return ml, nil
 }
 
 func (am *AnimeUpdate) updateRating(ctx context.Context, r float32) error {
 
-	var err error
-
-	_, am.title, err = am.checkAnime(ctx)
+	ml, err := am.checkAnime(ctx)
 	if err != nil {
 		return err
 	}
@@ -187,7 +216,8 @@ func (am *AnimeUpdate) updateRating(ctx context.Context, r float32) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("%v - {Status:%v Score:%v Episodes Watched:%v}\n", am.title, l.Status, l.Score, l.NumEpisodesWatched)
+
+	logUpdate(ml, l)
 	return nil
 }
 
@@ -225,4 +255,9 @@ func updateStart(ctx context.Context, s int) int {
 		return 1
 	}
 	return s
+}
+
+func logUpdate(ml *MyList, l *mal.AnimeListStatus) {
+
+	log.Printf("%v - {Status:%v Score:%v Episodes_Watched:%v Rewatching:%v Times_Rewatched:%v}\n", ml.title, l.Status, l.Score, l.NumEpisodesWatched, l.IsRewatching, l.NumTimesRewatched)
 }

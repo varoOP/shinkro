@@ -4,20 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/varoOP/shinkuro/internal/animedb"
+	"github.com/varoOP/shinkuro/internal/mapping"
 )
 
 func TestUpdate_GetStarID(t *testing.T) {
 	tests := []struct {
 		name string
-		have AnimeUpdate
-		want AnimeUpdate
+		have *AnimeUpdate
+		want *AnimeUpdate
 	}{
 		{
 			name: "One Piece",
-			have: AnimeUpdate{
-				animeSeasons: &animedb.AnimeSeasons{
-					Seasons: []animedb.Seasons{
+			have: &AnimeUpdate{
+				anime: &mapping.Anime{
+					Seasons: []mapping.Seasons{
 						{
 							Season: 1,
 							MalID:  21,
@@ -125,23 +125,23 @@ func TestUpdate_GetStarID(t *testing.T) {
 						},
 					},
 				},
-				show: &Show{
-					season: 21,
-					ep:     162,
+				show: &mapping.Show{
+					Season: 21,
+					Ep:     162,
 				},
 				malid: -1,
 				start: -1,
 			},
-			want: AnimeUpdate{
+			want: &AnimeUpdate{
 				malid: 21,
 				start: 892,
 			},
 		},
 		{
 			name: "DanMachi",
-			have: AnimeUpdate{
-				animeSeasons: &animedb.AnimeSeasons{
-					Seasons: []animedb.Seasons{
+			have: &AnimeUpdate{
+				anime: &mapping.Anime{
+					Seasons: []mapping.Seasons{
 						{
 							Season: 1,
 							MalID:  28121,
@@ -169,23 +169,23 @@ func TestUpdate_GetStarID(t *testing.T) {
 						},
 					},
 				},
-				show: &Show{
-					season: 4,
-					ep:     13,
+				show: &mapping.Show{
+					Season: 4,
+					Ep:     13,
 				},
 				malid: -1,
 				start: -1,
 			},
-			want: AnimeUpdate{
+			want: &AnimeUpdate{
 				malid: 53111,
 				start: 12,
 			},
 		},
 		{
 			name: "Vinland Saga",
-			have: AnimeUpdate{
-				animeSeasons: &animedb.AnimeSeasons{
-					Seasons: []animedb.Seasons{
+			have: &AnimeUpdate{
+				anime: &mapping.Anime{
+					Seasons: []mapping.Seasons{
 						{
 							Season: 1,
 							MalID:  37521,
@@ -198,14 +198,14 @@ func TestUpdate_GetStarID(t *testing.T) {
 						},
 					},
 				},
-				show: &Show{
-					season: 2,
-					ep:     9,
+				show: &mapping.Show{
+					Season: 2,
+					Ep:     9,
 				},
 				malid: -1,
 				start: -1,
 			},
-			want: AnimeUpdate{
+			want: &AnimeUpdate{
 				malid: 49387,
 				start: 1,
 			},

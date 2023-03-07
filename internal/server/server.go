@@ -1,29 +1,28 @@
 package server
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
 
-	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/varoOP/shinkuro/internal/animedb"
 	"github.com/varoOP/shinkuro/internal/config"
+	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
 
-func StartHttp(db *sql.DB, client *mal.Client, cfg *config.Config, se *animedb.SeasonMap) {
+func StartHttp(cfg *config.Config, ac *AnimeCon) {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		test(w, r, db, client, se)
+		test(w, r, ac)
 	})
 
 	log.Println("Started listening on", cfg.Addr)
 	log.Fatal(http.ListenAndServe(cfg.Addr, nil))
 }
 
-func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *mal.Client, se *animedb.SeasonMap) {
+func test(w http.ResponseWriter, r *http.Request, ac *AnimeCon) {
 
 	p := &plex.PlexWebhook{}
 
@@ -32,31 +31,58 @@ func test(w http.ResponseWriter, r *http.Request, db *sql.DB, client *mal.Client
 		log.Println("Bad", err)
 		return
 	}
-	payload := r.PostForm["payload"]
-	payloadstring := strings.Join(payload, "")
 
-	if !strings.Contains(payloadstring, "com.plexapp.agents.hama") || !strings.Contains(payloadstring, "RudeusGreyrat") {
+	pl := r.PostForm["payload"]
+	ps := strings.Join(pl, "")
+	if !isUser(ps) {
 		return
 	}
 
-	err = json.Unmarshal([]byte(payloadstring), p)
+	err = json.Unmarshal([]byte(ps), p)
 	if err != nil {
 		log.Println("Couldn't parse payload from Plex", err)
 		return
 	}
 
-	if (p.Event == "media.scrobble" || p.Event == "media.rate") && p.Metadata.Type == "episode" {
-
-		am, ctx, err := NewAnimeUpdate(r.Context(), p, client, db, se)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		err = am.SendUpdate(ctx)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+	err = plexToMal(r.Context(), p, ac)
+	if err != nil {
+		log.Println(err)
+		return
 	}
+}
+
+func plexToMal(ctx context.Context, p *plex.PlexWebhook, ac *AnimeCon) error {
+	event := p.Event != "media.scrobble"
+	if event || p.Event != "media.rate" {
+		return nil
+	}
+
+	if p.Metadata.Type != "episode" {
+		return nil
+	}
+
+	s, err := mapping.NewAnimeSeasonMap()
+	if err != nil {
+		return err
+	}
+	ac.mapping = s
+
+	am, ctx, err := NewAnimeUpdate(ctx, p, ac)
+	if err != nil {
+		return err
+	}
+
+	err = am.SendUpdate(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func isUser(ps string) bool {
+	if !strings.Contains(ps, "com.plexapp.agents.hama") || !strings.Contains(ps, "RudeusGreyrat") {
+		return false
+	}
+	return true
 }

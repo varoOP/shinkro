@@ -1,4 +1,4 @@
-package animedb
+package database
 
 import (
 	"database/sql"

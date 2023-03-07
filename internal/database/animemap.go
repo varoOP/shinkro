@@ -1,4 +1,4 @@
-package animedb
+package database
 
 import (
 	"github.com/varoOP/shinkuro/pkg/animelist"

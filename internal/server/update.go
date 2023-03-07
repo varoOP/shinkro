@@ -6,21 +6,27 @@ import (
 	"log"
 
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/varoOP/shinkuro/internal/animedb"
+	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
 
 type AnimeUpdate struct {
-	client       *mal.Client
-	db           *sql.DB
-	animeSeasons *animedb.AnimeSeasons
-	title        string
-	event        string
-	inMap        bool
-	show         *Show
-	malid        int
-	start        int
-	rating       float32
+	client *mal.Client
+	db     *sql.DB
+	anime  *mapping.Anime
+	event  string
+	inMap  bool
+	show   *mapping.Show
+	malid  int
+	start  int
+	rating float32
+	myList *MyList
+}
+
+type AnimeCon struct {
+	client  *mal.Client
+	db      *sql.DB
+	mapping *mapping.AnimeSeasonMap
 }
 
 type MyList struct {
@@ -31,28 +37,33 @@ type MyList struct {
 	title      string
 }
 
-func NewAnimeUpdate(ctx context.Context, p *plex.PlexWebhook, c *mal.Client, db *sql.DB, sm *animedb.SeasonMap) (*AnimeUpdate, context.Context, error) {
+func NewAnimeCon(c *mal.Client, db *sql.DB) *AnimeCon {
+	return &AnimeCon{
+		client:  c,
+		db:      db,
+		mapping: nil,
+	}
+}
 
-	am := &AnimeUpdate{}
+func NewAnimeUpdate(ctx context.Context, p *plex.PlexWebhook, ac *AnimeCon) (*AnimeUpdate, context.Context, error) {
 
-	s, err := NewShow(ctx, p.Metadata.GUID)
+	s, err := mapping.NewShow(ctx, p.Metadata.GUID)
 	if err != nil {
-		return am, ctx, err
+		return nil, ctx, err
 	}
 
-	inMap, a := checkAnimeMap(ctx, p.Metadata.GrandparentTitle, sm)
+	inMap, a := ac.mapping.CheckAnimeMap(ctx, p.Metadata.GrandparentTitle)
 
-	am = &AnimeUpdate{
-		c,
-		db,
-		a,
-		p.Metadata.GrandparentTitle,
-		p.Event,
-		inMap,
-		s,
-		-1,
-		-1,
-		p.Rating,
+	am := &AnimeUpdate{
+		client: ac.client,
+		db:     ac.db,
+		anime:  a,
+		event:  p.Event,
+		inMap:  inMap,
+		show:   s,
+		malid:  -1,
+		start:  -1,
+		rating: p.Rating,
 	}
 
 	return am, ctx, nil
@@ -72,7 +83,7 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			}
 
 		} else {
-			if am.show.season == 1 {
+			if am.show.Season == 1 {
 				am.malid, err = am.show.GetMalID(ctx, am.db)
 				if err != nil {
 					return err
@@ -86,13 +97,13 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	case "media.rate":
 
 		if am.inMap {
-			am.getStartID(ctx, am.animeSeasons.IsMultiSeason(ctx))
+			am.getStartID(ctx, am.anime.IsMultiSeason(ctx))
 			err = am.updateRating(ctx, am.rating)
 			if err != nil {
 				return err
 			}
 		} else {
-			if am.show.season == 1 {
+			if am.show.Season == 1 {
 
 				am.malid, err = am.show.GetMalID(ctx, am.db)
 				if err != nil {
@@ -110,91 +121,80 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	return nil
 }
 
-func checkAnimeMap(ctx context.Context, title string, s *animedb.SeasonMap) (bool, *animedb.AnimeSeasons) {
-
-	var inmap bool
-	a := &animedb.AnimeSeasons{}
-
-	for i, anime := range s.Anime {
-		if title == anime.Title || synonymExists(ctx, anime.Synonyms, title) {
-
-			inmap = true
-			a.Title = s.Anime[i].Title
-			a.Seasons = s.Anime[i].Seasons
-			return inmap, a
-		}
-		inmap = false
-	}
-	return inmap, a
-}
-
 func (am *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
-
-	if !am.animeSeasons.IsMultiSeason(ctx) {
-
+	if !am.anime.IsMultiSeason(ctx) {
 		am.getStartID(ctx, false)
-		am.show.ep = am.show.ep - am.start + 1
+		am.show.Ep = am.show.Ep - am.start + 1
 		err := am.updateWatchStatus(ctx)
 		if err != nil {
 			return err
 		}
-
 	} else {
-
 		am.getStartID(ctx, true)
-		am.show.ep = am.start + am.show.ep - 1
+		am.show.Ep = am.start + am.show.Ep - 1
 		err := am.updateWatchStatus(ctx)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
 func (am *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 
-	ml, err := am.checkAnime(ctx)
+	options, err := am.newOptions(ctx)
 	if err != nil {
 		return err
 	}
-
-	var options []mal.UpdateMyAnimeListStatusOption
-	options = append(options, mal.NumEpisodesWatched(am.show.ep))
-
-	if ml.status == mal.AnimeStatusCompleted {
-		options = append(options, mal.IsRewatching(true))
-	}
-
-	ml.status = mal.AnimeStatusWatching
-
-	if ml.epNum == am.show.ep {
-		ml.status = mal.AnimeStatusCompleted
-		if ml.isRewatch {
-			options = append(options, mal.IsRewatching(false))
-			ml.rewatchNum++
-			options = append(options, mal.NumTimesRewatched(ml.rewatchNum))
-		}
-	}
-
-	options = append(options, ml.status)
 
 	l, _, err := am.client.Anime.UpdateMyListStatus(ctx, am.malid, options...)
 	if err != nil {
 		return err
 	}
 
-	logUpdate(ml, l)
+	logUpdate(am.myList, l)
 	return nil
 }
 
-func (am *AnimeUpdate) checkAnime(ctx context.Context) (*MyList, error) {
+func (am *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListStatusOption, error) {
 
-	a, _, err := am.client.Anime.Details(ctx, am.malid, mal.Fields{"num_episodes", "title", "my_list_status"})
+	err := am.checkAnime(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	ml := &MyList{
+	var options []mal.UpdateMyAnimeListStatusOption
+
+	if am.myList.status == mal.AnimeStatusCompleted {
+		if am.myList.epNum == am.show.Ep {
+			am.myList.rewatchNum++
+			options = append(options, mal.NumTimesRewatched(am.myList.rewatchNum))
+			return options, nil
+		} else {
+			return nil, nil
+		}
+	}
+
+	options = append(options, mal.NumEpisodesWatched(am.show.Ep))
+	am.myList.status = mal.AnimeStatusWatching
+
+	if am.myList.epNum == am.show.Ep {
+		am.myList.status = mal.AnimeStatusCompleted
+	}
+
+	options = append(options, am.myList.status)
+	return options, nil
+}
+
+func (am *AnimeUpdate) checkAnime(ctx context.Context) error {
+
+	a, _, err := am.client.Anime.Details(ctx, am.malid, mal.Fields{"num_episodes", "title", "my_list_status"})
+	if err != nil {
+		return err
+	}
+
+	am.myList = &MyList{
 		status:     a.MyListStatus.Status,
 		isRewatch:  a.MyListStatus.IsRewatching,
 		rewatchNum: a.MyListStatus.NumTimesRewatched,
@@ -202,12 +202,12 @@ func (am *AnimeUpdate) checkAnime(ctx context.Context) (*MyList, error) {
 		title:      a.Title,
 	}
 
-	return ml, nil
+	return nil
 }
 
 func (am *AnimeUpdate) updateRating(ctx context.Context, r float32) error {
 
-	ml, err := am.checkAnime(ctx)
+	err := am.checkAnime(ctx)
 	if err != nil {
 		return err
 	}
@@ -217,19 +217,19 @@ func (am *AnimeUpdate) updateRating(ctx context.Context, r float32) error {
 		return err
 	}
 
-	logUpdate(ml, l)
+	logUpdate(am.myList, l)
 	return nil
 }
 
 func (am *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 
-	for _, anime := range am.animeSeasons.Seasons {
-		if am.show.season == anime.Season {
+	for _, anime := range am.anime.Seasons {
+		if am.show.Season == anime.Season {
 			if multi {
 				am.malid = anime.MalID
 				am.start = anime.Start
 			} else {
-				if am.show.ep >= anime.Start {
+				if am.show.Ep >= anime.Start {
 					am.malid = anime.MalID
 					am.start = anime.Start
 				}
@@ -238,16 +238,6 @@ func (am *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 	}
 
 	am.start = updateStart(ctx, am.start)
-}
-
-func synonymExists(ctx context.Context, s []string, title string) bool {
-
-	for _, v := range s {
-		if v == title {
-			return true
-		}
-	}
-	return false
 }
 
 func updateStart(ctx context.Context, s int) int {

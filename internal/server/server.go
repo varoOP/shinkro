@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -15,26 +16,27 @@ import (
 func StartHttp(cfg *config.Config, ac *AnimeCon) {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		test(w, r, ac)
+		handlePlexReq(w, r, ac, cfg)
 	})
 
 	log.Println("Started listening on", cfg.Addr)
 	log.Fatal(http.ListenAndServe(cfg.Addr, nil))
 }
 
-func test(w http.ResponseWriter, r *http.Request, ac *AnimeCon) {
+func handlePlexReq(w http.ResponseWriter, r *http.Request, ac *AnimeCon, cfg *config.Config) {
 
 	p := &plex.PlexWebhook{}
 
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
-		log.Println("Bad", err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	pl := r.PostForm["payload"]
 	ps := strings.Join(pl, "")
-	if !isUser(ps) {
+
+	if !isUserAgent(ps, cfg.User) {
 		return
 	}
 
@@ -44,28 +46,30 @@ func test(w http.ResponseWriter, r *http.Request, ac *AnimeCon) {
 		return
 	}
 
+	ac.mapping, err = mapping.NewAnimeSeasonMap(cfg)
+	if err != nil {
+		log.Println("unable to load mapping", err)
+		return
+	}
+
 	err = plexToMal(r.Context(), p, ac)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func plexToMal(ctx context.Context, p *plex.PlexWebhook, ac *AnimeCon) error {
-	event := p.Event != "media.scrobble"
-	if event || p.Event != "media.rate" {
-		return nil
+
+	if !isEvent(p.Event) {
+		return fmt.Errorf("incorrect event")
 	}
 
 	if p.Metadata.Type != "episode" {
-		return nil
+		return fmt.Errorf("incorrect media type")
 	}
-
-	s, err := mapping.NewAnimeSeasonMap()
-	if err != nil {
-		return err
-	}
-	ac.mapping = s
 
 	am, ctx, err := NewAnimeUpdate(ctx, p, ac)
 	if err != nil {
@@ -80,9 +84,20 @@ func plexToMal(ctx context.Context, p *plex.PlexWebhook, ac *AnimeCon) error {
 	return nil
 }
 
-func isUser(ps string) bool {
-	if !strings.Contains(ps, "com.plexapp.agents.hama") || !strings.Contains(ps, "RudeusGreyrat") {
+func isUserAgent(ps, user string) bool {
+	if !strings.Contains(ps, "com.plexapp.agents.hama") || !strings.Contains(ps, user) {
 		return false
 	}
 	return true
+}
+
+func isEvent(e string) bool {
+	events := []string{"media.rate", "media.scrobble"}
+	for _, v := range events {
+		if e == v {
+			return true
+		}
+	}
+
+	return false
 }

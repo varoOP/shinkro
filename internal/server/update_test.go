@@ -7,7 +7,7 @@ import (
 	"github.com/varoOP/shinkuro/internal/mapping"
 )
 
-func TestUpdate_GetStarID(t *testing.T) {
+func TestUpdate_GetStartID(t *testing.T) {
 	tests := []struct {
 		name string
 		have *AnimeUpdate
@@ -212,14 +212,17 @@ func TestUpdate_GetStarID(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		test.have.getStartID(context.Background(), true)
-		if test.have.malid != test.want.malid {
-			t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", test.name, test.have.malid, test.want.malid)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.have.getStartID(context.Background(), true)
 
-		if test.have.start != test.want.start {
-			t.Errorf("\nTest: %v\nHave:start_%v Want:start_%v", test.name, test.have.start, test.want.start)
-		}
+			if tt.have.malid != tt.want.malid {
+				t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", tt.name, tt.have.malid, tt.want.malid)
+			}
+
+			if tt.have.start != tt.want.start {
+				t.Errorf("\nTest: %v\nHave:start_%v Want:start_%v", tt.name, tt.have.start, tt.want.start)
+			}
+		})
 	}
 }

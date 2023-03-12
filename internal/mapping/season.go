@@ -3,8 +3,11 @@ package mapping
 import (
 	"context"
 	"io"
+	"log"
 	"net/http"
+	"os"
 
+	"github.com/varoOP/shinkuro/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,22 +27,19 @@ type Seasons struct {
 	Start  int `yaml:"start,omitempty"`
 }
 
-func NewAnimeSeasonMap() (*AnimeSeasonMap, error) {
+func NewAnimeSeasonMap(cfg *config.Config) (*AnimeSeasonMap, error) {
 	s := &AnimeSeasonMap{}
 
-	resp, err := http.Get("https://github.com/kyuketski/shinkuro-mapping/raw/main/tvdb-mal.yml")
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	err = yaml.Unmarshal(body, s)
-	if err != nil {
-		return nil, err
+	if cfg.CustomMap {
+		err := s.localMap(cfg.K.String("custom_map"))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := s.communityMap()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return s, nil
@@ -77,6 +77,47 @@ func (s *AnimeSeasonMap) CheckAnimeMap(ctx context.Context, title string) (bool,
 	return false, nil
 }
 
+func (s *AnimeSeasonMap) communityMap() error {
+	resp, err := http.Get("https://github.com/kyuketski/shinkuro-mapping/raw/main/tvdb-mal.yml")
+	if err != nil {
+		return err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	err = yaml.Unmarshal(body, s)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AnimeSeasonMap) localMap(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	body, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(body, s)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func synonymExists(ctx context.Context, s []string, title string) bool {
 
 	for _, v := range s {
@@ -85,4 +126,27 @@ func synonymExists(ctx context.Context, s []string, title string) bool {
 		}
 	}
 	return false
+}
+
+func ChecklocalMap(path string) {
+
+	s := &AnimeSeasonMap{}
+
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatal("error opening custom map", err)
+	}
+	defer f.Close()
+
+	body, err := io.ReadAll(f)
+	if err != nil {
+		log.Fatal("error reading custom map", err)
+	}
+
+	err = yaml.Unmarshal(body, s)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s = nil
 }

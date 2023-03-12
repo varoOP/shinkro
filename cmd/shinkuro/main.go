@@ -12,12 +12,17 @@ import (
 
 	"github.com/varoOP/shinkuro/internal/config"
 	"github.com/varoOP/shinkuro/internal/database"
+	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/internal/server"
 )
 
 func main() {
 
 	cfg := config.NewConfig()
+
+	if cfg.CustomMap {
+		mapping.ChecklocalMap(cfg.K.String("custom_map"))
+	}
 
 	db := database.NewDB(cfg.Dsn)
 	database.UpdateDB(db)

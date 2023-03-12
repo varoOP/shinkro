@@ -14,13 +14,15 @@ import (
 )
 
 type Config struct {
-	Dsn    string
-	Config string
-	Token  string
-	Log    string
-	Addr   string
-	K      *koanf.Koanf
-	Logger *os.File
+	Dsn       string
+	Config    string
+	Token     string
+	Log       string
+	Addr      string
+	User      string
+	CustomMap bool
+	K         *koanf.Koanf
+	Logger    *os.File
 }
 
 func NewConfig() *Config {
@@ -48,9 +50,17 @@ func NewConfig() *Config {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
 
+	c.CustomMap = false
+
+	if mapPath := c.K.String("custom_map"); mapPath != "" {
+		c.CustomMap = true
+	}
+
 	c.Addr = fmt.Sprintf("%v:%v", c.K.String("host"), c.K.Int("port"))
 
-	c.Logger, err = os.OpenFile(c.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
+	c.User = c.K.String("plex_user")
+
+	c.Logger, err = os.OpenFile(c.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		log.Fatalln(err)
 	}

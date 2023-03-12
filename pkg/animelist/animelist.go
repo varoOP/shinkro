@@ -42,7 +42,7 @@ func NewAnimeList() *AnimeList {
 
 	err = xml.Unmarshal(body, al)
 	if err != nil {
-		log.Fatalf("Error unmarshalling manami database: %v", err)
+		log.Fatalf("Error unmarshalling anime list xml: %v", err)
 	}
 
 	return al

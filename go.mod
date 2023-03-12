@@ -4,6 +4,8 @@ go 1.19
 
 require github.com/mattn/go-sqlite3 v1.14.16
 
+require github.com/DATA-DOG/go-sqlmock v1.3.0
+
 require (
 	github.com/knadh/koanf v1.5.0
 	github.com/nstratos/go-myanimelist v0.9.4

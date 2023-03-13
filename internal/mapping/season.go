@@ -64,10 +64,10 @@ func (a *Anime) IsMultiSeason(ctx context.Context) bool {
 	return false
 }
 
-func (s *AnimeSeasonMap) CheckAnimeMap(ctx context.Context, title string) (bool, *Anime) {
+func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
 
 	for i, anime := range s.Anime {
-		if title == anime.Title || synonymExists(ctx, anime.Synonyms, title) {
+		if title == anime.Title || synonymExists(anime.Synonyms, title) {
 			return true, &Anime{
 				Title:   s.Anime[i].Title,
 				Seasons: s.Anime[i].Seasons,
@@ -118,7 +118,7 @@ func (s *AnimeSeasonMap) localMap(path string) error {
 	return nil
 }
 
-func synonymExists(ctx context.Context, s []string, title string) bool {
+func synonymExists(s []string, title string) bool {
 
 	for _, v := range s {
 		if v == title {

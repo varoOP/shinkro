@@ -16,16 +16,19 @@ import (
 	"github.com/varoOP/shinkuro/internal/server"
 )
 
-func main() {
+var cfg = config.NewConfig()
+var db = database.NewDB(cfg.Dsn)
 
-	cfg := config.NewConfig()
+func init() {
 
 	if cfg.CustomMap {
 		mapping.ChecklocalMap(cfg.K.String("custom_map"))
 	}
 
-	db := database.NewDB(cfg.Dsn)
 	database.UpdateDB(db)
+}
+
+func main() {
 
 	c := cron.New()
 	c.AddFunc("0 0 * * *", func() { database.UpdateDB(db) })
@@ -34,9 +37,9 @@ func main() {
 	oauth_client := server.NewOauth2Client(context.Background(), cfg.K.String("mal_client_id"), cfg.K.String("mal_client_secret"), cfg.Token)
 	client := mal.NewClient(oauth_client)
 
-	ac := server.NewAnimeCon(client, db)
+	a := server.NewAnimeUpdate(db, client, cfg)
 
-	go server.StartHttp(cfg, ac)
+	go server.StartHttp(cfg, a)
 
 	sigchnl := make(chan os.Signal, 1)
 	signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)

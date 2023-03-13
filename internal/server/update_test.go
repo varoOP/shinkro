@@ -1,13 +1,33 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
+	"encoding/json"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/nstratos/go-myanimelist/mal"
+	"github.com/varoOP/shinkuro/internal/config"
 	"github.com/varoOP/shinkuro/internal/mapping"
+	"golang.org/x/oauth2"
 )
 
-func TestUpdate_GetStartID(t *testing.T) {
+type have struct {
+	data  string
+	event string
+	cfg   *config.Config
+	db    *sql.DB
+}
+
+func TestUpdate_TvdbToMal(t *testing.T) {
 	tests := []struct {
 		name string
 		have *AnimeUpdate
@@ -135,6 +155,9 @@ func TestUpdate_GetStartID(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 21,
 				start: 892,
+				show: &mapping.Show{
+					Ep: 1053,
+				},
 			},
 		},
 		{
@@ -179,6 +202,9 @@ func TestUpdate_GetStartID(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 53111,
 				start: 12,
+				show: &mapping.Show{
+					Ep: 2,
+				},
 			},
 		},
 		{
@@ -208,13 +234,16 @@ func TestUpdate_GetStartID(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 49387,
 				start: 1,
+				show: &mapping.Show{
+					Ep: 9,
+				},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.have.getStartID(context.Background(), true)
+			ep := tt.have.tvdbtoMal(context.Background())
 
 			if tt.have.malid != tt.want.malid {
 				t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", tt.name, tt.have.malid, tt.want.malid)
@@ -223,6 +252,217 @@ func TestUpdate_GetStartID(t *testing.T) {
 			if tt.have.start != tt.want.start {
 				t.Errorf("\nTest: %v\nHave:start_%v Want:start_%v", tt.name, tt.have.start, tt.want.start)
 			}
+
+			if ep != tt.want.show.Ep {
+				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, ep, tt.want.show.Ep)
+			}
 		})
 	}
+}
+
+func TestUpdate_ServeHTTP(t *testing.T) {
+
+	tests := []struct {
+		name string
+		have have
+		want *mal.AnimeListStatus
+	}{
+		{
+			name: "Tomo-Chan",
+			have: have{
+				data: `{
+				"rating": 8.0,
+				"event": "media.rate",
+				"user": true,
+				"owner": true,
+				"Account": {
+					"id": 11647740,
+					"thumb": "https://plex.tv/users/63527/avatar?c=16",
+					"title": "TestUser"
+				},
+				"Server": {
+					"title": "test-server",
+					"uuid": "633890aeceb6f4d97404hce80facaeb622021ef8"
+				},
+				"Player": {
+					"local": false,
+					"publicAddress": "10.2.0.1",
+					"title": "Chrome",
+					"uuid": "te88165wqvqlkuxve79upa7b"
+				},
+				"Metadata": {
+					"librarySectionType": "show",
+					"ratingKey": "21639",
+					"key": "/library/metadata/21639",
+					"skipParent": true,
+					"parentRatingKey": "21633",
+					"grandparentRatingKey": "21632",
+					"guid": "com.plexapp.agents.hama://anidb-17494/1/7?lang=en",
+					"parentGuid": "com.plexapp.agents.hama://anidb-17494/1?lang=en",
+					"grandparentGuid": "com.plexapp.agents.hama://anidb-17494?lang=en",
+					"type": "episode",
+					"title": "Junichiro's Promise / When Tomo Puts On a Swimsuit...",
+					"grandparentKey": "/library/metadata/21632",
+					"parentKey": "/library/metadata/21633",
+					"librarySectionTitle": "Anime",
+					"librarySectionID": 1,
+					"librarySectionKey": "/library/sections/1",
+					"grandparentTitle": "Tomo-chan wa Onnanoko!",
+					"parentTitle": "Season 1",
+					"contentRating": "TV-14",
+					"summary": "Junichiro recalls how he and Tomo first met, and the four friends spend a day at the beach.",
+					"index": 7,
+					"parentIndex": 1,
+					"rating": 5.9,
+					"userRating": 8.0,
+					"lastRatedAt": 1678231155,
+					"year": 2023,
+					"thumb": "/library/metadata/21639/thumb/1678090117",
+					"art": "/library/metadata/21632/art/1678090068",
+					"grandparentThumb": "/library/metadata/21632/thumb/1678090068",
+					"grandparentArt": "/library/metadata/21632/art/1678090068",
+					"originallyAvailableAt": "2023-02-16",
+					"addedAt": 1678090110,
+					"updatedAt": 1678090117,
+					"Director": [
+						{
+							"id": 5141,
+							"filter": "director=5141",
+							"tag": "Nanba Hitoshi"
+						}
+					],
+					"Writer": [
+						{
+							"id": 50926,
+							"filter": "writer=50926",
+							"tag": "Yanagida Fumita"
+						}
+					],
+					"Producer": [
+						{
+							"id": 9095,
+							"filter": "producer=9095",
+							"tag": "Shimizu Megumi"
+						}
+					]
+				}
+			}`,
+				event: "media.rate",
+				cfg: &config.Config{
+					CustomMap: false,
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 52305),
+			},
+			want: &mal.AnimeListStatus{
+				Score: 8,
+			},
+		},
+	}
+
+	c := createMalclient(t)
+
+	rr := httptest.NewRecorder()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := createRequest(t, tt.have.data)
+			a := NewAnimeUpdate(tt.have.db, c, tt.have.cfg)
+			a.ServeHTTP(rr, req)
+			switch tt.have.event {
+			case "media.rate":
+				if a.malresp.Score != tt.want.Score {
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.Score, tt.want.Score)
+				}
+			case "media.scrobble":
+				if a.malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.Score, tt.want.Score)
+				}
+			}
+		})
+	}
+}
+
+func createMultipartForm(t *testing.T, data string) (*bytes.Buffer, *multipart.Writer) {
+
+	body := &bytes.Buffer{}
+
+	w := multipart.NewWriter(body)
+	defer w.Close()
+
+	fw, err := w.CreateFormField("payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = io.Copy(fw, strings.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return body, w
+
+}
+
+func createMalclient(t *testing.T) *mal.Client {
+	var creds map[string]string
+	token := &oauth2.Token{}
+
+	Unmarshal(t, "testdata/mal-credentials.json", &creds)
+	Unmarshal(t, "testdata/token.json", token)
+
+	config := &oauth2.Config{
+		ClientID:     creds["client-id"],
+		ClientSecret: creds["client-secret"],
+		Endpoint: oauth2.Endpoint{
+			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
+			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
+			AuthStyle: oauth2.AuthStyleInParams,
+		},
+	}
+
+	client := config.Client(context.Background(), token)
+	c := mal.NewClient(client)
+
+	return c
+}
+
+func createMockDB(t *testing.T, malid int) *sql.DB {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal("error creating mock database")
+	}
+
+	rows := sqlmock.NewRows([]string{"mal_id"}).AddRow(malid)
+
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+
+	return db
+}
+
+func Unmarshal(t *testing.T, path string, v any) {
+	f, err := os.Open(path)
+	if err != nil {
+		t.Skip()
+	}
+
+	defer f.Close()
+
+	b, err := io.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = json.Unmarshal(b, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func createRequest(t *testing.T, data string) *http.Request {
+
+	b, w := createMultipartForm(t, data)
+	req := httptest.NewRequest("POST", "/", b)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	return req
 }

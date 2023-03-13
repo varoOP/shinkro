@@ -15,7 +15,7 @@ type Show struct {
 	Ep       int
 }
 
-func NewShow(ctx context.Context, guid string) (*Show, error) {
+func NewShow(guid string) (*Show, error) {
 
 	r := regexp.MustCompile(`//(.* ?)-(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
 

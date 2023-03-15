@@ -10,7 +10,6 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
-	"github.com/spf13/pflag"
 )
 
 type Config struct {
@@ -20,25 +19,22 @@ type Config struct {
 	Log       string
 	Addr      string
 	User      string
+	BaseUrl   string
 	CustomMap bool
 	K         *koanf.Koanf
 	Logger    *os.File
 }
 
-func NewConfig() *Config {
+func NewConfig(dir string) *Config {
+	if dir == "" {
+		log.Println("path to configuration not set")
+		log.Println("'shinkuro help', for the help message.")
+		os.Exit(1)
+	}
 
+	var err error
 	c := &Config{}
-
-	var (
-		dir string
-		err error
-	)
-
 	c.K = koanf.New(".")
-
-	pflag.StringVar(&dir, "config", ".", "Absolute path to shinkuro's configuration directory")
-
-	pflag.Parse()
 
 	dsn := filepath.Join(dir, "shinkuro.db")
 	c.Dsn = fmt.Sprintf("file:%v?cache=shared&mode=rwc&_journal_mode=WAL", dsn)
@@ -51,9 +47,13 @@ func NewConfig() *Config {
 	}
 
 	c.CustomMap = false
-
 	if mapPath := c.K.String("custom_map"); mapPath != "" {
 		c.CustomMap = true
+	}
+
+	c.BaseUrl = "/"
+	if b := c.K.String("base_url"); b != "" {
+		c.BaseUrl = b
 	}
 
 	c.Addr = fmt.Sprintf("%v:%v", c.K.String("host"), c.K.Int("port"))

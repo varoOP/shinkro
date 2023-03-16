@@ -78,7 +78,7 @@ func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
 }
 
 func (s *AnimeSeasonMap) communityMap() error {
-	resp, err := http.Get("https://github.com/kyuketski/shinkuro-mapping/raw/main/tvdb-mal.yml")
+	resp, err := http.Get("https://github.com/kyuketski/shinkuro-mapping/raw/main/tvdb-mal.yaml")
 	if err != nil {
 		return err
 	}

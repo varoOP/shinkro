@@ -284,7 +284,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			}`,
 				event: "media.rate",
 				cfg: &config.Config{
-					CustomMap: false,
+					CustomMap: "",
 					User:      "TestUser",
 				},
 				db: createMockDB(t, 52305),
@@ -309,7 +309,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			}`,
 				event: "media.scrobble",
 				cfg: &config.Config{
-					CustomMap: false,
+					CustomMap: "",
 					User:      "TestUser",
 				},
 				db: nil,

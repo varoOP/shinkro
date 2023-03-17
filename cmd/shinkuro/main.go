@@ -48,8 +48,8 @@ func main() {
 			db  = database.NewDB(cfg.Dsn)
 		)
 
-		if cfg.CustomMap {
-			mapping.ChecklocalMap(cfg.K.String("custom_map"))
+		if cfg.CustomMap != "" {
+			mapping.ChecklocalMap(cfg.CustomMap)
 		}
 
 		database.UpdateAnime(db)

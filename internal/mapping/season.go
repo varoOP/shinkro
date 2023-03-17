@@ -30,8 +30,8 @@ type Seasons struct {
 func NewAnimeSeasonMap(cfg *config.Config) (*AnimeSeasonMap, error) {
 	s := &AnimeSeasonMap{}
 
-	if cfg.CustomMap {
-		err := s.localMap(cfg.K.String("custom_map"))
+	if cfg.CustomMap != "" {
+		err := s.localMap(cfg.CustomMap)
 		if err != nil {
 			return nil, err
 		}

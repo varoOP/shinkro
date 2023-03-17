@@ -28,7 +28,7 @@ type Config struct {
 func NewConfig(dir string) *Config {
 	if dir == "" {
 		log.Println("path to configuration not set")
-		log.Println("'shinkuro help', for the help message.")
+		log.Println("Run: shinkuro help")
 		os.Exit(1)
 	}
 

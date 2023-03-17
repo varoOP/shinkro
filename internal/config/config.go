@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,18 +14,16 @@ import (
 type Config struct {
 	Dsn       string
 	Config    string
-	Log       string
 	Addr      string
 	User      string
 	BaseUrl   string
 	CustomMap string
-	Logger    *os.File
 }
 
 func NewConfig(dir string) *Config {
 	if dir == "" {
 		log.Println("path to configuration not set")
-		log.Println("'shinkuro help', for the help message.")
+		log.Println("Run: shinkuro help, for the help message.")
 		os.Exit(1)
 	}
 
@@ -91,11 +88,9 @@ func (c *Config) joinPaths(dir string) {
 	dsn := filepath.Join(dir, "shinkuro.db")
 	c.Dsn = fmt.Sprintf("file:%v?cache=shared&mode=rwc&_journal_mode=WAL", dsn)
 	c.Config = filepath.Join(dir, "config.toml")
-	c.Log = filepath.Join(dir, "shinkuro.log")
 }
 
 func (c *Config) parseConfig() error {
-	var err error
 	k := koanf.New(".")
 
 	if err := k.Load(file.Provider(c.Config), toml.Parser()); err != nil {
@@ -112,15 +107,6 @@ func (c *Config) parseConfig() error {
 	c.Addr = fmt.Sprintf("%v:%v", k.String("host"), k.Int("port"))
 
 	c.User = k.String("plex_user")
-
-	c.Logger, err = os.OpenFile(c.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-
-	mw := io.MultiWriter(os.Stdout, c.Logger)
-
-	log.SetOutput(mw)
 
 	return nil
 }

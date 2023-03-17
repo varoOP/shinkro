@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/nstratos/go-myanimelist/mal"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/varoOP/shinkuro/internal/config"
 	"github.com/varoOP/shinkuro/internal/database"
+	"github.com/varoOP/shinkuro/internal/logger"
 	"github.com/varoOP/shinkuro/internal/malauth"
 	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/internal/server"
@@ -40,6 +42,7 @@ func main() {
 
 	pflag.StringVar(&configPath, "config", "", "path to configuration")
 	pflag.Parse()
+	logger := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
 
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
@@ -71,7 +74,7 @@ func main() {
 
 		log.Println("Caught", sig, "shutting down")
 		db.Close()
-		cfg.Logger.Close()
+		logger.Close()
 		os.Exit(1)
 
 	case "malauth":
@@ -87,8 +90,10 @@ func main() {
 		_, _, err := client.User.MyInfo(context.Background())
 		if err != nil {
 			fmt.Fprintln(flag.CommandLine.Output(), "Unabled to load user info from MAL. Retry MAL authentication.")
+			db.Close()
 			os.Exit(1)
 		}
+		db.Close()
 		fmt.Fprintln(flag.CommandLine.Output(), "Test successful.")
 
 	case "version":
@@ -100,5 +105,4 @@ func main() {
 			os.Exit(0)
 		}
 	}
-
 }

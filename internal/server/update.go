@@ -105,11 +105,8 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 				return nil
 			}
 		}
-
-	default:
-		return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", am.show.IdSource, am.show.Id)
 	}
-	return nil
+	return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", am.show.IdSource, am.show.Id)
 }
 
 func (am *AnimeUpdate) tvdbtoMal(ctx context.Context) int {

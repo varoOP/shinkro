@@ -154,6 +154,8 @@ func (am *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListS
 			am.myList.rewatchNum++
 			options = append(options, mal.NumTimesRewatched(am.myList.rewatchNum))
 			return options, false, nil
+		} else if am.show.Ep > am.myList.epNum {
+			return nil, true, fmt.Errorf("%v-%v: anime in plex has more episodes for season than mal, modify custom mapping", am.show.IdSource, am.show.Id)
 		} else {
 			return nil, true, nil
 		}

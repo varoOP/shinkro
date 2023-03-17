@@ -336,7 +336,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 				}
 			case "media.scrobble":
 				if a.malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
-					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.Score, tt.want.Score)
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.NumEpisodesWatched, tt.want.NumEpisodesWatched)
 				}
 			}
 		})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -104,6 +105,9 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 				return nil
 			}
 		}
+
+	default:
+		return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", am.show.IdSource, am.show.Id)
 	}
 	return nil
 }

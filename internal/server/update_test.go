@@ -293,6 +293,31 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 				Score: 8,
 			},
 		},
+		{
+			name: "DanMachi",
+			have: have{
+				data: `{
+				"event": "media.scrobble",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "com.plexapp.agents.hama://tvdb-289882/4/22?lang=en",
+					"type": "episode",
+					"grandparentTitle": "Dungeon ni Deai o Motomeru no wa Machigatte Iru Darouka: Familia Myth"
+				}
+			}`,
+				event: "media.scrobble",
+				cfg: &config.Config{
+					CustomMap: false,
+					User:      "TestUser",
+				},
+				db: nil,
+			},
+			want: &mal.AnimeListStatus{
+				NumEpisodesWatched: 11,
+			},
+		},
 	}
 
 	c := createMalclient(t)

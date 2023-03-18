@@ -11,6 +11,7 @@ import (
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/varoOP/shinkuro/internal/config"
+	"github.com/varoOP/shinkuro/internal/malauth"
 	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
@@ -39,11 +40,9 @@ type MyList struct {
 	title      string
 }
 
-func NewAnimeUpdate(db *sql.DB, c *mal.Client, cfg *config.Config) *AnimeUpdate {
-
+func NewAnimeUpdate(db *sql.DB, cfg *config.Config) *AnimeUpdate {
 	am := &AnimeUpdate{
 		db:     db,
-		client: c,
 		config: cfg,
 		malid:  -1,
 		start:  -1,
@@ -55,6 +54,8 @@ func NewAnimeUpdate(db *sql.DB, c *mal.Client, cfg *config.Config) *AnimeUpdate 
 func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 
 	var err error
+	c := malauth.NewOauth2Client(ctx, am.db)
+	am.client = mal.NewClient(c)
 
 	switch am.event {
 	case "media.scrobble":

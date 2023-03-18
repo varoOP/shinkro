@@ -312,7 +312,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					CustomMap: "",
 					User:      "TestUser",
 				},
-				db: nil,
+				db: createMockDB(t, 0),
 			},
 			want: &mal.AnimeListStatus{
 				NumEpisodesWatched: 11,
@@ -320,14 +320,12 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 		},
 	}
 
-	c := createMalclient(t)
-
 	rr := httptest.NewRecorder()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := createRequest(t, tt.have.data)
-			a := NewAnimeUpdate(tt.have.db, c, tt.have.cfg)
+			a := NewAnimeUpdate(tt.have.db, tt.have.cfg)
 			a.ServeHTTP(rr, req)
 			switch tt.have.event {
 			case "media.rate":
@@ -364,27 +362,19 @@ func createMultipartForm(t *testing.T, data string) (*bytes.Buffer, *multipart.W
 
 }
 
-func createMalclient(t *testing.T) *mal.Client {
+func createMalclient(t *testing.T) []string {
 	var creds map[string]string
 	token := &oauth2.Token{}
 
-	Unmarshal(t, "testdata/mal-credentials.json", &creds)
-	Unmarshal(t, "testdata/token.json", token)
+	unmarshal(t, "testdata/mal-credentials.json", &creds)
+	unmarshal(t, "testdata/token.json", token)
 
-	config := &oauth2.Config{
-		ClientID:     creds["client-id"],
-		ClientSecret: creds["client-secret"],
-		Endpoint: oauth2.Endpoint{
-			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
-			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
-			AuthStyle: oauth2.AuthStyleInParams,
-		},
+	tt, err := json.Marshal(token)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	client := config.Client(context.Background(), token)
-	c := mal.NewClient(client)
-
-	return c
+	return []string{creds["client-id"], creds["client-secret"], string(tt)}
 }
 
 func createMockDB(t *testing.T, malid int) *sql.DB {
@@ -393,14 +383,16 @@ func createMockDB(t *testing.T, malid int) *sql.DB {
 		t.Fatal("error creating mock database")
 	}
 
-	rows := sqlmock.NewRows([]string{"mal_id"}).AddRow(malid)
-
-	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	r := createMalclient(t)
+	rows := sqlmock.NewRows([]string{"client_id", "client_secret", "access_token"}).AddRow(r[0], r[1], r[2])
+	mock.ExpectQuery(`SELECT \* from malauth;`).WillReturnRows(rows)
+	rows = sqlmock.NewRows([]string{"mal_id"}).AddRow(malid)
+	mock.ExpectQuery("SELECT mal_id from anime").WillReturnRows(rows)
 
 	return db
 }
 
-func Unmarshal(t *testing.T, path string, v any) {
+func unmarshal(t *testing.T, path string, v any) {
 	f, err := os.Open(path)
 	if err != nil {
 		t.Skip()

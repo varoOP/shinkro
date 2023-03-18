@@ -61,10 +61,7 @@ func main() {
 		c.AddFunc("0 0 * * *", func() { database.UpdateAnime(db) })
 		c.Start()
 
-		cc := malauth.NewOauth2Client(context.Background(), db)
-		client := mal.NewClient(cc)
-
-		a := server.NewAnimeUpdate(db, client, cfg)
+		a := server.NewAnimeUpdate(db, cfg)
 
 		go server.StartHttp(cfg.Addr, cfg.BaseUrl, a)
 

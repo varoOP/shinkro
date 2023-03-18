@@ -8,6 +8,7 @@ require github.com/DATA-DOG/go-sqlmock v1.3.0
 
 require (
 	github.com/knadh/koanf v1.5.0
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nstratos/go-myanimelist v0.9.4
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/spf13/pflag v1.0.5

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/pflag"
@@ -40,9 +41,18 @@ func init() {
 func main() {
 	var configPath string
 
-	pflag.StringVar(&configPath, "config", "", "path to configuration")
+	d, err := homedir.Dir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	d = filepath.Join(d, ".config/shinkuro")
+
+	pflag.StringVar(&configPath, "config", d, "path to configuration")
 	pflag.Parse()
-	logger := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
+	configPath, err = homedir.Expand(configPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
@@ -50,6 +60,8 @@ func main() {
 			cfg = config.NewConfig(configPath)
 			db  = database.NewDB(cfg.Dsn)
 		)
+
+		l := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
 
 		if cfg.CustomMap != "" {
 			mapping.ChecklocalMap(cfg.CustomMap)
@@ -71,7 +83,7 @@ func main() {
 
 		log.Println("Caught", sig, "shutting down")
 		db.Close()
-		logger.Close()
+		l.Close()
 		os.Exit(1)
 
 	case "malauth":
@@ -79,19 +91,26 @@ func main() {
 			cfg = config.NewConfig(configPath)
 			db  = database.NewDB(cfg.Dsn)
 		)
+
+		l := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
+
 		database.CreateDB(db)
 		malauth.NewMalAuth(db)
-		fmt.Fprintf(flag.CommandLine.Output(), "MAL API credentials saved.\nTesting client..\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "MAL API credentials saved. Testing client..\n")
+
 		cc := malauth.NewOauth2Client(context.Background(), db)
 		client := mal.NewClient(cc)
 		_, _, err := client.User.MyInfo(context.Background())
 		if err != nil {
 			fmt.Fprintln(flag.CommandLine.Output(), "Unabled to load user info from MAL. Retry MAL authentication.")
 			db.Close()
+			l.Close()
 			os.Exit(1)
 		}
+
 		db.Close()
-		fmt.Fprintln(flag.CommandLine.Output(), "Test successful.")
+		l.Close()
+		fmt.Fprintln(flag.CommandLine.Output(), "Test successful!")
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "0.0")

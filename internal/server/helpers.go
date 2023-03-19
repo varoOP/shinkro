@@ -21,19 +21,15 @@ func logUpdate(ml *MyList, l *mal.AnimeListStatus) {
 }
 
 func isUserAgent(ps, user string) bool {
-	if !strings.Contains(ps, "com.plexapp.agents.hama") || !strings.Contains(ps, user) || !strings.Contains(ps, "net.fribbtastic.coding.plex.myanimelist") {
-		return false
+	if (strings.Contains(ps, "com.plexapp.agents.hama") || strings.Contains(ps, "net.fribbtastic.coding.plex.myanimelist")) && strings.Contains(ps, user) {
+		return true
 	}
-	return true
+	return false
 }
 
 func isEvent(e string) bool {
-	events := []string{"media.rate", "media.scrobble"}
-	for _, v := range events {
-		if e == v {
-			return true
-		}
+	if e == "media.rate" || e == "media.scrobble" {
+		return true
 	}
-
 	return false
 }

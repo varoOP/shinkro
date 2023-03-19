@@ -343,6 +343,30 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 				NumEpisodesWatched: 11,
 			},
 		},
+		{
+			name: "Bakemono no Ko",
+			have: have{
+				data: `{
+				"event": "media.scrobble",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "net.fribbtastic.coding.plex.myanimelist://28805?lang=en",
+					"type": "movie"
+				}
+			}`,
+				event: "media.scrobble",
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 0),
+			},
+			want: &mal.AnimeListStatus{
+				NumEpisodesWatched: 1,
+			},
+		},
 	}
 
 	rr := httptest.NewRecorder()

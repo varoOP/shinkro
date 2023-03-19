@@ -27,6 +27,7 @@ type AnimeUpdate struct {
 	show    *mapping.Show
 	malid   int
 	start   int
+	ep      int
 	rating  float32
 	myList  *MyList
 	malresp *mal.AnimeListStatus
@@ -61,8 +62,7 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	case "media.scrobble":
 		if am.inMap {
 
-			ep := am.tvdbtoMal(ctx)
-			am.show.Ep = ep
+			am.ep = am.tvdbtoMal(ctx)
 			err := am.updateWatchStatus(ctx)
 			if err != nil {
 				return err
@@ -81,6 +81,14 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 				}
 				return nil
 			}
+
+			if am.malid > 0 {
+				err := am.updateWatchStatus(ctx)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
 		}
 	case "media.rate":
 
@@ -93,12 +101,18 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			return nil
 		} else {
 			if am.show.Season == 1 {
-
 				am.malid, err = am.show.GetMalID(ctx, am.db)
 				if err != nil {
 					return err
 				}
 
+				err := am.updateRating(ctx)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+			if am.malid > 0 {
 				err := am.updateRating(ctx)
 				if err != nil {
 					return err
@@ -151,21 +165,21 @@ func (am *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListS
 	var options []mal.UpdateMyAnimeListStatusOption
 
 	if am.myList.status == mal.AnimeStatusCompleted {
-		if am.myList.epNum == am.show.Ep {
+		if am.myList.epNum == am.ep {
 			am.myList.rewatchNum++
 			options = append(options, mal.NumTimesRewatched(am.myList.rewatchNum))
 			return options, false, nil
-		} else if am.show.Ep > am.myList.epNum {
+		} else if am.ep > am.myList.epNum {
 			return nil, true, fmt.Errorf("%v-%v: anime in plex has more episodes for season than mal, modify custom mapping", am.show.IdSource, am.show.Id)
 		} else {
 			return nil, true, nil
 		}
 	}
 
-	options = append(options, mal.NumEpisodesWatched(am.show.Ep))
+	options = append(options, mal.NumEpisodesWatched(am.ep))
 	am.myList.status = mal.AnimeStatusWatching
 
-	if am.myList.epNum == am.show.Ep {
+	if am.myList.epNum == am.ep {
 		am.myList.status = mal.AnimeStatusCompleted
 	}
 
@@ -251,24 +265,37 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Metadata.Type != "episode" {
-		return
-	}
-
 	a.event = p.Event
 	a.rating = p.Rating
 
-	a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
-	if err != nil {
-		log.Println("unable to load mapping", err)
-		return
-	}
+	if p.Metadata.Type == "episode" {
+		a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
+		if err != nil {
+			log.Println("unable to load mapping", err)
+			return
+		}
 
-	a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
+		a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
 
-	a.show, err = mapping.NewShow(p.Metadata.GUID)
-	if err != nil {
-		log.Println(err)
+		a.show, err = mapping.NewShow(p.Metadata.GUID)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	} else if p.Metadata.Type == "movie" {
+		a.ep = 1
+		a.malid, err = mapping.GetMovieMalID(p.Metadata.GUID)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		a.show = &mapping.Show{
+			IdSource: "",
+			Id:       -1,
+			Season:   -1,
+			Ep:       -1,
+		}
+	} else {
 		return
 	}
 

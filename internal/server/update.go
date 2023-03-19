@@ -81,6 +81,14 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 				}
 				return nil
 			}
+
+			if am.malid > 0 {
+				err := am.updateWatchStatus(ctx)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
 		}
 	case "media.rate":
 
@@ -93,12 +101,18 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			return nil
 		} else {
 			if am.show.Season == 1 {
-
 				am.malid, err = am.show.GetMalID(ctx, am.db)
 				if err != nil {
 					return err
 				}
 
+				err := am.updateRating(ctx)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+			if am.malid > 0 {
 				err := am.updateRating(ctx)
 				if err != nil {
 					return err
@@ -203,6 +217,7 @@ func (am *AnimeUpdate) updateRating(ctx context.Context) error {
 		return err
 	}
 	am.malresp = l
+	fmt.Printf("Reached here!")
 	return nil
 }
 
@@ -251,24 +266,31 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Metadata.Type != "episode" {
-		return
-	}
-
 	a.event = p.Event
 	a.rating = p.Rating
 
-	a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
-	if err != nil {
-		log.Println("unable to load mapping", err)
-		return
-	}
+	if p.Metadata.Type == "episode" {
+		a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
+		if err != nil {
+			log.Println("unable to load mapping", err)
+			return
+		}
 
-	a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
+		a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
 
-	a.show, err = mapping.NewShow(p.Metadata.GUID)
-	if err != nil {
-		log.Println(err)
+		a.show, err = mapping.NewShow(p.Metadata.GUID)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	} else if p.Metadata.Type == "movie" {
+		a.malid, err = mapping.GetMovieMalID(p.Metadata.GUID)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		a.show.Ep = 1
+	} else {
 		return
 	}
 

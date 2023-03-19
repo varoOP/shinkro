@@ -21,7 +21,7 @@ func logUpdate(ml *MyList, l *mal.AnimeListStatus) {
 }
 
 func isUserAgent(ps, user string) bool {
-	if !strings.Contains(ps, "com.plexapp.agents.hama") || !strings.Contains(ps, user) {
+	if !strings.Contains(ps, "com.plexapp.agents.hama") || !strings.Contains(ps, user) || !strings.Contains(ps, "net.fribbtastic.coding.plex.myanimelist") {
 		return false
 	}
 	return true

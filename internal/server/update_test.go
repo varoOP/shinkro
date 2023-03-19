@@ -294,6 +294,31 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
+			name: "Your Name",
+			have: have{
+				data: `{
+				"rating": 8.0,
+				"event": "media.rate",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "net.fribbtastic.coding.plex.myanimelist://32281?lang=en",
+					"type": "movie"
+				}
+			}`,
+				event: "media.rate",
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 0),
+			},
+			want: &mal.AnimeListStatus{
+				Score: 8,
+			},
+		},
+		{
 			name: "DanMachi",
 			have: have{
 				data: `{

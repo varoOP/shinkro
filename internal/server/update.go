@@ -75,6 +75,8 @@ func (am *AnimeUpdate) SendUpdate(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
+
+				am.ep = am.show.Ep
 				err := am.updateWatchStatus(ctx)
 				if err != nil {
 					return err

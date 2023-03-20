@@ -294,6 +294,31 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
+			name: "Isekai Nonbiri Nouka",
+			have: have{
+				data: `{
+				"event": "media.scrobble",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "com.plexapp.agents.hama://anidb-17290/1/9?lang=en",
+					"type": "episode",
+					"grandparentTitle": "Isekai Nonbiri Nouka"
+				}
+			}`,
+				event: "media.scrobble",
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 51462),
+			},
+			want: &mal.AnimeListStatus{
+				NumEpisodesWatched: 9,
+			},
+		},
+		{
 			name: "Your Name",
 			have: have{
 				data: `{

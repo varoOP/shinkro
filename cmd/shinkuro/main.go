@@ -110,7 +110,7 @@ func main() {
 
 		db.Close()
 		l.Close()
-		fmt.Fprintln(flag.CommandLine.Output(), "Test successful!")
+		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! Run shinkuro now.")
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "0.0")

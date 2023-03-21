@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/varoOP/shinkuro/internal/database"
@@ -86,17 +87,23 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 		},
 	}
 
-	url := cfg.AuthCodeURL(state, CodeChallenge, ResponseType)
-
-	fmt.Println(url)
-
-	fmt.Println("Enter code from MAL auth server below:")
+	fmt.Println("Go to the URL given below and authorize shinkuro to access your MAL account:")
+	fmt.Println(cfg.AuthCodeURL(state, CodeChallenge, ResponseType))
+	fmt.Println("Enter the URL from your browser after the re-direct below:")
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Scan()
-	code := sc.Text()
+	u := sc.Text()
 	if sc.Err() != nil {
-		log.Fatalf("Could not read code! %v\n", sc.Err())
+		log.Fatalf("Could not read URL: %v\n", sc.Err())
 	}
+
+	url, err := url.Parse(u)
+	if err != nil {
+		log.Fatalln("Could not parse URL:", err)
+	}
+
+	q := url.Query()["code"]
+	code := q[0]
 
 	token, err := cfg.Exchange(ctx, code, GrantType, CodeVerify)
 	if err != nil {

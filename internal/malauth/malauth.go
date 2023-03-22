@@ -102,8 +102,12 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 		log.Fatalln("Could not parse URL:", err)
 	}
 
-	q := url.Query()["code"]
-	code := q[0]
+	q := url.Query()
+	code := q["code"][0]
+
+	if state != q["state"][0] {
+		log.Fatalln("state did not match. Run shinkuro malauth again.")
+	}
 
 	token, err := cfg.Exchange(ctx, code, GrantType, CodeVerify)
 	if err != nil {

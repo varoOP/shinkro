@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -109,7 +110,7 @@ func checkDB(db *sql.DB) error {
 
 	_, err := db.Query(sqlstmt)
 	if err != nil {
-		return err
+		return errors.New("shinkuro.db not found. Run shinkuro malauth before running shinkuro")
 	}
 
 	return nil

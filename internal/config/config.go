@@ -84,6 +84,7 @@ func (c *Config) checkConfig(dir string) {
 			log.Fatal(err)
 		}
 
+		log.Println("shinkuro configuration not found")
 		log.Println("Example config.toml created at", c.Config)
 		log.Printf("Edit %v before running shinkuro or shinkuro malauth again!\n", c.Config)
 		os.Exit(0)

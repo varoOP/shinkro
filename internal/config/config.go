@@ -58,7 +58,7 @@ plex_user = "Your_Plex_account_Title_EDIT_REQUIRED"
 ##########################################################
 #custom_map = "Absolute path to custom-mapping.yaml"
 `
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return err
 	}

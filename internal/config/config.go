@@ -29,7 +29,7 @@ func NewConfig(dir string) *Config {
 
 	c := &Config{}
 	c.joinPaths(dir)
-	c.checkConfig()
+	c.checkConfig(dir)
 
 	err := c.parseConfig()
 	if err != nil {
@@ -39,7 +39,7 @@ func NewConfig(dir string) *Config {
 	return c
 }
 
-func (c *Config) createConfig() error {
+func (c *Config) createConfig(dir string) error {
 	const config = `###Sample shinkuro config
 
 host = "127.0.0.1"
@@ -58,6 +58,11 @@ plex_user = "Your_Plex_account_Title_EDIT_REQUIRED"
 ##########################################################
 #custom_map = "Absolute path to custom-mapping.yaml"
 `
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return err
+	}
+
 	f, err := os.Create(c.Config)
 	if err != nil {
 		return err
@@ -72,12 +77,13 @@ plex_user = "Your_Plex_account_Title_EDIT_REQUIRED"
 	return nil
 }
 
-func (c *Config) checkConfig() {
+func (c *Config) checkConfig(dir string) {
 	if _, err := os.Stat(c.Config); err != nil {
-		err = c.createConfig()
+		err = c.createConfig(dir)
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		log.Println("Example config.toml created at", c.Config)
 		log.Printf("Edit %v before running shinkuro or shinkuro malauth again!\n", c.Config)
 		os.Exit(0)

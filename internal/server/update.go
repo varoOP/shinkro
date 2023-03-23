@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/varoOP/shinkuro/internal/config"
+	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
 	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/pkg/plex"
@@ -18,13 +18,13 @@ import (
 
 type AnimeUpdate struct {
 	client  *mal.Client
-	db      *sql.DB
+	db      *database.DB
 	config  *config.Config
 	anime   *mapping.Anime
 	mapping *mapping.AnimeSeasonMap
 	event   string
 	inMap   bool
-	show    *mapping.Show
+	show    *database.Show
 	malid   int
 	start   int
 	ep      int
@@ -41,7 +41,7 @@ type MyList struct {
 	title      string
 }
 
-func NewAnimeUpdate(db *sql.DB, cfg *config.Config) *AnimeUpdate {
+func NewAnimeUpdate(db *database.DB, cfg *config.Config) *AnimeUpdate {
 	am := &AnimeUpdate{
 		db:     db,
 		config: cfg,
@@ -279,7 +279,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
 
-		a.show, err = mapping.NewShow(p.Metadata.GUID)
+		a.show, err = database.NewShow(p.Metadata.GUID)
 		if err != nil {
 			log.Println(err)
 			return
@@ -291,7 +291,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			return
 		}
-		a.show = &mapping.Show{
+		a.show = &database.Show{
 			IdSource: "",
 			Id:       -1,
 			Season:   -1,

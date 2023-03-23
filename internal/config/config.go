@@ -93,7 +93,7 @@ func (c *Config) checkConfig(dir string) {
 
 func (c *Config) joinPaths(dir string) {
 	dsn := filepath.Join(dir, "shinkuro.db")
-	c.Dsn = fmt.Sprintf("file:%v?cache=shared&mode=rwc&_journal_mode=WAL", dsn)
+	c.Dsn = dsn + "?_pragma=busy_timeout%3d1000"
 	c.Config = filepath.Join(dir, "config.toml")
 }
 

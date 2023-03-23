@@ -5,19 +5,30 @@ import (
 	"errors"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/varoOP/shinkuro/pkg/animelist"
 	"github.com/varoOP/shinkuro/pkg/manami"
+	_ "modernc.org/sqlite"
 )
 
-func NewDB(DSN string) *sql.DB {
+type DB struct {
+	Handler *sql.DB
+}
 
-	db, err := sql.Open("sqlite3", DSN)
+func NewDB(DSN string) *DB {
+	db := &DB{}
+	var err error
+
+	db.Handler, err = sql.Open("sqlite", DSN)
 	check(err)
+
+	if _, err = db.Handler.Exec(`PRAGMA journal_mode = wal;`); err != nil {
+		check(err)
+	}
+
 	return db
 }
 
-func CreateDB(db *sql.DB) {
+func (db *DB) CreateDB() {
 	const scheme = `CREATE TABLE IF NOT EXISTS anime (
 		anidb_id INTEGER PRIMARY KEY,
 		title TEXT,
@@ -30,27 +41,32 @@ func CreateDB(db *sql.DB) {
 		access_token TEXT
 	);`
 
-	_, err := db.Exec(scheme)
+	_, err := db.Handler.Exec(scheme)
 	check(err)
 }
 
-func UpdateAnime(db *sql.DB) {
+func (db *DB) UpdateAnime() {
 
-	check(checkDB(db))
+	check(db.checkDB())
 	log.Println("Updating DB")
 
 	m := manami.NewManami()
 	al := animelist.NewAnimeList()
 	am := makeAnimeMap(m, al)
 
-	var addAnime = `INSERT OR REPLACE INTO anime (
+	const addAnime = `INSERT OR REPLACE INTO anime (
 		anidb_id,
 		title,
 		mal_id,
 		tvdb_id
 	) values (?, ?, ?, ?)`
 
-	stmt, err := db.Prepare(addAnime)
+	tx, err := db.Handler.Begin()
+	check(err)
+
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(addAnime)
 	check(err)
 
 	defer stmt.Close()
@@ -58,7 +74,15 @@ func UpdateAnime(db *sql.DB) {
 	for _, anime := range am.Anime {
 		_, err := stmt.Exec(anime.AnidbID, anime.Title, anime.MalID, anime.TvdbID)
 		check(err)
+	}
 
+	err = tx.Commit()
+	if err != nil {
+		log.Println(err)
+	}
+
+	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
+		check(err)
 	}
 
 	m, al, am = nil, nil, nil
@@ -67,22 +91,26 @@ func UpdateAnime(db *sql.DB) {
 
 }
 
-func UpdateMalAuth(m map[string]string, db *sql.DB) {
-	var addMalauth = `INSERT OR REPLACE INTO malauth (
+func (db *DB) UpdateMalAuth(m map[string]string) {
+	const addMalauth = `INSERT OR REPLACE INTO malauth (
 		client_id,
 		client_secret,
 		access_token
 	) values (?, ?, ?)`
 
-	stmt, err := db.Prepare(addMalauth)
+	stmt, err := db.Handler.Prepare(addMalauth)
 	check(err)
 	defer stmt.Close()
 
 	_, err = stmt.Exec(m["client_id"], m["client_secret"], m["access_token"])
 	check(err)
+
+	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
+		check(err)
+	}
 }
 
-func GetMalCreds(db *sql.DB) map[string]string {
+func (db *DB) GetMalCreds() map[string]string {
 	var (
 		client_id     string
 		client_secret string
@@ -91,7 +119,7 @@ func GetMalCreds(db *sql.DB) map[string]string {
 
 	sqlstmt := "SELECT * from malauth;"
 
-	row := db.QueryRow(sqlstmt)
+	row := db.Handler.QueryRow(sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
 		check(err)
@@ -104,16 +132,19 @@ func GetMalCreds(db *sql.DB) map[string]string {
 	}
 }
 
-func checkDB(db *sql.DB) error {
+func (db *DB) checkDB() error {
 
 	sqlstmt := `SELECT * from anime;`
 
-	_, err := db.Query(sqlstmt)
+	_, err := db.Handler.Query(sqlstmt)
 	if err != nil {
 		return errors.New("shinkuro.db not found. Run shinkuro malauth before running shinkuro")
 	}
-
 	return nil
+}
+
+func (db *DB) Close() {
+	db.Handler.Close()
 }
 
 func check(err error) {

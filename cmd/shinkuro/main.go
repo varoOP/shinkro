@@ -67,10 +67,10 @@ func main() {
 			mapping.ChecklocalMap(cfg.CustomMap)
 		}
 
-		database.UpdateAnime(db)
+		db.UpdateAnime()
 
 		c := cron.New()
-		c.AddFunc("0 0 * * *", func() { database.UpdateAnime(db) })
+		c.AddFunc("0 0 * * *", func() { db.UpdateAnime() })
 		c.Start()
 
 		a := server.NewAnimeUpdate(db, cfg)
@@ -94,7 +94,7 @@ func main() {
 
 		l := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
 
-		database.CreateDB(db)
+		db.CreateDB()
 		malauth.NewMalAuth(db)
 		fmt.Fprintf(flag.CommandLine.Output(), "MAL API credentials saved. Testing client..\n")
 

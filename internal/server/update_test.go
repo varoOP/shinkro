@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -16,6 +15,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/varoOP/shinkuro/internal/config"
+	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/mapping"
 	"golang.org/x/oauth2"
 )
@@ -24,7 +24,7 @@ type have struct {
 	data  string
 	event string
 	cfg   *config.Config
-	db    *sql.DB
+	db    *database.DB
 }
 
 func TestUpdate_TvdbToMal(t *testing.T) {
@@ -145,7 +145,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 						},
 					},
 				},
-				show: &mapping.Show{
+				show: &database.Show{
 					Season: 21,
 					Ep:     162,
 				},
@@ -155,7 +155,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 21,
 				start: 892,
-				show: &mapping.Show{
+				show: &database.Show{
 					Ep: 1053,
 				},
 			},
@@ -192,7 +192,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 						},
 					},
 				},
-				show: &mapping.Show{
+				show: &database.Show{
 					Season: 4,
 					Ep:     13,
 				},
@@ -202,7 +202,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 53111,
 				start: 12,
-				show: &mapping.Show{
+				show: &database.Show{
 					Ep: 2,
 				},
 			},
@@ -224,7 +224,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 						},
 					},
 				},
-				show: &mapping.Show{
+				show: &database.Show{
 					Season: 2,
 					Ep:     9,
 				},
@@ -234,7 +234,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 49387,
 				start: 1,
-				show: &mapping.Show{
+				show: &database.Show{
 					Ep: 9,
 				},
 			},
@@ -451,7 +451,7 @@ func createMalclient(t *testing.T) []string {
 	return []string{creds["client-id"], creds["client-secret"], string(tt)}
 }
 
-func createMockDB(t *testing.T, malid int) *sql.DB {
+func createMockDB(t *testing.T, malid int) *database.DB {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatal("error creating mock database")
@@ -463,7 +463,9 @@ func createMockDB(t *testing.T, malid int) *sql.DB {
 	rows = sqlmock.NewRows([]string{"mal_id"}).AddRow(malid)
 	mock.ExpectQuery("SELECT mal_id from anime").WillReturnRows(rows)
 
-	return db
+	return &database.DB{
+		Handler: db,
+	}
 }
 
 func unmarshal(t *testing.T, path string, v any) {

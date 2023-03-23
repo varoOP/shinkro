@@ -1,8 +1,7 @@
-package mapping
+package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -45,12 +44,12 @@ func NewShow(guid string) (*Show, error) {
 	return &Show{idSource, id, season, ep}, nil
 }
 
-func (s *Show) GetMalID(ctx context.Context, db *sql.DB) (int, error) {
+func (s *Show) GetMalID(ctx context.Context, db *DB) (int, error) {
 
 	var malid int
 	sqlstmt := fmt.Sprintf("SELECT mal_id from anime where %v_id=?;", s.IdSource)
 
-	row := db.QueryRow(sqlstmt, s.Id)
+	row := db.Handler.QueryRow(sqlstmt, s.Id)
 	err := row.Scan(&malid)
 	if err != nil {
 		return -1, fmt.Errorf("mal_id of %v %v not found in DB", s.IdSource, s.Id)

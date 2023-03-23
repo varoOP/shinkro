@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -17,9 +16,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func NewOauth2Client(ctx context.Context, db *sql.DB) *http.Client {
+func NewOauth2Client(ctx context.Context, db *database.DB) *http.Client {
 
-	m := database.GetMalCreds(db)
+	m := db.GetMalCreds()
 
 	cfg := &oauth2.Config{
 		ClientID:     m["client_id"],
@@ -47,7 +46,7 @@ func NewOauth2Client(ctx context.Context, db *sql.DB) *http.Client {
 	return client
 }
 
-func NewMalAuth(db *sql.DB) {
+func NewMalAuth(db *database.DB) {
 	var (
 		client_id     string
 		client_secret string
@@ -75,6 +74,7 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 		ResponseType  oauth2.AuthCodeOption = oauth2.SetAuthURLParam("response_type", "code")
 		GrantType     oauth2.AuthCodeOption = oauth2.SetAuthURLParam("grant_type", "authorization_code")
 		CodeVerify    oauth2.AuthCodeOption = oauth2.SetAuthURLParam("code_verifier", pkce)
+		code          string
 	)
 
 	cfg := &oauth2.Config{
@@ -103,10 +103,13 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 	}
 
 	q := url.Query()
-	code := q["code"][0]
 
-	if state != q["state"][0] {
-		log.Fatalln("state did not match. Run shinkuro malauth again.")
+	if len(q["code"]) >= 1 && len(q["state"]) >= 1 {
+		code = q["code"][0]
+
+		if state != q["state"][0] {
+			log.Fatalln("state did not match. Run shinkuro malauth again.")
+		}
 	}
 
 	token, err := cfg.Exchange(ctx, code, GrantType, CodeVerify)
@@ -117,7 +120,7 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 	return token
 }
 
-func saveToken(token *oauth2.Token, client_id, client_secret string, db *sql.DB) {
+func saveToken(token *oauth2.Token, client_id, client_secret string, db *database.DB) {
 	t, err := json.Marshal(token)
 	if err != nil {
 		log.Fatal(err)
@@ -129,7 +132,7 @@ func saveToken(token *oauth2.Token, client_id, client_secret string, db *sql.DB)
 		"access_token":  string(t),
 	}
 
-	database.UpdateMalAuth(m, db)
+	db.UpdateMalAuth(m)
 }
 
 func randomString(l int) string {

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -76,9 +77,8 @@ func (db *DB) UpdateAnime() {
 		check(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Println(err)
+	if err = tx.Commit(); err != nil {
+		check(err)
 	}
 
 	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
@@ -110,7 +110,7 @@ func (db *DB) UpdateMalAuth(m map[string]string) {
 	}
 }
 
-func (db *DB) GetMalCreds() map[string]string {
+func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	var (
 		client_id     string
 		client_secret string
@@ -119,7 +119,7 @@ func (db *DB) GetMalCreds() map[string]string {
 
 	sqlstmt := "SELECT * from malauth;"
 
-	row := db.Handler.QueryRow(sqlstmt)
+	row := db.Handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
 		check(err)

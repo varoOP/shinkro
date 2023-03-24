@@ -145,7 +145,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 						},
 					},
 				},
-				show: &database.Show{
+				media: &database.Media{
 					Season: 21,
 					Ep:     162,
 				},
@@ -155,7 +155,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 21,
 				start: 892,
-				show: &database.Show{
+				media: &database.Media{
 					Ep: 1053,
 				},
 			},
@@ -192,7 +192,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 						},
 					},
 				},
-				show: &database.Show{
+				media: &database.Media{
 					Season: 4,
 					Ep:     13,
 				},
@@ -202,7 +202,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 53111,
 				start: 12,
-				show: &database.Show{
+				media: &database.Media{
 					Ep: 2,
 				},
 			},
@@ -224,7 +224,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 						},
 					},
 				},
-				show: &database.Show{
+				media: &database.Media{
 					Season: 2,
 					Ep:     9,
 				},
@@ -234,7 +234,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 			want: &AnimeUpdate{
 				malid: 49387,
 				start: 1,
-				show: &database.Show{
+				media: &database.Media{
 					Ep: 9,
 				},
 			},
@@ -253,8 +253,8 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 				t.Errorf("\nTest: %v\nHave:start_%v Want:start_%v", tt.name, tt.have.start, tt.want.start)
 			}
 
-			if ep != tt.want.show.Ep {
-				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, ep, tt.want.show.Ep)
+			if ep != tt.want.media.Ep {
+				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, ep, tt.want.media.Ep)
 			}
 		})
 	}
@@ -268,7 +268,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 		want *mal.AnimeListStatus
 	}{
 		{
-			name: "Tomo-Chan",
+			name: "HAMA_Episode_DB_Rate_1",
 			have: have{
 				data: `{
 				"rating": 8.0,
@@ -294,7 +294,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			name: "Isekai Nonbiri Nouka",
+			name: "HAMA_Episode_DB_Scrobble_1",
 			have: have{
 				data: `{
 				"event": "media.scrobble",
@@ -319,32 +319,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			name: "Your Name",
-			have: have{
-				data: `{
-				"rating": 8.0,
-				"event": "media.rate",
-				"Account": {
-					"title": "TestUser"
-				},
-				"Metadata": {
-					"guid": "net.fribbtastic.coding.plex.myanimelist://32281?lang=en",
-					"type": "movie"
-				}
-			}`,
-				event: "media.rate",
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
-				},
-				db: createMockDB(t, 0),
-			},
-			want: &mal.AnimeListStatus{
-				Score: 8,
-			},
-		},
-		{
-			name: "DanMachi",
+			name: "HAMA_Episode_Mapping_Scrobble_1",
 			have: have{
 				data: `{
 				"event": "media.scrobble",
@@ -369,7 +344,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			name: "Bakemono no Ko",
+			name: "Mal_Agent_Movie_Scrobble_1",
 			have: have{
 				data: `{
 				"event": "media.scrobble",
@@ -390,6 +365,80 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			},
 			want: &mal.AnimeListStatus{
 				NumEpisodesWatched: 1,
+			},
+		},
+		{
+			name: "MAL_Movie_Rate_1",
+			have: have{
+				data: `{
+				"rating": 8.0,
+				"event": "media.rate",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "net.fribbtastic.coding.plex.myanimelist://32281?lang=en",
+					"type": "movie"
+				}
+			}`,
+				event: "media.rate",
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 0),
+			},
+			want: &mal.AnimeListStatus{
+				Score: 8,
+			},
+		},
+		{
+			name: "MAL_Episode_Scrobble_1",
+			have: have{
+				data: `{
+				"event": "media.scrobble",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "net.fribbtastic.coding.plex.myanimelist://52173/1/5?lang=en",
+					"type": "episode"
+				}
+			}`,
+				event: "media.scrobble",
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 0),
+			},
+			want: &mal.AnimeListStatus{
+				NumEpisodesWatched: 5,
+			},
+		},
+		{
+			name: "MAL_Episode_Rate_1",
+			have: have{
+				data: `{
+				"rating": 7.0,
+				"event": "media.rate",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "net.fribbtastic.coding.plex.myanimelist://52305/1/7?lang=en",
+					"type": "episode"
+				}
+			}`,
+				event: "media.rate",
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 0),
+			},
+			want: &mal.AnimeListStatus{
+				Score: 7,
 			},
 		},
 	}

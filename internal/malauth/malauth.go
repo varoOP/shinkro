@@ -18,7 +18,7 @@ import (
 
 func NewOauth2Client(ctx context.Context, db *database.DB) *http.Client {
 
-	m := db.GetMalCreds()
+	m := db.GetMalCreds(ctx)
 
 	cfg := &oauth2.Config{
 		ClientID:     m["client_id"],

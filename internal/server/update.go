@@ -23,10 +23,9 @@ type AnimeUpdate struct {
 	mapping *mapping.AnimeSeasonMap
 	event   string
 	inMap   bool
-	show    *database.Show
+	media   *database.Media
 	malid   int
 	start   int
-	ep      int
 	rating  float32
 	myList  *MyList
 	malresp *mal.AnimeListStatus
@@ -34,7 +33,6 @@ type AnimeUpdate struct {
 
 type MyList struct {
 	status     mal.AnimeStatus
-	isRewatch  bool
 	rewatchNum int
 	epNum      int
 	title      string
@@ -61,7 +59,7 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	case "media.scrobble":
 		if a.inMap {
 
-			a.ep = a.tvdbtoMal(ctx)
+			a.media.Ep = a.tvdbtoMal(ctx)
 			err := a.updateWatchStatus(ctx)
 			if err != nil {
 				return err
@@ -69,21 +67,12 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			return nil
 
 		} else {
-			if a.show.Season == 1 {
-				a.malid, err = a.show.GetMalID(ctx, a.db)
+			if a.media.Season == 1 {
+				a.malid, err = a.media.GetMalID(ctx, a.db)
 				if err != nil {
 					return err
 				}
 
-				a.ep = a.show.Ep
-				err := a.updateWatchStatus(ctx)
-				if err != nil {
-					return err
-				}
-				return nil
-			}
-
-			if a.malid > 0 {
 				err := a.updateWatchStatus(ctx)
 				if err != nil {
 					return err
@@ -101,19 +90,12 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			}
 			return nil
 		} else {
-			if a.show.Season == 1 {
-				a.malid, err = a.show.GetMalID(ctx, a.db)
+			if a.media.Season == 1 {
+				a.malid, err = a.media.GetMalID(ctx, a.db)
 				if err != nil {
 					return err
 				}
 
-				err := a.updateRating(ctx)
-				if err != nil {
-					return err
-				}
-				return nil
-			}
-			if a.malid > 0 {
 				err := a.updateRating(ctx)
 				if err != nil {
 					return err
@@ -122,17 +104,17 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			}
 		}
 	}
-	return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", a.show.IdSource, a.show.Id)
+	return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", a.media.IdSource, a.media.Id)
 }
 
 func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) int {
 	if !a.anime.IsMultiSeason(ctx) {
 		a.getStartID(ctx, false)
-		ep := a.show.Ep - a.start + 1
+		ep := a.media.Ep - a.start + 1
 		return ep
 	} else {
 		a.getStartID(ctx, true)
-		ep := a.start + a.show.Ep - 1
+		ep := a.start + a.media.Ep - 1
 		return ep
 	}
 }
@@ -166,21 +148,21 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 	var options []mal.UpdateMyAnimeListStatusOption
 
 	if a.myList.status == mal.AnimeStatusCompleted {
-		if a.myList.epNum == a.ep {
+		if a.myList.epNum == a.media.Ep {
 			a.myList.rewatchNum++
 			options = append(options, mal.NumTimesRewatched(a.myList.rewatchNum))
 			return options, false, nil
-		} else if a.ep > a.myList.epNum {
-			return nil, true, fmt.Errorf("%v-%v: anime in plex has more episodes for season than mal, modify custom mapping", a.show.IdSource, a.show.Id)
+		} else if a.media.Ep > a.myList.epNum {
+			return nil, true, fmt.Errorf("%v-%v: anime in plex has more episodes for season than mal, modify custom mapping", a.media.IdSource, a.media.Id)
 		} else {
 			return nil, true, nil
 		}
 	}
 
-	options = append(options, mal.NumEpisodesWatched(a.ep))
+	options = append(options, mal.NumEpisodesWatched(a.media.Ep))
 	a.myList.status = mal.AnimeStatusWatching
 
-	if a.myList.epNum == a.ep {
+	if a.myList.epNum == a.media.Ep {
 		a.myList.status = mal.AnimeStatusCompleted
 	}
 
@@ -190,14 +172,13 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 
 func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 
-	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "my_list_status"})
+	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "my_list_status{status,num_times_rewatched}"})
 	if err != nil {
 		return err
 	}
 
 	a.myList = &MyList{
 		status:     aa.MyListStatus.Status,
-		isRewatch:  aa.MyListStatus.IsRewatching,
 		rewatchNum: aa.MyListStatus.NumTimesRewatched,
 		epNum:      aa.NumEpisodes,
 		title:      aa.Title,
@@ -224,12 +205,12 @@ func (a *AnimeUpdate) updateRating(ctx context.Context) error {
 func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 
 	for _, anime := range a.anime.Seasons {
-		if a.show.Season == anime.Season {
+		if a.media.Season == anime.Season {
 			if multi {
 				a.malid = anime.MalID
 				a.start = anime.Start
 			} else {
-				if a.show.Ep >= anime.Start {
+				if a.media.Ep >= anime.Start {
 					a.malid = anime.MalID
 					a.start = anime.Start
 				}
@@ -267,34 +248,17 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.event = p.Event
 	a.rating = p.Rating
 
-	if p.Metadata.Type == "episode" {
-		a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
-		if err != nil {
-			log.Println("unable to load mapping", err)
-			return
-		}
+	a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
+	if err != nil {
+		log.Println("unable to load mapping", err)
+		return
+	}
 
-		a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
+	a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
 
-		a.show, err = database.NewShow(p.Metadata.GUID)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	} else if p.Metadata.Type == "movie" {
-		a.ep = 1
-		a.malid, err = mapping.GetMovieMalID(p.Metadata.GUID)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		a.show = &database.Show{
-			IdSource: "",
-			Id:       -1,
-			Season:   -1,
-			Ep:       -1,
-		}
-	} else {
+	a.media, err = database.NewMedia(p.Metadata.GUID, p.Metadata.Type)
+	if err != nil {
+		log.Println(err)
 		return
 	}
 

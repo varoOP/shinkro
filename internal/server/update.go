@@ -41,14 +41,14 @@ type MyList struct {
 }
 
 func NewAnimeUpdate(db *database.DB, cfg *config.Config) *AnimeUpdate {
-	am := &AnimeUpdate{
+	a := &AnimeUpdate{
 		db:     db,
 		config: cfg,
 		malid:  -1,
 		start:  -1,
 	}
 
-	return am
+	return a
 }
 
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {

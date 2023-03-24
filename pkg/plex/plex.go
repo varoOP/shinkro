@@ -1,5 +1,9 @@
 package plex
 
+import (
+	"encoding/json"
+)
+
 type PlexWebhook struct {
 	Rating  float32 `json:"rating,omitempty"`
 	Event   string  `json:"event"`
@@ -68,4 +72,15 @@ type PlexWebhook struct {
 			Tag    string `json:"tag,omitempty"`
 		} `json:"Producer,omitempty"`
 	} `json:"Metadata,omitempty"`
+}
+
+func NewPlexWebhook(payload string) (*PlexWebhook, error) {
+	p := &PlexWebhook{}
+
+	err := json.Unmarshal([]byte(payload), p)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
 }

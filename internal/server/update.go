@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -242,8 +241,6 @@ func (am *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 }
 
 func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	p := &plex.PlexWebhook{}
-
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -257,9 +254,9 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.Unmarshal([]byte(ps), p)
+	p, err := plex.NewPlexWebhook(ps)
 	if err != nil {
-		log.Println("Couldn't parse payload from Plex", err)
+		log.Println(err)
 		return
 	}
 

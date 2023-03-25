@@ -45,8 +45,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	d = filepath.Join(d, ".config/shinkuro")
 
+	d = filepath.Join(d, ".config/shinkuro")
 	pflag.StringVar(&configPath, "config", d, "path to configuration")
 	pflag.Parse()
 	configPath, err = homedir.Expand(configPath)

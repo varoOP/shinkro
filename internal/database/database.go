@@ -85,10 +85,7 @@ func (db *DB) UpdateAnime() {
 		check(err)
 	}
 
-	m, al, am = nil, nil, nil
-
 	log.Println("DB operation complete")
-
 }
 
 func (db *DB) UpdateMalAuth(m map[string]string) {

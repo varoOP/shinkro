@@ -147,6 +147,4 @@ func ChecklocalMap(path string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	s = nil
 }

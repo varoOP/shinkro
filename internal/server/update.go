@@ -12,7 +12,10 @@ import (
 	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
 	"github.com/varoOP/shinkuro/internal/mapping"
+	"github.com/varoOP/shinkuro/internal/notifications"
 	"github.com/varoOP/shinkuro/pkg/plex"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type AnimeUpdate struct {
@@ -36,6 +39,7 @@ type MyList struct {
 	rewatchNum int
 	epNum      int
 	title      string
+	picture    string
 }
 
 func NewAnimeUpdate(db *database.DB, cfg *config.Config) *AnimeUpdate {
@@ -172,7 +176,7 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 
 func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 
-	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "my_list_status{status,num_times_rewatched}"})
+	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "main_picture{medium}", "my_list_status{status,num_times_rewatched}"})
 	if err != nil {
 		return err
 	}
@@ -182,6 +186,7 @@ func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 		rewatchNum: aa.MyListStatus.NumTimesRewatched,
 		epNum:      aa.NumEpisodes,
 		title:      aa.Title,
+		picture:    aa.MainPicture.Medium,
 	}
 
 	return nil
@@ -219,6 +224,58 @@ func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 	}
 
 	a.start = updateStart(ctx, a.start)
+}
+
+func (a *AnimeUpdate) createNotification() {
+	d := notifications.NewDicord(a.config.Discord)
+	if d.Url == "" {
+		return
+	}
+
+	color := notifications.Color_watching
+	if a.malresp.Status == mal.AnimeStatusCompleted {
+		color = notifications.Color_completed
+	}
+
+	score := fmt.Sprintf("%v", a.malresp.Score)
+	if score == "0" {
+		score = "Not Scored"
+	}
+
+	d.Webhook = notifications.DiscordWebhook{
+		Embeds: []notifications.Embeds{
+			{
+				Title: a.myList.title,
+				URL:   fmt.Sprintf("https://myanimelist.net/anime/%v", a.malid),
+				Color: color,
+				Fields: []notifications.Fields{
+					{
+						Name:   "Status",
+						Value:  cases.Title(language.Und).String(string(a.malresp.Status)),
+						Inline: false,
+					},
+					{
+						Name:   "Episodes Seen",
+						Value:  fmt.Sprintf("%v / %v", a.malresp.NumEpisodesWatched, a.myList.epNum),
+						Inline: true,
+					},
+					{
+						Name:   "Your Score",
+						Value:  score,
+						Inline: true,
+					},
+				},
+				Image: notifications.Image{
+					URL: a.myList.picture,
+				},
+			},
+		},
+	}
+
+	err := d.SendNotification()
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -269,5 +326,6 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logUpdate(a.myList, a.malresp)
+	a.createNotification()
 	w.Write([]byte("Success"))
 }

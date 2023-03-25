@@ -18,6 +18,7 @@ type Config struct {
 	User      string
 	BaseUrl   string
 	CustomMap string
+	Discord   string
 }
 
 func NewConfig(dir string) *Config {
@@ -114,6 +115,8 @@ func (c *Config) parseConfig() error {
 	c.Addr = fmt.Sprintf("%v:%v", k.String("host"), k.Int("port"))
 
 	c.User = k.String("plex_user")
+
+	c.Discord = k.String("discord_webhook")
 
 	return nil
 }

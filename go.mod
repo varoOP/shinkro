@@ -7,13 +7,13 @@ require github.com/DATA-DOG/go-sqlmock v1.5.0
 require (
 	github.com/knadh/koanf v1.5.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nstratos/go-myanimelist v0.9.4
+	github.com/nstratos/go-myanimelist v0.9.5
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/oauth2 v0.6.0
 	golang.org/x/text v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.21.0
+	modernc.org/sqlite v1.21.1
 )
 
 require (

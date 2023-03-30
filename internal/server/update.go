@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/varoOP/shinkuro/internal/config"
@@ -168,6 +169,11 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 
 	if a.myList.epNum == a.media.Ep {
 		a.myList.status = mal.AnimeStatusCompleted
+		options = append(options, mal.FinishDate(time.Now().Local()))
+	}
+
+	if a.media.Ep == 1 {
+		options = append(options, mal.StartDate(time.Now().Local()))
 	}
 
 	options = append(options, a.myList.status)

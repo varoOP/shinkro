@@ -27,6 +27,11 @@ type have struct {
 	db    *database.DB
 }
 
+const (
+	scrobbleEvent = "media.scrobble"
+	rateEvent     = "media.rate"
+)
+
 func TestUpdate_TvdbToMal(t *testing.T) {
 	tests := []struct {
 		name string
@@ -282,7 +287,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"grandparentTitle": "Tomo-chan wa Onnanoko!"
 				}
 			}`,
-				event: "media.rate",
+				event: rateEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -307,7 +312,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"grandparentTitle": "Isekai Nonbiri Nouka"
 				}
 			}`,
-				event: "media.scrobble",
+				event: scrobbleEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -332,7 +337,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"grandparentTitle": "Dungeon ni Deai o Motomeru no wa Machigatte Iru Darouka: Familia Myth"
 				}
 			}`,
-				event: "media.scrobble",
+				event: scrobbleEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -356,7 +361,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"type": "movie"
 				}
 			}`,
-				event: "media.scrobble",
+				event: scrobbleEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -381,7 +386,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"type": "movie"
 				}
 			}`,
-				event: "media.rate",
+				event: rateEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -405,7 +410,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"type": "episode"
 				}
 			}`,
-				event: "media.scrobble",
+				event: scrobbleEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -430,7 +435,7 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 					"type": "episode"
 				}
 			}`,
-				event: "media.rate",
+				event: rateEvent,
 				cfg: &config.Config{
 					CustomMap: "",
 					User:      "TestUser",
@@ -451,11 +456,11 @@ func TestUpdate_ServeHTTP(t *testing.T) {
 			a := NewAnimeUpdate(tt.have.db, tt.have.cfg)
 			a.ServeHTTP(rr, req)
 			switch tt.have.event {
-			case "media.rate":
+			case rateEvent:
 				if a.malresp.Score != tt.want.Score {
 					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.Score, tt.want.Score)
 				}
-			case "media.scrobble":
+			case scrobbleEvent:
 				if a.malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
 					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.NumEpisodesWatched, tt.want.NumEpisodesWatched)
 				}

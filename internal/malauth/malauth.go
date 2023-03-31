@@ -17,12 +17,10 @@ import (
 )
 
 func NewOauth2Client(ctx context.Context, db *database.DB) *http.Client {
-
-	m := db.GetMalCreds(ctx)
-
+	creds := db.GetMalCreds(ctx)
 	cfg := &oauth2.Config{
-		ClientID:     m["client_id"],
-		ClientSecret: m["client_secret"],
+		ClientID:     creds["client_id"],
+		ClientSecret: creds["client_secret"],
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
 			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
@@ -31,18 +29,17 @@ func NewOauth2Client(ctx context.Context, db *database.DB) *http.Client {
 	}
 
 	t := &oauth2.Token{}
-	err := json.Unmarshal([]byte(m["access_token"]), t)
+	err := json.Unmarshal([]byte(creds["access_token"]), t)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	fresh_token, err := cfg.TokenSource(ctx, t).Token()
 	if err == nil && (fresh_token != t) {
-		saveToken(fresh_token, m["client_id"], m["client_secret"], db)
+		saveToken(fresh_token, creds, db)
 	}
 
 	client := cfg.Client(ctx, fresh_token)
-
 	return client
 }
 
@@ -61,8 +58,13 @@ func NewMalAuth(db *database.DB) {
 		log.Fatalf("client-id or client-secret not provided.")
 	}
 
+	creds := map[string]string{
+		"client_id":     client_id,
+		"client_secret": client_secret,
+	}
+
 	t := getToken(context.Background(), client_id, client_secret)
-	saveToken(t, client_id, client_secret, db)
+	saveToken(t, creds, db)
 }
 
 func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Token {
@@ -120,19 +122,14 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 	return token
 }
 
-func saveToken(token *oauth2.Token, client_id, client_secret string, db *database.DB) {
+func saveToken(token *oauth2.Token, creds map[string]string, db *database.DB) {
 	t, err := json.Marshal(token)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	m := map[string]string{
-		"client_id":     client_id,
-		"client_secret": client_secret,
-		"access_token":  string(t),
-	}
-
-	db.UpdateMalAuth(m)
+	creds["access_token"] = string(t)
+	db.UpdateMalAuth(creds)
 }
 
 func randomString(l int) string {

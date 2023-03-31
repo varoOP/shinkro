@@ -55,61 +55,81 @@ func NewAnimeUpdate(db *database.DB, cfg *config.Config) *AnimeUpdate {
 }
 
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
-
-	var err error
 	c := malauth.NewOauth2Client(ctx, a.db)
 	a.client = mal.NewClient(c)
 
 	switch a.event {
 	case "media.scrobble":
-		if a.inMap {
-
-			a.media.Ep = a.tvdbtoMal(ctx)
-			err := a.updateWatchStatus(ctx)
-			if err != nil {
-				return err
-			}
-			return nil
-
-		} else {
-			if a.media.Season == 1 {
-				a.malid, err = a.media.GetMalID(ctx, a.db)
-				if err != nil {
-					return err
-				}
-
-				err := a.updateWatchStatus(ctx)
-				if err != nil {
-					return err
-				}
-				return nil
-			}
+		err := a.processScrobble(ctx)
+		if err != nil {
+			return err
 		}
+
 	case "media.rate":
-
-		if a.inMap {
-			a.getStartID(ctx, a.anime.IsMultiSeason(ctx))
-			err := a.updateRating(ctx)
-			if err != nil {
-				return err
-			}
-			return nil
-		} else {
-			if a.media.Season == 1 {
-				a.malid, err = a.media.GetMalID(ctx, a.db)
-				if err != nil {
-					return err
-				}
-
-				err := a.updateRating(ctx)
-				if err != nil {
-					return err
-				}
-				return nil
-			}
+		err := a.processRate(ctx)
+		if err != nil {
+			return err
 		}
 	}
+
 	return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", a.media.IdSource, a.media.Id)
+}
+
+func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
+	var err error
+	if a.inMap {
+		a.media.Ep = a.tvdbtoMal(ctx)
+		err := a.updateWatchStatus(ctx)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if a.media.Season == 1 {
+		a.malid, err = a.media.GetMalID(ctx, a.db)
+		if err != nil {
+			return err
+		}
+
+		err := a.updateWatchStatus(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("unable to scrobble %v-%v-%v", a.media.Type, a.media.Agent, a.media.Id)
+}
+
+func (a *AnimeUpdate) processRate(ctx context.Context) error {
+	var err error
+	if a.inMap {
+		a.getStartID(ctx, a.anime.IsMultiSeason(ctx))
+		err := a.updateRating(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if a.media.Season == 1 {
+		a.malid, err = a.media.GetMalID(ctx, a.db)
+		if err != nil {
+			return err
+		}
+
+		err := a.updateRating(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("unable to rate %v-%v-%v", a.media.Type, a.media.Agent, a.media.Id)
 }
 
 func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) int {

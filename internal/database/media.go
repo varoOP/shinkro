@@ -28,12 +28,8 @@ func NewMedia(guid, mediaType string) (*Media, error) {
 		err      error
 	)
 
-	r := &regexp.Regexp{}
-
-	if strings.Contains(guid, "com.plexapp.agents.hama") {
-		r = regexp.MustCompile(`//(.* ?)-(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
-		agent = "hama"
-	}
+	r := regexp.MustCompile(`//(.* ?)-(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
+	agent = "hama"
 
 	if strings.Contains(guid, "net.fribbtastic.coding.plex.myanimelist") {
 		r = regexp.MustCompile(`(myanimelist)://(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
@@ -49,11 +45,6 @@ func NewMedia(guid, mediaType string) (*Media, error) {
 	switch mediaType {
 	case "episode":
 		idSource = mm[1]
-
-		if idSource == "myanimelist" {
-			idSource = "mal"
-		}
-
 		id, err = strconv.Atoi(mm[2])
 		if err != nil {
 			return nil, err
@@ -75,14 +66,12 @@ func NewMedia(guid, mediaType string) (*Media, error) {
 		}
 
 		idSource = "mal"
-
 		id, err = strconv.Atoi(mm[2])
 		if err != nil {
 			return nil, err
 		}
 
 		season = 1
-
 		ep = 1
 
 	default:

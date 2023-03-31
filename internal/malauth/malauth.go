@@ -63,12 +63,11 @@ func NewMalAuth(db *database.DB) {
 		"client_secret": client_secret,
 	}
 
-	t := getToken(context.Background(), client_id, client_secret)
+	t := getToken(context.Background(), creds)
 	saveToken(t, creds, db)
 }
 
-func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Token {
-
+func getToken(ctx context.Context, creds map[string]string) *oauth2.Token {
 	var (
 		pkce          string                = randomString(128)
 		state         string                = randomString(32)
@@ -80,8 +79,8 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 	)
 
 	cfg := &oauth2.Config{
-		ClientID:     client_id,
-		ClientSecret: client_secret,
+		ClientID:     creds["client_id"],
+		ClientSecret: creds["client_secret"],
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
 			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
@@ -105,7 +104,6 @@ func getToken(ctx context.Context, client_id, client_secret string) *oauth2.Toke
 	}
 
 	q := url.Query()
-
 	if len(q["code"]) >= 1 && len(q["state"]) >= 1 {
 		code = q["code"][0]
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,10 +14,8 @@ import (
 	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
 	"github.com/varoOP/shinkuro/internal/mapping"
-	"github.com/varoOP/shinkuro/internal/notifications"
+	"github.com/varoOP/shinkuro/internal/notification"
 	"github.com/varoOP/shinkuro/pkg/plex"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 type AnimeUpdate struct {
@@ -44,14 +43,12 @@ type MyList struct {
 }
 
 func NewAnimeUpdate(db *database.DB, cfg *config.Config) *AnimeUpdate {
-	a := &AnimeUpdate{
+	return &AnimeUpdate{
 		db:     db,
 		config: cfg,
 		malid:  -1,
 		start:  -1,
 	}
-
-	return a
 }
 
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
@@ -65,11 +62,15 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 			return err
 		}
 
+		return nil
+
 	case "media.rate":
 		err := a.processRate(ctx)
 		if err != nil {
 			return err
 		}
+
+		return nil
 	}
 
 	return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", a.media.IdSource, a.media.Id)
@@ -219,7 +220,6 @@ func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 }
 
 func (a *AnimeUpdate) updateRating(ctx context.Context) error {
-
 	err := a.checkAnime(ctx)
 	if err != nil {
 		return err
@@ -229,6 +229,7 @@ func (a *AnimeUpdate) updateRating(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	a.malresp = l
 	return nil
 }
@@ -253,54 +254,29 @@ func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 }
 
 func (a *AnimeUpdate) createNotification() {
-	d := notifications.NewDicord(a.config.Discord)
+	d := notification.NewDicord(a.config.Discord)
 	if d.Url == "" {
 		return
 	}
 
-	color := notifications.Color_watching
-	if a.malresp.Status == mal.AnimeStatusCompleted {
-		color = notifications.Color_completed
+	content := map[string]string{
+		"event":           a.event,
+		"title":           a.myList.title,
+		"url":             fmt.Sprintf("https://myanimelist.net/anime/%v", a.malid),
+		"status":          string(a.malresp.Status),
+		"score":           strconv.Itoa(a.malresp.Score),
+		"start_date":      string(a.malresp.StartDate),
+		"finish_date":     string(a.malresp.FinishDate),
+		"total_eps":       strconv.Itoa(a.myList.epNum),
+		"watched_eps":     strconv.Itoa(a.malresp.NumEpisodesWatched),
+		"times_rewatched": strconv.Itoa(a.malresp.NumTimesRewatched),
+		"image_url":       a.myList.picture,
 	}
 
-	score := fmt.Sprintf("%v", a.malresp.Score)
-	if score == "0" {
-		score = "Not Scored"
-	}
-
-	d.Webhook = notifications.DiscordWebhook{
-		Embeds: []notifications.Embeds{
-			{
-				Title: a.myList.title,
-				URL:   fmt.Sprintf("https://myanimelist.net/anime/%v", a.malid),
-				Color: color,
-				Fields: []notifications.Fields{
-					{
-						Name:   "Status",
-						Value:  cases.Title(language.Und).String(string(a.malresp.Status)),
-						Inline: false,
-					},
-					{
-						Name:   "Episodes Seen",
-						Value:  fmt.Sprintf("%v / %v", a.malresp.NumEpisodesWatched, a.myList.epNum),
-						Inline: true,
-					},
-					{
-						Name:   "Your Score",
-						Value:  score,
-						Inline: true,
-					},
-				},
-				Image: notifications.Image{
-					URL: a.myList.picture,
-				},
-			},
-		},
-	}
-
-	err := d.SendNotification()
+	err := d.SendNotification(content)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 }
 

@@ -32,7 +32,7 @@ const (
 	rateEvent     = "media.rate"
 )
 
-func TestUpdate_TvdbToMal(t *testing.T) {
+func TestUpdateTvdbToMal(t *testing.T) {
 	tests := []struct {
 		name string
 		have *AnimeUpdate
@@ -265,7 +265,7 @@ func TestUpdate_TvdbToMal(t *testing.T) {
 	}
 }
 
-func TestUpdate_ServeHTTP(t *testing.T) {
+func TestUpdateServeHTTP(t *testing.T) {
 
 	tests := []struct {
 		name string

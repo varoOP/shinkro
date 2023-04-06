@@ -109,7 +109,7 @@ func buildFields(content map[string]string) []Fields {
 	}
 
 	if event == "media.scrobble" {
-		event = "Update Watch Status"
+		event = "Update Status"
 	}
 
 	f = append(f, Fields{
@@ -123,6 +123,10 @@ func buildFields(content map[string]string) []Fields {
 		Value:  cases.Title(language.Und).String(status),
 		Inline: true,
 	})
+
+	if totalEps == "0" {
+		totalEps = "?"
+	}
 
 	f = append(f, Fields{
 		Name:   "Episodes Seen",

@@ -332,7 +332,10 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logUpdate(a.myList, a.malresp)
-	a.createNotification()
+	if a.myList != nil && a.malresp != nil {
+		logUpdate(a.myList, a.malresp)
+		a.createNotification()
+	}
+
 	w.Write([]byte("Success"))
 }

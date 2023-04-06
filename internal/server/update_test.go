@@ -349,7 +349,32 @@ func TestUpdateServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			name: "Mal_Agent_Movie_Scrobble_1",
+			name: "HAMA_Episode_Mapping_Scrobble_2",
+			have: have{
+				data: `{
+				"event": "media.scrobble",
+				"Account": {
+					"title": "TestUser"
+				},
+				"Metadata": {
+					"guid": "com.plexapp.agents.hama://tvdb-316842/0/38?lang=en",
+					"type": "episode",
+					"grandparentTitle": "Mahou Tsukai no Yome"
+				}
+			}`,
+				event: scrobbleEvent,
+				cfg: &config.Config{
+					CustomMap: "",
+					User:      "TestUser",
+				},
+				db: createMockDB(t, 0),
+			},
+			want: &mal.AnimeListStatus{
+				NumEpisodesWatched: 3,
+			},
+		},
+		{
+			name: "MAL_Movie_Scrobble_1",
 			have: have{
 				data: `{
 				"event": "media.scrobble",

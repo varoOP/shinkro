@@ -46,21 +46,12 @@ func NewAnimeSeasonMap(cfg *config.Config) (*AnimeSeasonMap, error) {
 }
 
 func (a *Anime) IsMultiSeason(ctx context.Context) bool {
-
-	var count, malid int
-
-	for _, v := range a.Seasons {
-		if v.Season == 1 || v.Season == 0 {
-			malid = v.MalID
-		}
-		if malid == v.MalID {
-			count++
-		}
-
-		if count > 1 {
+	for i := 0; i < len(a.Seasons)-1; i++ {
+		if a.Seasons[i].MalID == a.Seasons[i+1].MalID {
 			return true
 		}
 	}
+
 	return false
 }
 

@@ -203,9 +203,14 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 
 func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 
-	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "main_picture{medium}", "my_list_status{status,num_times_rewatched}"})
+	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched}"})
 	if err != nil {
 		return err
+	}
+
+	picture := aa.MainPicture.Large
+	if picture == "" {
+		picture = aa.MainPicture.Medium
 	}
 
 	a.myList = &MyList{
@@ -213,7 +218,7 @@ func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 		rewatchNum: aa.MyListStatus.NumTimesRewatched,
 		epNum:      aa.NumEpisodes,
 		title:      aa.Title,
-		picture:    aa.MainPicture.Medium,
+		picture:    picture,
 	}
 
 	return nil

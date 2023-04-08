@@ -2,17 +2,36 @@ package logger
 
 import (
 	"io"
-	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/rs/zerolog"
+	"github.com/varoOP/shinkuro/internal/domain"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func NewLogger(path string) *os.File {
-	l, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatal(err)
+func NewLogger(path string, c *domain.Config) *zerolog.Logger {
+	logPath := filepath.Join(path, "shinkuro.log")
+	logLevel := zerolog.InfoLevel
+	switch c.LogLevel {
+	case "TRACE":
+		logLevel = zerolog.TraceLevel
+	case "DEBUG":
+		logLevel = zerolog.DebugLevel
+	case "Error":
+		logLevel = zerolog.ErrorLevel
+	case "INFO":
+		logLevel = zerolog.InfoLevel
 	}
-	mw := io.MultiWriter(os.Stdout, l)
-	log.SetOutput(mw)
 
-	return l
+	zerolog.SetGlobalLevel(logLevel)
+	lumberlog := &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    c.LogMaxSize,
+		MaxBackups: c.LogMaxBackups,
+	}
+
+	mw := io.MultiWriter(os.Stdout, lumberlog)
+	log := zerolog.New(mw).With().Timestamp().Logger()
+	return &log
 }

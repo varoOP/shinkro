@@ -1,4 +1,4 @@
-package mapping
+package domain
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/varoOP/shinkuro/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,11 +26,11 @@ type Seasons struct {
 	Start  int `yaml:"start,omitempty"`
 }
 
-func NewAnimeSeasonMap(cfg *config.Config) (*AnimeSeasonMap, error) {
+func NewAnimeSeasonMap(cfg *Config) (*AnimeSeasonMap, error) {
 	s := &AnimeSeasonMap{}
 
-	if cfg.CustomMap != "" {
-		err := s.localMap(cfg.CustomMap)
+	if cfg.CustomMapPath != "" {
+		err := s.localMap(cfg.CustomMapPath)
 		if err != nil {
 			return nil, err
 		}

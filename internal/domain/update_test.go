@@ -1,4 +1,4 @@
-package server
+package domain
 
 import (
 	"bytes"
@@ -14,16 +14,14 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/varoOP/shinkuro/internal/config"
 	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/mapping"
 	"golang.org/x/oauth2"
 )
 
 type have struct {
 	data  string
 	event string
-	cfg   *config.Config
+	cfg   *Config
 	db    *database.DB
 }
 
@@ -41,8 +39,8 @@ func TestUpdateTvdbToMal(t *testing.T) {
 		{
 			name: "One Piece",
 			have: &AnimeUpdate{
-				anime: &mapping.Anime{
-					Seasons: []mapping.Seasons{
+				anime: &Anime{
+					Seasons: []Seasons{
 						{
 							Season: 1,
 							MalID:  21,
@@ -168,8 +166,8 @@ func TestUpdateTvdbToMal(t *testing.T) {
 		{
 			name: "DanMachi",
 			have: &AnimeUpdate{
-				anime: &mapping.Anime{
-					Seasons: []mapping.Seasons{
+				anime: &Anime{
+					Seasons: []Seasons{
 						{
 							Season: 1,
 							MalID:  28121,
@@ -215,8 +213,8 @@ func TestUpdateTvdbToMal(t *testing.T) {
 		{
 			name: "Vinland Saga",
 			have: &AnimeUpdate{
-				anime: &mapping.Anime{
-					Seasons: []mapping.Seasons{
+				anime: &Anime{
+					Seasons: []Seasons{
 						{
 							Season: 1,
 							MalID:  37521,
@@ -279,7 +277,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				"rating": 8.0,
 				"event": "media.rate",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://anidb-17494/1/7?lang=en",
@@ -288,9 +286,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: rateEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 52305),
 			},
@@ -304,7 +302,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://anidb-17290/1/9?lang=en",
@@ -313,9 +311,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 51462),
 			},
@@ -329,7 +327,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://tvdb-289882/4/22?lang=en",
@@ -338,9 +336,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -354,7 +352,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://tvdb-316842/0/38?lang=en",
@@ -363,9 +361,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -379,7 +377,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://28805?lang=en",
@@ -387,9 +385,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -404,7 +402,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				"rating": 8.0,
 				"event": "media.rate",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://32281?lang=en",
@@ -412,9 +410,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: rateEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -428,7 +426,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://52173/1/5?lang=en",
@@ -436,9 +434,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -453,7 +451,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				"rating": 7.0,
 				"event": "media.rate",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://52305/1/7?lang=en",
@@ -461,9 +459,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: rateEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},

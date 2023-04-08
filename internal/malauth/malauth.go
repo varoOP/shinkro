@@ -18,16 +18,7 @@ import (
 
 func NewOauth2Client(ctx context.Context, db *database.DB) *http.Client {
 	creds := db.GetMalCreds(ctx)
-	cfg := &oauth2.Config{
-		ClientID:     creds["client_id"],
-		ClientSecret: creds["client_secret"],
-		Endpoint: oauth2.Endpoint{
-			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
-			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
-			AuthStyle: oauth2.AuthStyleInParams,
-		},
-	}
-
+	cfg := getCfg(creds)
 	t := &oauth2.Token{}
 	err := json.Unmarshal([]byte(creds["access_token"]), t)
 	if err != nil {
@@ -78,16 +69,7 @@ func getToken(ctx context.Context, creds map[string]string) *oauth2.Token {
 		code          string
 	)
 
-	cfg := &oauth2.Config{
-		ClientID:     creds["client_id"],
-		ClientSecret: creds["client_secret"],
-		Endpoint: oauth2.Endpoint{
-			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
-			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
-			AuthStyle: oauth2.AuthStyleInParams,
-		},
-	}
-
+	cfg := getCfg(creds)
 	fmt.Println("Go to the URL given below and authorize shinkuro to access your MAL account:")
 	fmt.Println(cfg.AuthCodeURL(state, CodeChallenge, ResponseType))
 	fmt.Println("Enter the URL from your browser after the re-direct below:")
@@ -128,6 +110,18 @@ func saveToken(token *oauth2.Token, creds map[string]string, db *database.DB) {
 
 	creds["access_token"] = string(t)
 	db.UpdateMalAuth(creds)
+}
+
+func getCfg(creds map[string]string) *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     creds["client_id"],
+		ClientSecret: creds["client_secret"],
+		Endpoint: oauth2.Endpoint{
+			AuthURL:   "https://myanimelist.net/v1/oauth2/authorize",
+			TokenURL:  "https://myanimelist.net/v1/oauth2/token",
+			AuthStyle: oauth2.AuthStyleInParams,
+		},
+	}
 }
 
 func randomString(l int) string {

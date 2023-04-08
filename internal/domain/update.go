@@ -1,4 +1,4 @@
-package server
+package domain
 
 import (
 	"context"
@@ -10,10 +10,8 @@ import (
 	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/varoOP/shinkuro/internal/config"
 	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
-	"github.com/varoOP/shinkuro/internal/mapping"
 	"github.com/varoOP/shinkuro/internal/notification"
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
@@ -21,9 +19,9 @@ import (
 type AnimeUpdate struct {
 	client  *mal.Client
 	db      *database.DB
-	config  *config.Config
-	anime   *mapping.Anime
-	mapping *mapping.AnimeSeasonMap
+	config  *Config
+	anime   *Anime
+	mapping *AnimeSeasonMap
 	event   string
 	inMap   bool
 	media   *database.Media
@@ -42,7 +40,7 @@ type MyList struct {
 	picture    string
 }
 
-func NewAnimeUpdate(db *database.DB, cfg *config.Config) *AnimeUpdate {
+func NewAnimeUpdate(db *database.DB, cfg *Config) *AnimeUpdate {
 	return &AnimeUpdate{
 		db:     db,
 		config: cfg,
@@ -259,7 +257,7 @@ func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 }
 
 func (a *AnimeUpdate) createNotification() {
-	d := notification.NewDicord(a.config.Discord)
+	d := notification.NewDicord(a.config.DiscordWebHookURL)
 	if d.Url == "" {
 		return
 	}
@@ -295,7 +293,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pl := r.PostForm["payload"]
 	ps := strings.Join(pl, "")
 
-	if !isUserAgent(ps, a.config.User) {
+	if !isUserAgent(ps, a.config.PlexUser) {
 		return
 	}
 
@@ -312,7 +310,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.event = p.Event
 	a.rating = p.Rating
 
-	a.mapping, err = mapping.NewAnimeSeasonMap(a.config)
+	a.mapping, err = NewAnimeSeasonMap(a.config)
 	if err != nil {
 		log.Println("unable to load mapping", err)
 		return

@@ -14,6 +14,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/nstratos/go-myanimelist/mal"
+	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkuro/internal/database"
 	"golang.org/x/oauth2"
 )
@@ -472,11 +473,12 @@ func TestUpdateServeHTTP(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
+	log := zerolog.New(os.Stdout).With().Logger()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := createRequest(t, tt.have.data)
-			a := NewAnimeUpdate(tt.have.db, tt.have.cfg)
+			a := NewAnimeUpdate(tt.have.db, tt.have.cfg, &log)
 			a.ServeHTTP(rr, req)
 			switch tt.have.event {
 			case rateEvent:

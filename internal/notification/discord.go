@@ -2,7 +2,9 @@ package notification
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -48,16 +50,25 @@ func NewDicord(url string) *Discord {
 	}
 }
 
-func (d *Discord) SendNotification(content map[string]string) error {
+func (d *Discord) SendNotification(ctx context.Context, content map[string]string) error {
 	d.buildWebhook(content)
 	p, err := json.Marshal(d.Webhook)
 	if err != nil {
 		return err
 	}
 
-	_, err = http.Post(d.Url, "application/json", bytes.NewBuffer(p))
+	req, err := http.NewRequestWithContext(ctx, d.Url, "application/json", bytes.NewBuffer(p))
 	if err != nil {
 		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return errors.New("something went wrong with sending discord notification")
 	}
 
 	return nil

@@ -3,13 +3,13 @@ package domain
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
+	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
 	"github.com/varoOP/shinkuro/internal/notification"
@@ -30,6 +30,7 @@ type AnimeUpdate struct {
 	rating  float32
 	myList  *MyList
 	malresp *mal.AnimeListStatus
+	log     *zerolog.Logger
 }
 
 type MyList struct {
@@ -40,12 +41,14 @@ type MyList struct {
 	picture    string
 }
 
-func NewAnimeUpdate(db *database.DB, cfg *Config) *AnimeUpdate {
+func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger) *AnimeUpdate {
+	logger := log.With().Str("module", "domain").Logger()
 	return &AnimeUpdate{
 		db:     db,
 		config: cfg,
 		malid:  -1,
 		start:  -1,
+		log:    &logger,
 	}
 }
 
@@ -151,7 +154,7 @@ func (a *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 	}
 
 	if complete {
-		return nil
+		return fmt.Errorf("%v already marked complete on myanimelist", a.myList.title)
 	}
 
 	l, _, err := a.client.Anime.UpdateMyListStatus(ctx, a.malid, options...)
@@ -256,7 +259,7 @@ func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 	a.start = updateStart(ctx, a.start)
 }
 
-func (a *AnimeUpdate) createNotification() {
+func (a *AnimeUpdate) createNotification(ctx context.Context) {
 	d := notification.NewDicord(a.config.DiscordWebHookURL)
 	if d.Url == "" {
 		return
@@ -276,9 +279,9 @@ func (a *AnimeUpdate) createNotification() {
 		"image_url":       a.myList.picture,
 	}
 
-	err := d.SendNotification(content)
+	err := d.SendNotification(ctx, content)
 	if err != nil {
-		log.Println(err)
+		a.log.Debug().Err(err)
 		return
 	}
 }
@@ -287,23 +290,27 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		a.log.Trace().Msg("received bad request")
 		return
 	}
 
 	pl := r.PostForm["payload"]
 	ps := strings.Join(pl, "")
+	a.log.Trace().Str("plexPayload", ps)
 
 	if !isUserAgent(ps, a.config.PlexUser) {
+		a.log.Debug().Msg("plex user or media's metadata agent did not match")
 		return
 	}
 
 	p, err := plex.NewPlexWebhook(ps)
 	if err != nil {
-		log.Println(err)
+		a.log.Debug().Err(err).Msg("unable to unmarshal plex payload")
 		return
 	}
 
 	if !isEvent(p.Event) {
+		a.log.Trace().Str("event", p.Event).Msg("only accepting media.scrobble and media.rate events")
 		return
 	}
 
@@ -312,7 +319,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	a.mapping, err = NewAnimeSeasonMap(a.config)
 	if err != nil {
-		log.Println("unable to load mapping", err)
+		a.log.Info().Err(err).Msg("unable to load custom mapping")
 		return
 	}
 
@@ -320,20 +327,24 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	a.media, err = database.NewMedia(p.Metadata.GUID, p.Metadata.Type)
 	if err != nil {
-		log.Println(err)
+		a.log.Info().Err(err).Msg("unable to parse media")
 		return
 	}
 
 	err = a.SendUpdate(r.Context())
 	if err != nil {
-		log.Println(err)
+		a.log.Info().Err(err).Msg("failed to send update to myanimelist")
 		return
 	}
 
-	if a.myList != nil && a.malresp != nil {
-		logUpdate(a.myList, a.malresp)
-		a.createNotification()
-	}
+	a.log.Info().
+		Str("status", string(a.malresp.Status)).
+		Int("score", a.malresp.Score).
+		Int("episdoesWatched", a.malresp.NumEpisodesWatched).
+		Int("timesRewatched", a.malresp.NumTimesRewatched).
+		Str("startDate", a.malresp.StartDate).
+		Str("finishDate", a.malresp.FinishDate)
 
+	a.createNotification(r.Context())
 	w.Write([]byte("Success"))
 }

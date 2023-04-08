@@ -62,7 +62,10 @@ func main() {
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
 		if cfg.CustomMapPath != "" {
-			domain.ChecklocalMap(cfg.CustomMapPath)
+			err := domain.ChecklocalMap(cfg.CustomMapPath)
+			if err != nil {
+				log.Fatal().Err(err).Msg("unable to load local custom mapping")
+			}
 		}
 
 		db.UpdateAnime()
@@ -71,7 +74,7 @@ func main() {
 		c.AddFunc("0 0 * * *", func() { db.UpdateAnime() })
 		c.Start()
 
-		a := domain.NewAnimeUpdate(db, cfg)
+		a := domain.NewAnimeUpdate(db, cfg, log)
 
 		go server.StartHttp(cfg, a, log)
 

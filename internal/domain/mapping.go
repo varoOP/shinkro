@@ -3,12 +3,13 @@ package domain
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
 	"gopkg.in/yaml.v3"
 )
+
+const communityMapUrl = "https://github.com/varoOP/shinkuro-mapping/raw/main/tvdb-mal.yaml"
 
 type AnimeSeasonMap struct {
 	Anime []Anime `yaml:"anime"`
@@ -34,11 +35,13 @@ func NewAnimeSeasonMap(cfg *Config) (*AnimeSeasonMap, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		err := s.communityMap()
-		if err != nil {
-			return nil, err
-		}
+
+		return s, nil
+	}
+
+	err := s.communityMap()
+	if err != nil {
+		return nil, err
 	}
 
 	return s, nil
@@ -68,7 +71,7 @@ func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
 }
 
 func (s *AnimeSeasonMap) communityMap() error {
-	resp, err := http.Get("https://github.com/varoOP/shinkuro-mapping/raw/main/tvdb-mal.yaml")
+	resp, err := http.Get(communityMapUrl)
 	if err != nil {
 		return err
 	}
@@ -118,23 +121,23 @@ func synonymExists(s []string, title string) bool {
 	return false
 }
 
-func ChecklocalMap(path string) {
-
+func ChecklocalMap(path string) error {
 	s := &AnimeSeasonMap{}
-
 	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal("error opening custom map", err)
+		return err
 	}
-	defer f.Close()
 
+	defer f.Close()
 	body, err := io.ReadAll(f)
 	if err != nil {
-		log.Fatal("error reading custom map", err)
+		return err
 	}
 
 	err = yaml.Unmarshal(body, s)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }

@@ -3,7 +3,6 @@ package animelist
 import (
 	"encoding/xml"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -15,6 +14,7 @@ type AnimeList struct {
 		Text              string `xml:",chardata"`
 		Anidbid           string `xml:"anidbid,attr"`
 		Tvdbid            string `xml:"tvdbid,attr"`
+		Tmdbid            string `xml:"tmdbid,attr"`
 		Defaulttvdbseason string `xml:"defaulttvdbseason,attr"`
 		Name              string `xml:"name"`
 		SupplementalInfo  struct {
@@ -24,50 +24,53 @@ type AnimeList struct {
 	} `xml:"anime"`
 }
 
-func NewAnimeList() *AnimeList {
-
+func NewAnimeList() (*AnimeList, error) {
 	al := &AnimeList{}
-
 	resp, err := http.Get("https://raw.githubusercontent.com/Anime-Lists/anime-lists/master/anime-list.xml")
 	if err != nil {
-		log.Fatalf("Error getting anime list xml: %v", err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Error reading response body of anime list xml: %v", err)
+		return nil, err
 	}
 
 	err = xml.Unmarshal(body, al)
 	if err != nil {
-		log.Fatalf("Error unmarshalling anime list xml: %v", err)
+		return nil, err
 	}
 
-	return al
+	return al, nil
 }
 
-func (al *AnimeList) AnidDbTvDbmap() map[string]string {
-
-	m := make(map[string]string)
-
+func (al *AnimeList) AnidDbTvmDbmap() map[string][]string {
+	m := make(map[string][]string)
 	for _, v := range al.Anime {
-		m[v.Anidbid] = v.Tvdbid
+		m[v.Anidbid] = []string{v.Tvdbid, v.Tmdbid}
 	}
 
 	return m
 }
 
-func (al *AnimeList) GetTvdbID(anidbid int, m map[string]string) int {
-
-	tvdbids := m[strconv.Itoa(anidbid)]
-
-	if tvdbid, err := strconv.Atoi(tvdbids); err == nil {
-
-		return tvdbid
-
+func (al *AnimeList) GetTvmdbID(anidbid int, m map[string][]string) (int, int) {
+	ids := m[strconv.Itoa(anidbid)]
+	var tvdbids, tmdbids string
+	if len(ids) >= 1 {
+		tvdbids = ids[0]
+		tmdbids = ids[1]
 	}
 
-	return 0
+	tvdbid, err := strconv.Atoi(tvdbids)
+	if err != nil {
+		tvdbid = -1
+	}
+
+	tmdbid, err := strconv.Atoi(tmdbids)
+	if err != nil {
+		tmdbid = -1
+	}
+
+	return tvdbid, tmdbid
 }

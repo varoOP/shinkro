@@ -3,7 +3,6 @@ package manami
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -36,47 +35,38 @@ type ManamiData struct {
 	Tags      []string `json:"tags,omitempty"`
 }
 
-func NewManami() *Manami {
-
+func NewManami() (*Manami, error) {
 	m := &Manami{}
-
 	resp, err := http.Get("https://github.com/manami-project/anime-offline-database/raw/master/anime-offline-database.json")
 	if err != nil {
-		log.Fatalf("Error getting manami offline database: %v", err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Error reading response body of manami offline database: %v", err)
+		return nil, err
 	}
 
 	err = json.Unmarshal(body, m)
 	if err != nil {
-		log.Fatalf("Error unmarshalling manami database: %v", err)
+		return nil, err
 	}
 
-	return m
+	return m, nil
 }
 
-func (a *ManamiData) SortToIDs(re string) int {
-
+func (a *ManamiData) GetID(re string) int {
 	for _, val := range a.Sources {
-
 		r := regexp.MustCompile(re)
-
 		match := r.FindStringSubmatch(val)
-
 		if len(match) > 1 {
-
-			ID, err := strconv.Atoi(match[1])
-			if err != nil {
-				log.Fatalf("Error converting id to int: %v", err)
+			id, err := strconv.Atoi(match[1])
+			if err == nil {
+				return id
 			}
-
-			return ID
 		}
 	}
-	return 0
+
+	return -1
 }

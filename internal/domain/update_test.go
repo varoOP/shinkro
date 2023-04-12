@@ -153,15 +153,13 @@ func TestUpdateTvdbToMal(t *testing.T) {
 					Season: 21,
 					Ep:     162,
 				},
-				malid: -1,
+				Malid: -1,
 				start: -1,
 			},
 			want: &AnimeUpdate{
-				malid: 21,
+				Malid: 21,
 				start: 892,
-				media: &database.Media{
-					Ep: 1053,
-				},
+				ep:    1053,
 			},
 		},
 		{
@@ -200,15 +198,13 @@ func TestUpdateTvdbToMal(t *testing.T) {
 					Season: 4,
 					Ep:     13,
 				},
-				malid: -1,
+				Malid: -1,
 				start: -1,
 			},
 			want: &AnimeUpdate{
-				malid: 53111,
+				Malid: 53111,
 				start: 12,
-				media: &database.Media{
-					Ep: 2,
-				},
+				ep:    2,
 			},
 		},
 		{
@@ -232,33 +228,34 @@ func TestUpdateTvdbToMal(t *testing.T) {
 					Season: 2,
 					Ep:     9,
 				},
-				malid: -1,
+				Malid: -1,
 				start: -1,
 			},
 			want: &AnimeUpdate{
-				malid: 49387,
+				Malid: 49387,
 				start: 1,
-				media: &database.Media{
-					Ep: 9,
-				},
+				ep:    9,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ep := tt.have.tvdbtoMal(context.Background())
+			err := tt.have.tvdbtoMal(context.Background())
+			if err != nil {
+				t.Error(err)
+			}
 
-			if tt.have.malid != tt.want.malid {
-				t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", tt.name, tt.have.malid, tt.want.malid)
+			if tt.have.Malid != tt.want.Malid {
+				t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", tt.name, tt.have.Malid, tt.want.Malid)
 			}
 
 			if tt.have.start != tt.want.start {
 				t.Errorf("\nTest: %v\nHave:start_%v Want:start_%v", tt.name, tt.have.start, tt.want.start)
 			}
 
-			if ep != tt.want.media.Ep {
-				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, ep, tt.want.media.Ep)
+			if tt.have.ep != tt.want.ep {
+				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, tt.have.ep, tt.want.ep)
 			}
 		})
 	}
@@ -478,16 +475,16 @@ func TestUpdateServeHTTP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := createRequest(t, tt.have.data)
-			a := NewAnimeUpdate(tt.have.db, tt.have.cfg, &log)
+			a := NewAnimeUpdate(tt.have.db, tt.have.cfg, &log, &Notification{})
 			a.ServeHTTP(rr, req)
 			switch tt.have.event {
 			case rateEvent:
-				if a.malresp.Score != tt.want.Score {
-					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.Score, tt.want.Score)
+				if a.Malresp.Score != tt.want.Score {
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.Malresp.Score, tt.want.Score)
 				}
 			case scrobbleEvent:
-				if a.malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
-					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.NumEpisodesWatched, tt.want.NumEpisodesWatched)
+				if a.Malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.Malresp.NumEpisodesWatched, tt.want.NumEpisodesWatched)
 				}
 			}
 		})

@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"path/filepath"
 
 	"github.com/rs/zerolog"
@@ -14,11 +13,14 @@ import (
 
 type DB struct {
 	Handler *sql.DB
-	log     *zerolog.Logger
+	log     zerolog.Logger
 }
 
 func NewDB(dir string, log *zerolog.Logger) *DB {
-	db := &DB{}
+	db := &DB{
+		log: log.With().Str("module", "database").Logger(),
+	}
+
 	var (
 		err error
 		DSN = filepath.Join(dir, "shinkuro.db") + "?_pragma=busy_timeout%3d1000"
@@ -26,16 +28,15 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 
 	db.Handler, err = sql.Open("sqlite", DSN)
 	if err != nil {
-		log.Fatal().Err(err)
+		db.log.Fatal().Err(err).Msg("unable to connect to database")
 	}
 
 	if _, err = db.Handler.Exec(`PRAGMA journal_mode = wal;`); err != nil {
 		if err != nil {
-			log.Fatal().Err(err)
+			db.log.Fatal().Err(err).Msg("unable to enable WAL mode")
 		}
 	}
-	dbLogger := log.With().Str("module", "database").Logger()
-	db.log = &dbLogger
+
 	return db
 }
 
@@ -59,7 +60,7 @@ func (db *DB) CreateDB() {
 func (db *DB) UpdateAnime() {
 
 	db.check(db.checkDB())
-	db.log.Info().Msg("updating anime in database")
+	db.log.Trace().Msg("updating anime in database")
 
 	m := manami.NewManami()
 	al := animelist.NewAnimeList()
@@ -95,7 +96,7 @@ func (db *DB) UpdateAnime() {
 		db.check(err)
 	}
 
-	db.log.Info().Msg("updated anime in database")
+	db.log.Trace().Msg("updated anime in database")
 }
 
 func (db *DB) UpdateMalAuth(m map[string]string) {
@@ -140,13 +141,11 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 }
 
 func (db *DB) checkDB() error {
-
-	sqlstmt := `SELECT * from anime;`
-
-	_, err := db.Handler.Query(sqlstmt)
+	err := db.Handler.Ping()
 	if err != nil {
-		return errors.New("anime table not found")
+		return err
 	}
+
 	return nil
 }
 
@@ -156,6 +155,6 @@ func (db *DB) Close() {
 
 func (db *DB) check(err error) {
 	if err != nil {
-		db.log.Fatal().Err(err)
+		db.log.Panic().Err(err).Msg("database operation failed")
 	}
 }

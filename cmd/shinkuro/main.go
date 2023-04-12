@@ -19,6 +19,7 @@ import (
 	"github.com/varoOP/shinkuro/internal/domain"
 	"github.com/varoOP/shinkuro/internal/logger"
 	"github.com/varoOP/shinkuro/internal/malauth"
+	"github.com/varoOP/shinkuro/internal/notification"
 	"github.com/varoOP/shinkuro/internal/server"
 )
 
@@ -74,17 +75,17 @@ func main() {
 		c.AddFunc("0 0 * * *", func() { db.UpdateAnime() })
 		c.Start()
 
-		a := domain.NewAnimeUpdate(db, cfg, log)
-
-		go server.StartHttp(cfg, a, log)
+		n := notification.NewAppNotification(cfg.DiscordWebHookURL, log)
+		go n.ListenforNotification()
+		s := server.NewServer(cfg, n.Notification, db, log)
+		go s.Start()
 
 		sigchnl := make(chan os.Signal, 1)
 		signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 		sig := <-sigchnl
 
-		log.Info().Msgf("caught signal %v, shutting down", sig)
 		db.Close()
-		os.Exit(1)
+		log.Fatal().Msgf("caught signal %v, shutting down", sig)
 
 	case "malauth":
 		db.CreateDB()

@@ -2,9 +2,9 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,7 +12,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
-	"github.com/varoOP/shinkuro/internal/notification"
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
 
@@ -22,41 +21,43 @@ type AnimeUpdate struct {
 	config  *Config
 	anime   *Anime
 	mapping *AnimeSeasonMap
-	event   string
+	Event   string
 	inMap   bool
 	media   *database.Media
-	malid   int
+	Malid   int
 	start   int
+	ep      int
 	rating  float32
-	myList  *MyList
-	malresp *mal.AnimeListStatus
-	log     *zerolog.Logger
+	MyList  *MyList
+	Malresp *mal.AnimeListStatus
+	log     zerolog.Logger
+	notify  *Notification
 }
 
 type MyList struct {
-	status     mal.AnimeStatus
-	rewatchNum int
-	epNum      int
-	title      string
-	picture    string
+	Status     mal.AnimeStatus
+	RewatchNum int
+	EpNum      int
+	WatchedNum int
+	Title      string
+	Picture    string
 }
 
-func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger) *AnimeUpdate {
-	logger := log.With().Str("module", "domain").Logger()
+func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notification) *AnimeUpdate {
 	return &AnimeUpdate{
 		db:     db,
 		config: cfg,
-		malid:  -1,
+		Malid:  -1,
 		start:  -1,
-		log:    &logger,
+		log:    log.With().Str("action", "animeUpdate").Logger(),
+		notify: n,
 	}
 }
 
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	c := malauth.NewOauth2Client(ctx, a.db)
 	a.client = mal.NewClient(c)
-
-	switch a.event {
+	switch a.Event {
 	case "media.scrobble":
 		err := a.processScrobble(ctx)
 		if err != nil {
@@ -74,14 +75,18 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("%v - %v:not season 1 of anime, and not found in custom mapping", a.media.IdSource, a.media.Id)
+	return fmt.Errorf("unable to send update for %v (%v-%v)", a.media.Title, a.media.IdSource, a.media.Id)
 }
 
 func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 	var err error
 	if a.inMap {
-		a.media.Ep = a.tvdbtoMal(ctx)
-		err := a.updateWatchStatus(ctx)
+		err = a.tvdbtoMal(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = a.updateWatchStatus(ctx)
 		if err != nil {
 			return err
 		}
@@ -89,12 +94,13 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 	}
 
 	if a.media.Season == 1 {
-		a.malid, err = a.media.GetMalID(ctx, a.db)
+		a.Malid, err = a.media.GetMalID(ctx, a.db)
 		if err != nil {
 			return err
 		}
 
-		err := a.updateWatchStatus(ctx)
+		a.ep = a.media.Ep
+		err = a.updateWatchStatus(ctx)
 		if err != nil {
 			return err
 		}
@@ -102,14 +108,18 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("unable to scrobble %v-%v-%v", a.media.Type, a.media.Agent, a.media.Id)
+	return fmt.Errorf("unable to scrobble %v (%v-%v-%v), not found in database or custom map", a.media.Title, a.media.Type, a.media.Agent, a.media.Id)
 }
 
 func (a *AnimeUpdate) processRate(ctx context.Context) error {
 	var err error
 	if a.inMap {
-		a.getStartID(ctx, a.anime.IsMultiSeason(ctx))
-		err := a.updateRating(ctx)
+		_, err := a.getStartID(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = a.updateRating(ctx)
 		if err != nil {
 			return err
 		}
@@ -118,7 +128,7 @@ func (a *AnimeUpdate) processRate(ctx context.Context) error {
 	}
 
 	if a.media.Season == 1 {
-		a.malid, err = a.media.GetMalID(ctx, a.db)
+		a.Malid, err = a.media.GetMalID(ctx, a.db)
 		if err != nil {
 			return err
 		}
@@ -131,19 +141,26 @@ func (a *AnimeUpdate) processRate(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("unable to rate %v-%v-%v", a.media.Type, a.media.Agent, a.media.Id)
+	return fmt.Errorf("unable to rate %v (%v-%v-%v) not found in database or custom map", a.media.Title, a.media.Type, a.media.Agent, a.media.Id)
 }
 
-func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) int {
-	if !a.anime.IsMultiSeason(ctx) {
-		a.getStartID(ctx, false)
-		ep := a.media.Ep - a.start + 1
-		return ep
-	} else {
-		a.getStartID(ctx, true)
-		ep := a.start + a.media.Ep - 1
-		return ep
+func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
+	isMultiSeason, err := a.getStartID(ctx)
+	if err != nil {
+		return err
 	}
+
+	if isMultiSeason {
+		a.ep = a.start + a.media.Ep - 1
+	} else {
+		a.ep = a.media.Ep - a.start + 1
+	}
+
+	if a.ep <= 0 {
+		return errors.New("episode calculated incorrectly")
+	}
+
+	return nil
 }
 
 func (a *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
@@ -154,14 +171,15 @@ func (a *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 	}
 
 	if complete {
-		return fmt.Errorf("%v already marked complete on myanimelist", a.myList.title)
+		return fmt.Errorf("%v already marked complete on myanimelist", a.MyList.Title)
 	}
 
-	l, _, err := a.client.Anime.UpdateMyListStatus(ctx, a.malid, options...)
+	l, _, err := a.client.Anime.UpdateMyListStatus(ctx, a.Malid, options...)
 	if err != nil {
 		return err
 	}
-	a.malresp = l
+
+	a.Malresp = l
 	return nil
 }
 
@@ -172,39 +190,42 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 		return nil, false, err
 	}
 
-	var options []mal.UpdateMyAnimeListStatusOption
-
-	if a.myList.status == mal.AnimeStatusCompleted {
-		if a.myList.epNum == a.media.Ep {
-			a.myList.rewatchNum++
-			options = append(options, mal.NumTimesRewatched(a.myList.rewatchNum))
-			return options, false, nil
-		} else if a.media.Ep > a.myList.epNum {
-			return nil, true, fmt.Errorf("%v-%v: anime in plex has more episodes for season than mal, modify custom mapping", a.media.IdSource, a.media.Id)
-		} else {
-			return nil, true, nil
-		}
+	if a.ep > a.MyList.EpNum {
+		return nil, true, fmt.Errorf("%v (%v-%v): anime in plex has more episodes for season than mal, modify custom mapping", a.media.Title, a.media.IdSource, a.media.Id)
 	}
 
-	options = append(options, mal.NumEpisodesWatched(a.media.Ep))
-	a.myList.status = mal.AnimeStatusWatching
+	var options []mal.UpdateMyAnimeListStatusOption
+	if a.MyList.Status == mal.AnimeStatusCompleted {
+		if a.MyList.EpNum == a.ep {
+			a.MyList.RewatchNum++
+			options = append(options, mal.NumTimesRewatched(a.MyList.RewatchNum))
+			return options, false, nil
+		}
 
-	if a.myList.epNum == a.media.Ep {
-		a.myList.status = mal.AnimeStatusCompleted
+		return nil, true, nil
+	}
+
+	if a.MyList.EpNum == a.ep {
+		a.MyList.Status = mal.AnimeStatusCompleted
 		options = append(options, mal.FinishDate(time.Now().Local()))
 	}
 
-	if a.media.Ep == 1 {
+	if a.ep == 1 && a.MyList.WatchedNum == 0 {
 		options = append(options, mal.StartDate(time.Now().Local()))
 	}
 
-	options = append(options, a.myList.status)
+	if a.ep < a.MyList.EpNum && a.ep >= 1 {
+		a.MyList.Status = mal.AnimeStatusWatching
+	}
+
+	options = append(options, mal.NumEpisodesWatched(a.ep))
+	options = append(options, a.MyList.Status)
 	return options, false, nil
 }
 
 func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 
-	aa, _, err := a.client.Anime.Details(ctx, a.malid, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched}"})
+	aa, _, err := a.client.Anime.Details(ctx, a.Malid, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
 	if err != nil {
 		return err
 	}
@@ -214,12 +235,13 @@ func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
 		picture = aa.MainPicture.Medium
 	}
 
-	a.myList = &MyList{
-		status:     aa.MyListStatus.Status,
-		rewatchNum: aa.MyListStatus.NumTimesRewatched,
-		epNum:      aa.NumEpisodes,
-		title:      aa.Title,
-		picture:    picture,
+	a.MyList = &MyList{
+		Status:     aa.MyListStatus.Status,
+		RewatchNum: aa.MyListStatus.NumTimesRewatched,
+		EpNum:      aa.NumEpisodes,
+		WatchedNum: aa.MyListStatus.NumEpisodesWatched,
+		Title:      aa.Title,
+		Picture:    picture,
 	}
 
 	return nil
@@ -231,25 +253,25 @@ func (a *AnimeUpdate) updateRating(ctx context.Context) error {
 		return err
 	}
 
-	l, _, err := a.client.Anime.UpdateMyListStatus(ctx, a.malid, mal.Score(a.rating))
+	l, _, err := a.client.Anime.UpdateMyListStatus(ctx, a.Malid, mal.Score(a.rating))
 	if err != nil {
 		return err
 	}
 
-	a.malresp = l
+	a.Malresp = l
 	return nil
 }
 
-func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
-
+func (a *AnimeUpdate) getStartID(ctx context.Context) (bool, error) {
+	var isMultiSeason bool
 	for _, anime := range a.anime.Seasons {
 		if a.media.Season == anime.Season {
-			if multi {
-				a.malid = anime.MalID
+			if isMultiSeason = a.anime.IsMultiSeason(ctx, anime.MalID); isMultiSeason {
+				a.Malid = anime.MalID
 				a.start = anime.Start
 			} else {
 				if a.media.Ep >= anime.Start {
-					a.malid = anime.MalID
+					a.Malid = anime.MalID
 					a.start = anime.Start
 				}
 			}
@@ -257,33 +279,11 @@ func (a *AnimeUpdate) getStartID(ctx context.Context, multi bool) {
 	}
 
 	a.start = updateStart(ctx, a.start)
-}
-
-func (a *AnimeUpdate) createNotification(ctx context.Context) {
-	d := notification.NewDicord(a.config.DiscordWebHookURL)
-	if d.Url == "" {
-		return
+	if a.Malid <= 0 {
+		return isMultiSeason, errors.New("no malid found")
 	}
 
-	content := map[string]string{
-		"event":           a.event,
-		"title":           a.myList.title,
-		"url":             fmt.Sprintf("https://myanimelist.net/anime/%v", a.malid),
-		"status":          string(a.malresp.Status),
-		"score":           strconv.Itoa(a.malresp.Score),
-		"start_date":      string(a.malresp.StartDate),
-		"finish_date":     string(a.malresp.FinishDate),
-		"total_eps":       strconv.Itoa(a.myList.epNum),
-		"watched_eps":     strconv.Itoa(a.malresp.NumEpisodesWatched),
-		"times_rewatched": strconv.Itoa(a.malresp.NumTimesRewatched),
-		"image_url":       a.myList.picture,
-	}
-
-	err := d.SendNotification(ctx, content)
-	if err != nil {
-		a.log.Debug().Err(err)
-		return
-	}
+	return isMultiSeason, nil
 }
 
 func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -296,7 +296,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	pl := r.PostForm["payload"]
 	ps := strings.Join(pl, "")
-	a.log.Trace().Str("plexPayload", ps)
+	a.log.Trace().Str("plexPayload", ps).Msg("received plex payload")
 
 	if !isUserAgent(ps, a.config.PlexUser) {
 		a.log.Debug().Msg("plex user or media's metadata agent did not match")
@@ -305,7 +305,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	p, err := plex.NewPlexWebhook(ps)
 	if err != nil {
-		a.log.Debug().Err(err).Msg("unable to unmarshal plex payload")
+		a.log.Error().Err(err).Msg("unable to unmarshal plex payload")
 		return
 	}
 
@@ -314,37 +314,38 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.event = p.Event
+	a.Event = p.Event
 	a.rating = p.Rating
 
 	a.mapping, err = NewAnimeSeasonMap(a.config)
 	if err != nil {
-		a.log.Info().Err(err).Msg("unable to load custom mapping")
+		a.log.Error().Err(err).Msg("unable to load custom mapping")
 		return
 	}
 
 	a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
 
-	a.media, err = database.NewMedia(p.Metadata.GUID, p.Metadata.Type)
+	a.media, err = database.NewMedia(p.Metadata.GUID, p.Metadata.Type, p.Metadata.GrandparentTitle)
 	if err != nil {
-		a.log.Info().Err(err).Msg("unable to parse media")
+		a.log.Error().Err(err).Msg("unable to parse media")
 		return
 	}
 
 	err = a.SendUpdate(r.Context())
+	notify(a, err)
 	if err != nil {
-		a.log.Info().Err(err).Msg("failed to send update to myanimelist")
+		a.log.Error().Err(err).Msg("failed to send update to myanimelist")
 		return
 	}
 
 	a.log.Info().
-		Str("status", string(a.malresp.Status)).
-		Int("score", a.malresp.Score).
-		Int("episdoesWatched", a.malresp.NumEpisodesWatched).
-		Int("timesRewatched", a.malresp.NumTimesRewatched).
-		Str("startDate", a.malresp.StartDate).
-		Str("finishDate", a.malresp.FinishDate)
+		Str("status", string(a.Malresp.Status)).
+		Int("score", a.Malresp.Score).
+		Int("episdoesWatched", a.Malresp.NumEpisodesWatched).
+		Int("timesRewatched", a.Malresp.NumTimesRewatched).
+		Str("startDate", a.Malresp.StartDate).
+		Str("finishDate", a.Malresp.FinishDate).
+		Msg("updated myanimelist successfully")
 
-	a.createNotification(r.Context())
 	w.Write([]byte("Success"))
 }

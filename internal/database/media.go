@@ -11,6 +11,7 @@ import (
 
 type Media struct {
 	Type     string
+	Title    string
 	Agent    string
 	IdSource string
 	Id       int
@@ -18,7 +19,7 @@ type Media struct {
 	Ep       int
 }
 
-func NewMedia(guid, mediaType string) (*Media, error) {
+func NewMedia(guid, mediaType, title string) (*Media, error) {
 	var (
 		agent    string
 		idSource string
@@ -80,6 +81,7 @@ func NewMedia(guid, mediaType string) (*Media, error) {
 
 	return &Media{
 		Type:     mediaType,
+		Title:    title,
 		Agent:    agent,
 		IdSource: idSource,
 		Id:       id,
@@ -89,18 +91,15 @@ func NewMedia(guid, mediaType string) (*Media, error) {
 }
 
 func (m *Media) GetMalID(ctx context.Context, db *DB) (int, error) {
-
 	var malid int
-
 	switch m.Agent {
 	case "hama":
 		sqlstmt := fmt.Sprintf("SELECT mal_id from anime where %v_id=?;", m.IdSource)
 		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)
 		err := row.Scan(&malid)
 		if err != nil {
-			return -1, fmt.Errorf("mal_id of %v %v not found in DB", m.IdSource, m.Id)
+			return -1, fmt.Errorf("mal_id of %v (%v:%v) not found in database",m.Title, m.IdSource, m.Id)
 		}
-
 	case "mal":
 		malid = m.Id
 	}

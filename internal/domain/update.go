@@ -190,7 +190,7 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 		return nil, false, err
 	}
 
-	if a.ep > a.MyList.EpNum {
+	if a.ep > a.MyList.EpNum && a.MyList.EpNum != 0 {
 		return nil, true, fmt.Errorf("%v (%v-%v): anime in plex has more episodes for season than mal, modify custom mapping", a.media.Title, a.media.IdSource, a.media.Id)
 	}
 

@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
+	"path/filepath"
 
+	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkuro/pkg/animelist"
 	"github.com/varoOP/shinkuro/pkg/manami"
 	_ "modernc.org/sqlite"
@@ -13,17 +14,28 @@ import (
 
 type DB struct {
 	Handler *sql.DB
+	log     zerolog.Logger
 }
 
-func NewDB(DSN string) *DB {
-	db := &DB{}
-	var err error
+func NewDB(dir string, log *zerolog.Logger) *DB {
+	db := &DB{
+		log: log.With().Str("module", "database").Logger(),
+	}
+
+	var (
+		err error
+		DSN = filepath.Join(dir, "shinkuro.db") + "?_pragma=busy_timeout%3d1000"
+	)
 
 	db.Handler, err = sql.Open("sqlite", DSN)
-	check(err)
+	if err != nil {
+		db.log.Fatal().Err(err).Msg("unable to connect to database")
+	}
 
 	if _, err = db.Handler.Exec(`PRAGMA journal_mode = wal;`); err != nil {
-		check(err)
+		if err != nil {
+			db.log.Fatal().Err(err).Msg("unable to enable WAL mode")
+		}
 	}
 
 	return db
@@ -43,13 +55,13 @@ func (db *DB) CreateDB() {
 	);`
 
 	_, err := db.Handler.Exec(scheme)
-	check(err)
+	db.check(err)
 }
 
 func (db *DB) UpdateAnime() {
 
-	check(db.checkDB())
-	log.Println("Updating DB")
+	db.check(db.checkDBForCreds())
+	db.log.Trace().Msg("updating anime in database")
 
 	m := manami.NewManami()
 	al := animelist.NewAnimeList()
@@ -63,29 +75,29 @@ func (db *DB) UpdateAnime() {
 	) values (?, ?, ?, ?)`
 
 	tx, err := db.Handler.Begin()
-	check(err)
+	db.check(err)
 
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(addAnime)
-	check(err)
+	db.check(err)
 
 	defer stmt.Close()
 
 	for _, anime := range am.Anime {
 		_, err := stmt.Exec(anime.AnidbID, anime.Title, anime.MalID, anime.TvdbID)
-		check(err)
+		db.check(err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		check(err)
+		db.check(err)
 	}
 
 	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
-		check(err)
+		db.check(err)
 	}
 
-	log.Println("DB operation complete")
+	db.log.Trace().Msg("updated anime in database")
 }
 
 func (db *DB) UpdateMalAuth(m map[string]string) {
@@ -96,14 +108,14 @@ func (db *DB) UpdateMalAuth(m map[string]string) {
 	) values (?, ?, ?)`
 
 	stmt, err := db.Handler.Prepare(addMalauth)
-	check(err)
+	db.check(err)
 	defer stmt.Close()
 
 	_, err = stmt.Exec(m["client_id"], m["client_secret"], m["access_token"])
-	check(err)
+	db.check(err)
 
 	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
-		check(err)
+		db.check(err)
 	}
 }
 
@@ -119,7 +131,7 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	row := db.Handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
-		check(err)
+		db.log.Fatal().Str("possible fix", "run the command: shinkuro malauth").Err(errors.New("unable to get mal credentials")).Msg("database operation failed")
 	}
 
 	return map[string]string{
@@ -129,14 +141,8 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	}
 }
 
-func (db *DB) checkDB() error {
-
-	sqlstmt := `SELECT * from anime;`
-
-	_, err := db.Handler.Query(sqlstmt)
-	if err != nil {
-		return errors.New("shinkuro.db not found. Run shinkuro malauth before running shinkuro")
-	}
+func (db *DB) checkDBForCreds() error {
+	db.GetMalCreds(context.Background())
 	return nil
 }
 
@@ -144,8 +150,8 @@ func (db *DB) Close() {
 	db.Handler.Close()
 }
 
-func check(err error) {
+func (db *DB) check(err error) {
 	if err != nil {
-		log.Fatalf("database error: %v", err)
+		db.log.Fatal().Err(err).Msg("database operation failed")
 	}
 }

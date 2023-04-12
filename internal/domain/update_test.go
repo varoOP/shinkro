@@ -1,4 +1,4 @@
-package server
+package domain
 
 import (
 	"bytes"
@@ -14,16 +14,15 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/varoOP/shinkuro/internal/config"
+	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/mapping"
 	"golang.org/x/oauth2"
 )
 
 type have struct {
 	data  string
 	event string
-	cfg   *config.Config
+	cfg   *Config
 	db    *database.DB
 }
 
@@ -41,8 +40,8 @@ func TestUpdateTvdbToMal(t *testing.T) {
 		{
 			name: "One Piece",
 			have: &AnimeUpdate{
-				anime: &mapping.Anime{
-					Seasons: []mapping.Seasons{
+				anime: &Anime{
+					Seasons: []Seasons{
 						{
 							Season: 1,
 							MalID:  21,
@@ -154,22 +153,20 @@ func TestUpdateTvdbToMal(t *testing.T) {
 					Season: 21,
 					Ep:     162,
 				},
-				malid: -1,
+				Malid: -1,
 				start: -1,
 			},
 			want: &AnimeUpdate{
-				malid: 21,
+				Malid: 21,
 				start: 892,
-				media: &database.Media{
-					Ep: 1053,
-				},
+				ep:    1053,
 			},
 		},
 		{
 			name: "DanMachi",
 			have: &AnimeUpdate{
-				anime: &mapping.Anime{
-					Seasons: []mapping.Seasons{
+				anime: &Anime{
+					Seasons: []Seasons{
 						{
 							Season: 1,
 							MalID:  28121,
@@ -201,22 +198,20 @@ func TestUpdateTvdbToMal(t *testing.T) {
 					Season: 4,
 					Ep:     13,
 				},
-				malid: -1,
+				Malid: -1,
 				start: -1,
 			},
 			want: &AnimeUpdate{
-				malid: 53111,
+				Malid: 53111,
 				start: 12,
-				media: &database.Media{
-					Ep: 2,
-				},
+				ep:    2,
 			},
 		},
 		{
 			name: "Vinland Saga",
 			have: &AnimeUpdate{
-				anime: &mapping.Anime{
-					Seasons: []mapping.Seasons{
+				anime: &Anime{
+					Seasons: []Seasons{
 						{
 							Season: 1,
 							MalID:  37521,
@@ -233,33 +228,34 @@ func TestUpdateTvdbToMal(t *testing.T) {
 					Season: 2,
 					Ep:     9,
 				},
-				malid: -1,
+				Malid: -1,
 				start: -1,
 			},
 			want: &AnimeUpdate{
-				malid: 49387,
+				Malid: 49387,
 				start: 1,
-				media: &database.Media{
-					Ep: 9,
-				},
+				ep:    9,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ep := tt.have.tvdbtoMal(context.Background())
+			err := tt.have.tvdbtoMal(context.Background())
+			if err != nil {
+				t.Error(err)
+			}
 
-			if tt.have.malid != tt.want.malid {
-				t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", tt.name, tt.have.malid, tt.want.malid)
+			if tt.have.Malid != tt.want.Malid {
+				t.Errorf("\nTest: %v\nHave:malid_%v Want:malid_%v", tt.name, tt.have.Malid, tt.want.Malid)
 			}
 
 			if tt.have.start != tt.want.start {
 				t.Errorf("\nTest: %v\nHave:start_%v Want:start_%v", tt.name, tt.have.start, tt.want.start)
 			}
 
-			if ep != tt.want.media.Ep {
-				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, ep, tt.want.media.Ep)
+			if tt.have.ep != tt.want.ep {
+				t.Errorf("\nTest: %v\nHave:ep_%v Want:ep_%v", tt.name, tt.have.ep, tt.want.ep)
 			}
 		})
 	}
@@ -279,7 +275,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				"rating": 8.0,
 				"event": "media.rate",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://anidb-17494/1/7?lang=en",
@@ -288,9 +284,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: rateEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 52305),
 			},
@@ -304,7 +300,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://anidb-17290/1/9?lang=en",
@@ -313,9 +309,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 51462),
 			},
@@ -329,7 +325,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://tvdb-289882/4/22?lang=en",
@@ -338,9 +334,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -354,7 +350,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "com.plexapp.agents.hama://tvdb-316842/0/38?lang=en",
@@ -363,9 +359,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -379,7 +375,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://28805?lang=en",
@@ -387,9 +383,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -404,7 +400,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				"rating": 8.0,
 				"event": "media.rate",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://32281?lang=en",
@@ -412,9 +408,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: rateEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -428,7 +424,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				data: `{
 				"event": "media.scrobble",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://52173/1/5?lang=en",
@@ -436,9 +432,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: scrobbleEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -453,7 +449,7 @@ func TestUpdateServeHTTP(t *testing.T) {
 				"rating": 7.0,
 				"event": "media.rate",
 				"Account": {
-					"title": "TestUser"
+					"title": "TestPlexUser"
 				},
 				"Metadata": {
 					"guid": "net.fribbtastic.coding.plex.myanimelist://52305/1/7?lang=en",
@@ -461,9 +457,9 @@ func TestUpdateServeHTTP(t *testing.T) {
 				}
 			}`,
 				event: rateEvent,
-				cfg: &config.Config{
-					CustomMap: "",
-					User:      "TestUser",
+				cfg: &Config{
+					CustomMapPath: "",
+					PlexUser:      "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -474,20 +470,21 @@ func TestUpdateServeHTTP(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
+	log := zerolog.New(os.Stdout).With().Logger()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := createRequest(t, tt.have.data)
-			a := NewAnimeUpdate(tt.have.db, tt.have.cfg)
+			a := NewAnimeUpdate(tt.have.db, tt.have.cfg, &log, &Notification{})
 			a.ServeHTTP(rr, req)
 			switch tt.have.event {
 			case rateEvent:
-				if a.malresp.Score != tt.want.Score {
-					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.Score, tt.want.Score)
+				if a.Malresp.Score != tt.want.Score {
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.Malresp.Score, tt.want.Score)
 				}
 			case scrobbleEvent:
-				if a.malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
-					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.malresp.NumEpisodesWatched, tt.want.NumEpisodesWatched)
+				if a.Malresp.NumEpisodesWatched != tt.want.NumEpisodesWatched {
+					t.Errorf("Test:%v Have:%v Want:%v", tt.name, a.Malresp.NumEpisodesWatched, tt.want.NumEpisodesWatched)
 				}
 			}
 		})

@@ -1,11 +1,8 @@
-package server
+package domain
 
 import (
 	"context"
-	"log"
 	"strings"
-
-	"github.com/nstratos/go-myanimelist/mal"
 )
 
 func updateStart(ctx context.Context, s int) int {
@@ -13,10 +10,6 @@ func updateStart(ctx context.Context, s int) int {
 		return 1
 	}
 	return s
-}
-
-func logUpdate(ml *MyList, l *mal.AnimeListStatus) {
-	log.Printf("%v - {Status:%v Score:%v Episodes_Watched:%v Rewatching:%v Times_Rewatched:%v Start_Date:%v Finish_Date:%v}\n", ml.title, l.Status, l.Score, l.NumEpisodesWatched, l.IsRewatching, l.NumTimesRewatched, l.StartDate, l.FinishDate)
 }
 
 func isUserAgent(ps, user string) bool {
@@ -31,4 +24,17 @@ func isEvent(e string) bool {
 		return true
 	}
 	return false
+}
+
+func notify(a *AnimeUpdate, err error) {
+	if a.notify.Url == "" {
+		return
+	}
+
+	if err != nil {
+		a.notify.Error <- err
+		return
+	}
+
+	a.notify.Anime <- *a
 }

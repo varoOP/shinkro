@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -9,62 +8,74 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/varoOP/shinkuro/internal/domain"
 )
 
-type Config struct {
-	Dsn       string
-	Config    string
-	Addr      string
-	User      string
-	BaseUrl   string
-	CustomMap string
-	Discord   string
+type AppConfig struct {
+	Config *domain.Config
 }
 
-func NewConfig(dir string) *Config {
+func NewConfig(dir string) *AppConfig {
 	if dir == "" {
 		log.Println("path to configuration not set")
-		log.Println("Run: shinkuro help, for the help message.")
-		os.Exit(1)
+		log.Fatal("Run: shinkuro help, for the help message.")
 	}
 
-	c := &Config{}
-	c.joinPaths(dir)
+	c := &AppConfig{}
+	c.defaultConfig(dir)
 	c.checkConfig(dir)
 
 	err := c.parseConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		log.Fatal("unable to parse config.toml")
 	}
 
 	return c
 }
 
-func (c *Config) createConfig(dir string) error {
-	const config = `###Sample shinkuro config
+func (c *AppConfig) defaultConfig(dir string) {
+	c.Config = &domain.Config{
+		ConfigPath:        filepath.Join(dir, "config.toml"),
+		Host:              "127.0.0.1",
+		Port:              7011,
+		PlexUser:          "",
+		BaseUrl:           "/",
+		CustomMapPath:     "",
+		DiscordWebHookURL: "",
+		LogLevel:          "INFO",
+		LogMaxSize:        50,
+		LogMaxBackups:     3,
+	}
+}
+
+func (c *AppConfig) createConfig(dir string) error {
+	const config = `#Sample shinkuro config
 
 host = "127.0.0.1"
 
 port = 7011
 
-plex_user = "Your_Plex_account_Title_EDIT_REQUIRED" 
+plexUser = "Your_Plex_account_Title_EDIT_REQUIRED" 
 
-############################################
-#Default base_url = "/" (Optional setting) #
-############################################
-#base_url = "/shinkuro"
+#baseUrl = "/shinkuro"
 
-##########################################################
-#Default is set to the community map. (Optional setting) #
-##########################################################
-#custom_map = "Absolute path to custom-mapping.yaml"
+#customMapPath = ""
+
+#discordWebhookUrl = ""
+
+#logLevel = ""
+
+#logMaxSize = 50
+
+#logMaxBackups = 3
 `
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(c.Config)
+	f, err := os.Create(c.Config.ConfigPath)
 	if err != nil {
 		return err
 	}
@@ -78,45 +89,29 @@ plex_user = "Your_Plex_account_Title_EDIT_REQUIRED"
 	return nil
 }
 
-func (c *Config) checkConfig(dir string) {
-	if _, err := os.Stat(c.Config); err != nil {
+func (c *AppConfig) checkConfig(dir string) {
+	if _, err := os.Stat(c.Config.ConfigPath); err != nil {
 		err = c.createConfig(dir)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("unable to write shinkuro configuration file")
 		}
 
-		log.Println("shinkuro configuration not found")
-		log.Println("Example config.toml created at", c.Config)
-		log.Printf("Edit %v before running shinkuro or shinkuro malauth again!\n", c.Config)
-		os.Exit(0)
+		log.Println("shinkuro configuration file not found")
+		log.Fatalf("example config.toml created at %v", c.Config.ConfigPath)
 	}
 }
 
-func (c *Config) joinPaths(dir string) {
-	dsn := filepath.Join(dir, "shinkuro.db")
-	c.Dsn = dsn + "?_pragma=busy_timeout%3d1000"
-	c.Config = filepath.Join(dir, "config.toml")
-}
-
-func (c *Config) parseConfig() error {
+func (c *AppConfig) parseConfig() error {
 	k := koanf.New(".")
 
-	if err := k.Load(file.Provider(c.Config), toml.Parser()); err != nil {
+	if err := k.Load(file.Provider(c.Config.ConfigPath), toml.Parser()); err != nil {
 		return err
 	}
 
-	c.CustomMap = k.String("custom_map")
-
-	c.BaseUrl = "/"
-	if b := k.String("base_url"); b != "" {
-		c.BaseUrl = b
+	err := k.Unmarshal("", c.Config)
+	if err != nil {
+		return err
 	}
-
-	c.Addr = fmt.Sprintf("%v:%v", k.String("host"), k.Int("port"))
-
-	c.User = k.String("plex_user")
-
-	c.Discord = k.String("discord_webhook")
 
 	return nil
 }

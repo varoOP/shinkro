@@ -1,15 +1,15 @@
-package mapping
+package domain
 
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
-	"github.com/varoOP/shinkuro/internal/config"
 	"gopkg.in/yaml.v3"
 )
+
+const communityMapUrl = "https://github.com/varoOP/shinkuro-mapping/raw/main/tvdb-mal.yaml"
 
 type AnimeSeasonMap struct {
 	Anime []Anime `yaml:"anime"`
@@ -27,32 +27,35 @@ type Seasons struct {
 	Start  int `yaml:"start,omitempty"`
 }
 
-func NewAnimeSeasonMap(cfg *config.Config) (*AnimeSeasonMap, error) {
+func NewAnimeSeasonMap(cfg *Config) (*AnimeSeasonMap, error) {
 	s := &AnimeSeasonMap{}
 
-	if cfg.CustomMap != "" {
-		err := s.localMap(cfg.CustomMap)
+	if cfg.CustomMapPath != "" {
+		err := s.localMap(cfg.CustomMapPath)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		err := s.communityMap()
-		if err != nil {
-			return nil, err
-		}
+
+		return s, nil
+	}
+
+	err := s.communityMap()
+	if err != nil {
+		return nil, err
 	}
 
 	return s, nil
 }
 
-func (a *Anime) IsMultiSeason(ctx context.Context) bool {
-	for i := 0; i < len(a.Seasons)-1; i++ {
-		if a.Seasons[i].MalID == a.Seasons[i+1].MalID {
-			return true
+func (a *Anime) IsMultiSeason(ctx context.Context, malid int) bool {
+	var count int
+	for _, s := range a.Seasons {
+		if s.MalID == malid {
+			count++
 		}
 	}
 
-	return false
+	return count > 1
 }
 
 func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
@@ -69,7 +72,7 @@ func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
 }
 
 func (s *AnimeSeasonMap) communityMap() error {
-	resp, err := http.Get("https://github.com/varoOP/shinkuro-mapping/raw/main/tvdb-mal.yaml")
+	resp, err := http.Get(communityMapUrl)
 	if err != nil {
 		return err
 	}
@@ -119,23 +122,23 @@ func synonymExists(s []string, title string) bool {
 	return false
 }
 
-func ChecklocalMap(path string) {
-
+func ChecklocalMap(path string) error {
 	s := &AnimeSeasonMap{}
-
 	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal("error opening custom map", err)
+		return err
 	}
-	defer f.Close()
 
+	defer f.Close()
 	body, err := io.ReadAll(f)
 	if err != nil {
-		log.Fatal("error reading custom map", err)
+		return err
 	}
 
 	err = yaml.Unmarshal(body, s)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }

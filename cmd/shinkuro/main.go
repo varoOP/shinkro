@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -17,9 +16,10 @@ import (
 
 	"github.com/varoOP/shinkuro/internal/config"
 	"github.com/varoOP/shinkuro/internal/database"
+	"github.com/varoOP/shinkuro/internal/domain"
 	"github.com/varoOP/shinkuro/internal/logger"
 	"github.com/varoOP/shinkuro/internal/malauth"
-	"github.com/varoOP/shinkuro/internal/mapping"
+	"github.com/varoOP/shinkuro/internal/notification"
 	"github.com/varoOP/shinkuro/internal/server"
 )
 
@@ -43,56 +43,55 @@ func main() {
 
 	d, err := homedir.Dir()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprint(flag.CommandLine.Output(), "FATAL: unable to get home directory")
+		os.Exit(1)
 	}
 
-	d = filepath.Join(d, ".config/shinkuro")
+	d = filepath.Join(d, ".config", "shinkuro")
 	pflag.StringVar(&configPath, "config", d, "path to configuration")
 	pflag.Parse()
 	configPath, err = homedir.Expand(configPath)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprint(flag.CommandLine.Output(), "FATAL: unable to expand configuration path")
+		os.Exit(1)
 	}
 
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
-		var (
-			cfg = config.NewConfig(configPath)
-			db  = database.NewDB(cfg.Dsn)
-		)
+		cfg := config.NewConfig(configPath).Config
+		log := logger.NewLogger(configPath, cfg)
+		db := database.NewDB(configPath, log)
 
-		l := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
-
-		if cfg.CustomMap != "" {
-			mapping.ChecklocalMap(cfg.CustomMap)
+		if cfg.CustomMapPath != "" {
+			err := domain.ChecklocalMap(cfg.CustomMapPath)
+			if err != nil {
+				log.Fatal().Err(err).Msg("unable to load local custom mapping")
+			}
 		}
 
+		db.CreateDB()
 		db.UpdateAnime()
 
 		c := cron.New()
 		c.AddFunc("0 0 * * *", func() { db.UpdateAnime() })
 		c.Start()
 
-		a := server.NewAnimeUpdate(db, cfg)
-
-		go server.StartHttp(cfg.Addr, cfg.BaseUrl, a)
+		n := notification.NewAppNotification(cfg.DiscordWebHookURL, log)
+		go n.ListenforNotification()
+		s := server.NewServer(cfg, n.Notification, db, log)
+		go s.Start()
 
 		sigchnl := make(chan os.Signal, 1)
 		signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 		sig := <-sigchnl
 
-		log.Println("Caught", sig, "shutting down")
 		db.Close()
-		l.Close()
-		os.Exit(1)
+		log.Fatal().Msgf("caught signal %v, shutting down", sig)
 
 	case "malauth":
-		var (
-			cfg = config.NewConfig(configPath)
-			db  = database.NewDB(cfg.Dsn)
-		)
-
-		l := logger.NewLogger(filepath.Join(configPath, "shinkuro.log"))
+		cfg := config.NewConfig(configPath).Config
+		log := logger.NewLogger(configPath, cfg)
+		db := database.NewDB(configPath, log)
 
 		db.CreateDB()
 		malauth.NewMalAuth(db)
@@ -104,12 +103,10 @@ func main() {
 		if err != nil {
 			fmt.Fprintln(flag.CommandLine.Output(), "Unabled to load user info from MAL. Retry MAL authentication.")
 			db.Close()
-			l.Close()
 			os.Exit(1)
 		}
 
 		db.Close()
-		l.Close()
 		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! Run shinkuro now.")
 
 	case "version":

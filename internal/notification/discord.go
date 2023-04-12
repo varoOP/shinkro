@@ -2,10 +2,16 @@ package notification
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 
+	"github.com/rs/zerolog"
+	"github.com/varoOP/shinkuro/internal/domain"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -13,11 +19,13 @@ import (
 const (
 	ColorCompleted = 40704
 	ColorWatching  = 49087
+	ColorError     = 12517376
 )
 
 type Discord struct {
 	Webhook DiscordWebhook
 	Url     string
+	log     *zerolog.Logger
 }
 
 type DiscordWebhook struct {
@@ -25,11 +33,12 @@ type DiscordWebhook struct {
 }
 
 type Embeds struct {
-	Title  string   `json:"title"`
-	URL    string   `json:"url"`
-	Color  int      `json:"color"`
-	Fields []Fields `json:"fields"`
-	Image  Image    `json:"image"`
+	Title       string   `json:"title"`
+	URL         string   `json:"url"`
+	Color       int      `json:"color"`
+	Description string   `json:"description"`
+	Fields      []Fields `json:"fields"`
+	Image       Image    `json:"image"`
 }
 
 type Fields struct {
@@ -42,47 +51,81 @@ type Image struct {
 	URL string `json:"url"`
 }
 
-func NewDicord(url string) *Discord {
-	return &Discord{
+func NewDicord(url string, n *domain.NotificationPayload, log *zerolog.Logger) *Discord {
+	d := &Discord{
 		Url: url,
+		log: log,
 	}
+
+	d.buildWebhook(n)
+	return d
 }
 
-func (d *Discord) SendNotification(content map[string]string) error {
-	d.buildWebhook(content)
+func (d *Discord) SendNotification(ctx context.Context) error {
 	p, err := json.Marshal(d.Webhook)
 	if err != nil {
 		return err
 	}
 
-	_, err = http.Post(d.Url, "application/json", bytes.NewBuffer(p))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.Url, bytes.NewBuffer(p))
 	if err != nil {
 		return err
 	}
 
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		d.log.Trace().RawJSON("discordResponse", body).Msg("discord response dump")
+		return errors.New("something went wrong with sending discord notification")
+	}
+
+	d.log.Trace().Msg("sent discord notification")
 	return nil
 }
 
-func (d *Discord) buildWebhook(content map[string]string) {
+func (d *Discord) buildWebhook(n *domain.NotificationPayload) {
 	var (
-		title    = content["title"]
-		url      = content["url"]
-		status   = content["status"]
-		imageUrl = content["image_url"]
+		title    = n.Title
+		url      = n.Url
+		status   string
+		imageUrl = n.ImageUrl
+		color    int
+		fields   []Fields
 	)
 
-	color := ColorWatching
-	if status == "completed" {
+	switch status = n.Status; status {
+	case "watching":
+		color = ColorWatching
+	case "completed":
 		color = ColorCompleted
+	case "":
+		color = ColorError
+	}
+
+	if n.Message == "" {
+		fields = buildFields(n)
 	}
 
 	d.Webhook = DiscordWebhook{
 		Embeds: []Embeds{
 			{
-				Title:  title,
-				URL:    url,
-				Color:  color,
-				Fields: buildFields(content),
+				Title:       title,
+				URL:         url,
+				Color:       color,
+				Description: n.Message,
+				Fields:      fields,
 				Image: Image{
 					URL: imageUrl,
 				},
@@ -91,24 +134,23 @@ func (d *Discord) buildWebhook(content map[string]string) {
 	}
 }
 
-func buildFields(content map[string]string) []Fields {
+func buildFields(n *domain.NotificationPayload) []Fields {
 	var (
-		event          = content["event"]
-		status         = content["status"]
-		score          = content["score"]
-		startDate      = content["start_date"]
-		finishDate     = content["finish_date"]
-		totalEps       = content["total_eps"]
-		watchedEps     = content["watched_eps"]
-		timesRewatched = content["times_rewatched"]
+		event          = n.Event
+		status         = n.Status
+		score          = strconv.Itoa(n.Score)
+		startDate      = n.StartDate
+		finishDate     = n.FinishDate
+		totalEps       = strconv.Itoa(n.TotalEps)
+		watchedEps     = strconv.Itoa(n.WatchedEps)
+		timesRewatched = strconv.Itoa(n.TimesRewatched)
 		f              []Fields
 	)
 
-	if event == "media.rate" {
+	switch event {
+	case "media.rate":
 		event = "Update Score"
-	}
-
-	if event == "media.scrobble" {
+	case "media.scrobble":
 		event = "Update Status"
 	}
 

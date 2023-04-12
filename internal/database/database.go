@@ -46,7 +46,8 @@ func (db *DB) CreateDB() {
 		anidb_id INTEGER PRIMARY KEY,
 		title TEXT,
 		mal_id INTEGER,
-		tvdb_id INTEGER
+		tvdb_id INTEGER,
+		tmdb_id INTEGER
 	);
 	CREATE TABLE IF NOT EXISTS malauth (
 		client_id TEXT PRIMARY KEY,
@@ -63,16 +64,19 @@ func (db *DB) UpdateAnime() {
 	db.check(db.checkDBForCreds())
 	db.log.Trace().Msg("updating anime in database")
 
-	m := manami.NewManami()
-	al := animelist.NewAnimeList()
+	m, err := manami.NewManami()
+	db.check(err)
+	al, err := animelist.NewAnimeList()
+	db.check(err)
 	am := makeAnimeMap(m, al)
 
 	const addAnime = `INSERT OR REPLACE INTO anime (
 		anidb_id,
 		title,
 		mal_id,
-		tvdb_id
-	) values (?, ?, ?, ?)`
+		tvdb_id,
+		tmdb_id
+	) values (?, ?, ?, ?, ?)`
 
 	tx, err := db.Handler.Begin()
 	db.check(err)
@@ -85,7 +89,7 @@ func (db *DB) UpdateAnime() {
 	defer stmt.Close()
 
 	for _, anime := range am.Anime {
-		_, err := stmt.Exec(anime.AnidbID, anime.Title, anime.MalID, anime.TvdbID)
+		_, err := stmt.Exec(anime.AnidbID, anime.Title, anime.MalID, anime.TvdbID, anime.TmdbID)
 		db.check(err)
 	}
 

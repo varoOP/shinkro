@@ -10,6 +10,7 @@ type Anime struct {
 	Title   string
 	MalID   int
 	TvdbID  int
+	TmdbID  int
 }
 
 type AnimeMap struct {
@@ -18,14 +19,13 @@ type AnimeMap struct {
 
 func makeAnimeMap(m *manami.Manami, al *animelist.AnimeList) *AnimeMap {
 	a := &AnimeMap{}
-	anidbtotvdb := al.AnidDbTvDbmap()
+	anidbtotvmdb := al.AnidDbTvmDbmap()
 	for _, v := range m.Data {
-		malID := v.SortToIDs(`^https://myanimelist\.net/anime/([0-9]+)`)
-		anidbID := v.SortToIDs(`^https://anidb\.net/anime/([0-9]+)`)
-		tvdbID := al.GetTvdbID(anidbID, anidbtotvdb)
-		if anidbID != 0 {
+		malID, anidbID := v.GetID(`^https://myanimelist\.net/anime/([0-9]+)`), v.GetID(`^https://anidb\.net/anime/([0-9]+)`)
+		tvdbID, tmdbID := al.GetTvmdbID(anidbID, anidbtotvmdb)
+		if anidbID >= 0 {
 			a.Anime = append(a.Anime, Anime{
-				anidbID, v.Title, malID, tvdbID,
+				anidbID, v.Title, malID, tvdbID, tmdbID,
 			})
 		}
 	}

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 
 	"github.com/rs/zerolog"
@@ -59,7 +60,7 @@ func (db *DB) CreateDB() {
 
 func (db *DB) UpdateAnime() {
 
-	db.check(db.checkDB())
+	db.check(db.checkDBForCreds())
 	db.log.Trace().Msg("updating anime in database")
 
 	m := manami.NewManami()
@@ -130,7 +131,7 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	row := db.Handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
-		db.check(err)
+		db.log.Fatal().Str("possible fix", "run the command: shinkuro malauth").Err(errors.New("unable to get mal credentials")).Msg("database operation failed")
 	}
 
 	return map[string]string{
@@ -140,12 +141,8 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	}
 }
 
-func (db *DB) checkDB() error {
-	err := db.Handler.Ping()
-	if err != nil {
-		return err
-	}
-
+func (db *DB) checkDBForCreds() error {
+	db.GetMalCreds(context.Background())
 	return nil
 }
 
@@ -155,6 +152,6 @@ func (db *DB) Close() {
 
 func (db *DB) check(err error) {
 	if err != nil {
-		db.log.Panic().Err(err).Msg("database operation failed")
+		db.log.Fatal().Err(err).Msg("database operation failed")
 	}
 }

@@ -56,12 +56,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg := config.NewConfig(configPath).Config
-	log := logger.NewLogger(configPath, cfg)
-	db := database.NewDB(configPath, log)
-
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
+		cfg := config.NewConfig(configPath).Config
+		log := logger.NewLogger(configPath, cfg)
+		db := database.NewDB(configPath, log)
+
 		if cfg.CustomMapPath != "" {
 			err := domain.ChecklocalMap(cfg.CustomMapPath)
 			if err != nil {
@@ -69,6 +69,7 @@ func main() {
 			}
 		}
 
+		db.CreateDB()
 		db.UpdateAnime()
 
 		c := cron.New()
@@ -88,6 +89,10 @@ func main() {
 		log.Fatal().Msgf("caught signal %v, shutting down", sig)
 
 	case "malauth":
+		cfg := config.NewConfig(configPath).Config
+		log := logger.NewLogger(configPath, cfg)
+		db := database.NewDB(configPath, log)
+
 		db.CreateDB()
 		malauth.NewMalAuth(db)
 		fmt.Fprintf(flag.CommandLine.Output(), "MAL API credentials saved. Testing client..\n")

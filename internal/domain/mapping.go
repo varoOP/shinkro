@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -115,7 +116,7 @@ func (s *AnimeSeasonMap) localMap(path string) error {
 func synonymExists(s []string, title string) bool {
 
 	for _, v := range s {
-		if v == title {
+		if strings.EqualFold(v, title) {
 			return true
 		}
 	}

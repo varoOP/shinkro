@@ -214,7 +214,7 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 		options = append(options, mal.StartDate(time.Now().Local()))
 	}
 
-	if a.ep < a.MyList.EpNum && a.ep >= 1 {
+	if (a.ep < a.MyList.EpNum || a.MyList.EpNum == 0) && a.ep >= 1 {
 		a.MyList.Status = mal.AnimeStatusWatching
 	}
 

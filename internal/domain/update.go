@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
@@ -42,6 +41,13 @@ type MyList struct {
 	Title      string
 	Picture    string
 }
+
+type Key string
+
+const (
+	PlexPayload Key = "plexPayload"
+	MediaTitle  Key = "mediaTitle"
+)
 
 func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notification) *AnimeUpdate {
 	return &AnimeUpdate{
@@ -164,7 +170,6 @@ func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
 }
 
 func (a *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
-
 	options, complete, err := a.newOptions(ctx)
 	if err != nil {
 		return err
@@ -184,7 +189,6 @@ func (a *AnimeUpdate) updateWatchStatus(ctx context.Context) error {
 }
 
 func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListStatusOption, bool, error) {
-
 	err := a.checkAnime(ctx)
 	if err != nil {
 		return nil, false, err
@@ -224,7 +228,6 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 }
 
 func (a *AnimeUpdate) checkAnime(ctx context.Context) error {
-
 	aa, _, err := a.client.Anime.Details(ctx, a.Malid, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
 	if err != nil {
 		return err
@@ -287,36 +290,10 @@ func (a *AnimeUpdate) getStartID(ctx context.Context) (bool, error) {
 }
 
 func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(32 << 20)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		a.log.Trace().Msg("received bad request")
-		return
-	}
-
-	pl := r.PostForm["payload"]
-	ps := strings.Join(pl, "")
-	a.log.Trace().Str("plexPayload", ps).Msg("received plex payload")
-
-	if !isUserAgent(ps, a.config.PlexUser) {
-		a.log.Debug().Msg("plex user or media's metadata agent did not match")
-		return
-	}
-
-	p, err := plex.NewPlexWebhook(ps)
-	if err != nil {
-		a.log.Error().Err(err).Msg("unable to unmarshal plex payload")
-		return
-	}
-
-	if !isEvent(p.Event) {
-		a.log.Trace().Str("event", p.Event).Msg("only accepting media.scrobble and media.rate events")
-		return
-	}
-
+	var err error
+	p := r.Context().Value(PlexPayload).(*plex.PlexWebhook)
 	a.Event = p.Event
 	a.rating = p.Rating
-
 	a.mapping, err = NewAnimeSeasonMap(a.config)
 	if err != nil {
 		a.log.Error().Err(err).Msg("unable to load custom mapping")
@@ -324,8 +301,7 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.inMap, a.anime = a.mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
-
-	a.media, err = database.NewMedia(p.Metadata.GUID, p.Metadata.Type, p.Metadata.GrandparentTitle)
+	a.media, err = database.NewMedia(p.Metadata.GUID.GUID, p.Metadata.Type, r.Context().Value(MediaTitle).(string))
 	if err != nil {
 		a.log.Error().Err(err).Msg("unable to parse media")
 		return
@@ -347,5 +323,5 @@ func (a *AnimeUpdate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Str("finishDate", a.Malresp.FinishDate).
 		Msg("updated myanimelist successfully")
 
-	w.Write([]byte("Success"))
+	w.WriteHeader(http.StatusNoContent)
 }

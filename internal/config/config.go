@@ -40,6 +40,7 @@ func (c *AppConfig) defaultConfig(dir string) {
 		Host:              "127.0.0.1",
 		Port:              7011,
 		PlexUser:          "",
+		AnimeLibraries:    []string{""},
 		BaseUrl:           "/",
 		CustomMapPath:     "",
 		DiscordWebHookURL: "",
@@ -56,7 +57,9 @@ host = "127.0.0.1"
 
 port = 7011
 
-plexUser = "Your_Plex_account_Title_EDIT_REQUIRED" 
+plexUser = "Your_Plex_account_Title_EDIT_REQUIRED"
+
+animeLibraries = ["Your", "Anime", "Library", "Names", "Edit", "This"]
 
 #baseUrl = "/shinkuro"
 

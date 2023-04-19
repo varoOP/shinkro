@@ -38,8 +38,7 @@ func NewRouter(cfg *domain.Config, db *database.DB, n *domain.Notification, log 
 		r.Route("/plex", func(r chi.Router) {
 			r.Use(ParsePlexPayload)
 			r.Use(CheckPlexPayload(cfg))
-			a := domain.NewAnimeUpdate(db, cfg, &log, n)
-			r.Post("/", a.ServeHTTP)
+			r.Post("/", Plex(db, cfg, &log, n))
 		})
 	})
 

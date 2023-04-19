@@ -35,3 +35,16 @@ func mediaType(p *plex.PlexWebhook) (bool, string) {
 
 	return false, ""
 }
+
+func notify(a *domain.AnimeUpdate, err error) {
+	if a.Notify.Url == "" {
+		return
+	}
+
+	if err != nil {
+		a.Notify.Error <- err
+		return
+	}
+
+	a.Notify.Anime <- *a
+}

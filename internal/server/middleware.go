@@ -12,6 +12,13 @@ import (
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
 
+type Key string
+
+const (
+	PlexPayload Key = "plexPayload"
+	MediaTitle  Key = "mediaTitle"
+)
+
 func ParsePlexPayload(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		log := hlog.FromRequest(r)
@@ -30,7 +37,7 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), domain.PlexPayload, payload)
+		ctx := context.WithValue(r.Context(), PlexPayload, payload)
 		log.Debug().Str("parsedPlexPayload", fmt.Sprintf("%+v", payload)).Msg("")
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
@@ -42,7 +49,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			log := hlog.FromRequest(r)
-			p := r.Context().Value(domain.PlexPayload).(*plex.PlexWebhook)
+			p := r.Context().Value(PlexPayload).(*plex.PlexWebhook)
 			if !isPlexUser(p, cfg) {
 				log.Debug().Err(errors.New("unauthorized plex user")).
 					Str("plexUserReceived", p.Account.Title).
@@ -89,7 +96,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), domain.MediaTitle, title)
+			ctx := context.WithValue(r.Context(), MediaTitle, title)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 		return http.HandlerFunc(fn)

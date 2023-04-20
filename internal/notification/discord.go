@@ -157,13 +157,13 @@ func buildFields(n *domain.NotificationPayload) []Fields {
 	f = append(f, Fields{
 		Name:   "Event",
 		Value:  event,
-		Inline: true,
+		Inline: false,
 	})
 
 	f = append(f, Fields{
 		Name:   "Status",
 		Value:  cases.Title(language.Und).String(status),
-		Inline: true,
+		Inline: false,
 	})
 
 	if totalEps == "0" {
@@ -173,7 +173,7 @@ func buildFields(n *domain.NotificationPayload) []Fields {
 	f = append(f, Fields{
 		Name:   "Episodes Seen",
 		Value:  fmt.Sprintf("%v / %v", watchedEps, totalEps),
-		Inline: true,
+		Inline: false,
 	})
 
 	if score == "0" {
@@ -185,14 +185,14 @@ func buildFields(n *domain.NotificationPayload) []Fields {
 	f = append(f, Fields{
 		Name:   "Score",
 		Value:  score,
-		Inline: true,
+		Inline: false,
 	})
 
 	if startDate != "" {
 		f = append(f, Fields{
 			Name:   "Start Date",
 			Value:  startDate,
-			Inline: true,
+			Inline: false,
 		})
 	}
 
@@ -200,7 +200,7 @@ func buildFields(n *domain.NotificationPayload) []Fields {
 		f = append(f, Fields{
 			Name:   "Finish Date",
 			Value:  finishDate,
-			Inline: true,
+			Inline: false,
 		})
 	}
 

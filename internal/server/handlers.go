@@ -11,26 +11,11 @@ import (
 
 func Plex(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.Notification) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		a := domain.NewAnimeUpdate(db, cfg, log, n)
 		var err error
-		p := r.Context().Value(PlexPayload).(*plex.PlexWebhook)
-		a.Event = p.Event
-		a.Rating = p.Rating
-		a.Mapping, err = domain.NewAnimeSeasonMap(a.Config)
-		if err != nil {
-			a.Log.Error().Err(err).Msg("unable to load custom mapping")
-			return
-		}
-
-		a.InMap, a.Anime = a.Mapping.CheckAnimeMap(p.Metadata.GrandparentTitle)
-		a.Media, err = database.NewMedia(p.Metadata.GUID.GUID, p.Metadata.Type, r.Context().Value(MediaTitle).(string))
-		if err != nil {
-			a.Log.Error().Err(err).Msg("unable to parse media")
-			return
-		}
-
+		a := domain.NewAnimeUpdate(db, cfg, log, n)
+		a.Plex = r.Context().Value(domain.PlexPayload).(*plex.PlexWebhook)
 		err = a.SendUpdate(r.Context())
-		if err.Error() == "complete" {
+		if err != nil && err.Error() == "complete" {
 			return
 		}
 

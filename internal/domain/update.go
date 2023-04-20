@@ -10,21 +10,21 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkuro/internal/database"
 	"github.com/varoOP/shinkuro/internal/malauth"
+	"github.com/varoOP/shinkuro/pkg/plex"
 )
 
 type AnimeUpdate struct {
 	Client  *mal.Client
 	DB      *database.DB
 	Config  *Config
+	Plex    *plex.PlexWebhook
 	Anime   *Anime
 	Mapping *AnimeSeasonMap
-	Event   string
 	InMap   bool
 	Media   *database.Media
 	Malid   int
 	Start   int
 	Ep      int
-	Rating  float32
 	MyList  *MyList
 	Malresp *mal.AnimeListStatus
 	Log     zerolog.Logger
@@ -40,6 +40,13 @@ type MyList struct {
 	Picture    string
 }
 
+type Key string
+
+const (
+	PlexPayload Key = "plexPayload"
+	MediaTitle  Key = "mediaTitle"
+)
+
 func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notification) AnimeUpdate {
 	return AnimeUpdate{
 		DB:     db,
@@ -54,7 +61,15 @@ func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notifi
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	c := malauth.NewOauth2Client(ctx, a.DB)
 	a.Client = mal.NewClient(c)
-	switch a.Event {
+	if err := a.getMapping(ctx); err != nil {
+		return err
+	}
+
+	if err := a.parseMedia(ctx); err != nil {
+		return err
+	}
+
+	switch a.Plex.Event {
 	case "media.scrobble":
 		err := a.processScrobble(ctx)
 		if err != nil {
@@ -248,7 +263,7 @@ func (a *AnimeUpdate) updateRating(ctx context.Context) error {
 		return err
 	}
 
-	l, _, err := a.Client.Anime.UpdateMyListStatus(ctx, a.Malid, mal.Score(a.Rating))
+	l, _, err := a.Client.Anime.UpdateMyListStatus(ctx, a.Malid, mal.Score(a.Plex.Rating))
 	if err != nil {
 		return err
 	}
@@ -279,4 +294,25 @@ func (a *AnimeUpdate) getStartID(ctx context.Context) (bool, error) {
 	}
 
 	return isMultiSeason, nil
+}
+
+func (a *AnimeUpdate) getMapping(ctx context.Context) error {
+	var err error
+	a.Mapping, err = NewAnimeSeasonMap(a.Config)
+	if err != nil {
+		return errors.New("unable to load custom mapping")
+	}
+
+	a.InMap, a.Anime = a.Mapping.CheckAnimeMap(a.Plex.Metadata.GrandparentTitle)
+	return nil
+}
+
+func (a *AnimeUpdate) parseMedia(ctx context.Context) error {
+	var err error
+	a.Media, err = database.NewMedia(a.Plex.Metadata.GUID.GUID, a.Plex.Metadata.Type, ctx.Value(MediaTitle).(string))
+	if err != nil {
+		return errors.New("unable to parse media")
+	}
+
+	return nil
 }

@@ -2,10 +2,11 @@ package plex
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type PlexWebhook struct {
-	Rating  float32 `json:"rating,omitempty"`
+	Rating  float32 `json:"rating"`
 	Event   string  `json:"event"`
 	User    bool    `json:"user"`
 	Owner   bool    `json:"owner"`
@@ -25,59 +26,39 @@ type PlexWebhook struct {
 		UUID          string `json:"uuid"`
 	} `json:"Player"`
 	Metadata struct {
-		LibrarySectionType    string  `json:"librarySectionType,omitempty"`
-		RatingKey             string  `json:"ratingKey,omitempty"`
-		Key                   string  `json:"key,omitempty"`
-		SkipParent            bool    `json:"skipParent,omitempty"`
-		ParentRatingKey       string  `json:"parentRatingKey,omitempty"`
-		GrandparentRatingKey  string  `json:"grandparentRatingKey,omitempty"`
-		GUID                  string  `json:"guid,omitempty"`
-		ParentGUID            string  `json:"parentGuid,omitempty"`
-		GrandparentGUID       string  `json:"grandparentGuid,omitempty"`
-		Type                  string  `json:"type,omitempty"`
-		Title                 string  `json:"title,omitempty"`
-		GrandparentKey        string  `json:"grandparentKey,omitempty"`
-		ParentKey             string  `json:"parentKey,omitempty"`
-		LibrarySectionTitle   string  `json:"librarySectionTitle,omitempty"`
-		LibrarySectionID      int     `json:"librarySectionID,omitempty"`
-		LibrarySectionKey     string  `json:"librarySectionKey,omitempty"`
-		GrandparentTitle      string  `json:"grandparentTitle,omitempty"`
-		ParentTitle           string  `json:"parentTitle,omitempty"`
-		ContentRating         string  `json:"contentRating,omitempty"`
-		Summary               string  `json:"summary,omitempty"`
-		Index                 int     `json:"index,omitempty"`
-		ParentIndex           int     `json:"parentIndex,omitempty"`
-		Rating                float64 `json:"rating,omitempty"`
-		Year                  int     `json:"year,omitempty"`
-		Thumb                 string  `json:"thumb,omitempty"`
-		Art                   string  `json:"art,omitempty"`
-		GrandparentThumb      string  `json:"grandparentThumb,omitempty"`
-		GrandparentArt        string  `json:"grandparentArt,omitempty"`
-		OriginallyAvailableAt string  `json:"originallyAvailableAt,omitempty"`
-		AddedAt               int     `json:"addedAt,omitempty"`
-		UpdatedAt             int     `json:"updatedAt,omitempty"`
-		Director              []struct {
-			ID     int    `json:"id,omitempty"`
-			Filter string `json:"filter,omitempty"`
-			Tag    string `json:"tag,omitempty"`
-		} `json:"Director,omitempty"`
-		Writer []struct {
-			ID     int    `json:"id,omitempty"`
-			Filter string `json:"filter,omitempty"`
-			Tag    string `json:"tag,omitempty"`
-		} `json:"Writer,omitempty"`
-		Producer []struct {
-			ID     int    `json:"id,omitempty"`
-			Filter string `json:"filter,omitempty"`
-			Tag    string `json:"tag,omitempty"`
-		} `json:"Producer,omitempty"`
-	} `json:"Metadata,omitempty"`
+		GUID                GUID   `json:"guid"`
+		Type                string `json:"type"`
+		Title               string `json:"title"`
+		GrandparentTitle    string `json:"grandparentTitle"`
+		LibrarySectionTitle string `json:"librarySectionTitle"`
+	} `json:"Metadata"`
 }
 
-func NewPlexWebhook(payload string) (*PlexWebhook, error) {
-	p := &PlexWebhook{}
+type GUID struct {
+	GUIDS []struct {
+		ID string `json:"id"`
+	}
 
-	err := json.Unmarshal([]byte(payload), p)
+	GUID string
+}
+
+func (g *GUID) UnmarshalJSON(data []byte) error {
+	// Try to unmarshal as a string first
+	if err := json.Unmarshal(data, &g.GUID); err == nil {
+		return nil
+	}
+
+	// If it's not a string, try to unmarshal as an anonymous slice of struct
+	if err := json.Unmarshal(data, &g.GUIDS); err == nil {
+		return nil
+	}
+
+	return fmt.Errorf("guid: cannot unmarshal %q", data)
+}
+
+func NewPlexWebhook(payload []byte) (*PlexWebhook, error) {
+	p := &PlexWebhook{}
+	err := json.Unmarshal(payload, p)
 	if err != nil {
 		return nil, err
 	}

@@ -28,7 +28,7 @@ func NewAppNotification(url string, log *zerolog.Logger) *AppNotification {
 func NewNotificaitonPayload(a *domain.AnimeUpdate, err error) *domain.NotificationPayload {
 	if a != nil {
 		return &domain.NotificationPayload{
-			Event:          a.Event,
+			Event:          a.Plex.Event,
 			Title:          a.MyList.Title,
 			Url:            fmt.Sprintf("https://myanimelist.net/anime/%v", a.Malid),
 			Status:         string(a.Malresp.Status),

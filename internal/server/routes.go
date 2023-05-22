@@ -36,6 +36,7 @@ func NewRouter(cfg *domain.Config, db *database.DB, n *domain.Notification, log 
 		})
 
 		r.Route("/plex", func(r chi.Router) {
+			r.Use(Auth(cfg))
 			r.Use(ParsePlexPayload)
 			r.Use(CheckPlexPayload(cfg))
 			r.Post("/", Plex(db, cfg, &log, n))

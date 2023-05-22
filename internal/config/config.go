@@ -1,7 +1,9 @@
 package config
 
 import (
+	"crypto/rand"
 	"log"
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -41,6 +43,7 @@ func (c *AppConfig) defaultConfig(dir string) {
 		Port:              7011,
 		PlexUser:          "",
 		AnimeLibraries:    []string{""},
+		ApiKey:            genApikey(),
 		BaseUrl:           "/",
 		CustomMapPath:     "",
 		DiscordWebHookURL: "",
@@ -51,7 +54,7 @@ func (c *AppConfig) defaultConfig(dir string) {
 }
 
 func (c *AppConfig) createConfig(dir string) error {
-	const config = `#Sample shinkuro config
+	var config = `#Sample shinkuro config
 
 host = "127.0.0.1"
 
@@ -60,6 +63,8 @@ port = 7011
 plexUser = "Your_Plex_account_Title_EDIT_REQUIRED"
 
 animeLibraries = ["Your", "Anime", "Library", "Names", "Edit", "This"]
+
+apiKey = "` + c.Config.ApiKey + `"
 
 #baseUrl = "/shinkuro"
 
@@ -117,4 +122,19 @@ func (c *AppConfig) parseConfig() error {
 	}
 
 	return nil
+}
+
+func genApikey() string {
+	allowed := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
+	b := make([]rune, 32)
+	for i := range b {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(allowed))))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		b[i] = allowed[n.Int64()]
+	}
+
+	return string(b)
 }

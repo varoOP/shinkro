@@ -48,3 +48,17 @@ func notify(a *domain.AnimeUpdate, err error) {
 
 	a.Notify.Anime <- *a
 }
+
+func isAuthorized(apiKey string, in map[string][]string) bool {
+	for key, v := range in {
+		if key == "apiKey" || key == "Shinkro-Api-Key" {
+			for _, vv := range v {
+				if vv == apiKey {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}

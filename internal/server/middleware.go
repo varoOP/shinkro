@@ -12,6 +12,24 @@ import (
 	"github.com/varoOP/shinkuro/pkg/plex"
 )
 
+func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			log := hlog.FromRequest(r)
+			if !isAuthorized(cfg.ApiKey, r.URL.Query()) && !isAuthorized(cfg.ApiKey, r.Header) {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				log.Error().Err(errors.New("ApiKey invalid")).Msg("")
+				log.Debug().Str("query", fmt.Sprintf("%v", r.URL.Query())).Str("headers", fmt.Sprintf("%v", r.Header)).Msg("")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
 func ParsePlexPayload(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		log := hlog.FromRequest(r)

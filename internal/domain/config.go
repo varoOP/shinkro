@@ -6,6 +6,7 @@ type Config struct {
 	Port              int      `koanf:"port"`
 	PlexUser          string   `koanf:"plexUser"`
 	AnimeLibraries    []string `koanf:"animeLibraries"`
+	ApiKey            string   `koanf:"apiKey"`
 	BaseUrl           string   `koanf:"baseUrl"`
 	CustomMapPath     string   `koanf:"customMapPath"`
 	DiscordWebHookURL string   `koanf:"discordWebhookUrl"`

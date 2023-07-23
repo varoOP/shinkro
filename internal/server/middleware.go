@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/hlog"
-	"github.com/varoOP/shinkuro/internal/domain"
-	"github.com/varoOP/shinkuro/pkg/plex"
+	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/plex"
 )
 
 func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {

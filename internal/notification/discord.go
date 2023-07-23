@@ -11,7 +11,7 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/internal/domain"
+	"github.com/varoOP/shinkro/internal/domain"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

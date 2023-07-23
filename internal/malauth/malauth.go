@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/varoOP/shinkuro/internal/database"
+	"github.com/varoOP/shinkro/internal/database"
 	"golang.org/x/oauth2"
 )
 

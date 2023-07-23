@@ -9,8 +9,8 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
-	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/domain"
+	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/domain"
 )
 
 func NewRouter(cfg *domain.Config, db *database.DB, n *domain.Notification, log zerolog.Logger) chi.Router {

@@ -8,9 +8,9 @@ import (
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/malauth"
-	"github.com/varoOP/shinkuro/pkg/plex"
+	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/malauth"
+	"github.com/varoOP/shinkro/pkg/plex"
 )
 
 type AnimeUpdate struct {

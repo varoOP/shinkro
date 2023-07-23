@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/internal/domain"
+	"github.com/varoOP/shinkro/internal/domain"
 )
 
 type AppNotification struct {

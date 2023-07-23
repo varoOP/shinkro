@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/pkg/animelist"
-	"github.com/varoOP/shinkuro/pkg/manami"
 	_ "modernc.org/sqlite"
 )
 
@@ -43,11 +41,14 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 
 func (db *DB) CreateDB() {
 	const scheme = `CREATE TABLE IF NOT EXISTS anime (
-		anidb_id INTEGER PRIMARY KEY,
+		mal_id INTEGER PRIMARY KEY,
 		title TEXT,
-		mal_id INTEGER,
+		en_title TEXT,
+		anidb_id INTEGER,
 		tvdb_id INTEGER,
-		tmdb_id INTEGER
+		tmdb_id INTEGER,
+		type TEXT,
+		releaseDate TEXT
 	);
 	CREATE TABLE IF NOT EXISTS malauth (
 		client_id TEXT PRIMARY KEY,
@@ -63,20 +64,21 @@ func (db *DB) UpdateAnime() {
 
 	db.check(db.checkDBForCreds())
 	db.log.Trace().Msg("updating anime in database")
-
-	m, err := manami.NewManami()
-	db.check(err)
-	al, err := animelist.NewAnimeList()
-	db.check(err)
-	am := makeAnimeMap(m, al)
+	a, err := getAnime()
+	if err != nil {
+		db.log.Error().Err(err).Msg("unable to update anime in database")
+	}
 
 	const addAnime = `INSERT OR REPLACE INTO anime (
-		anidb_id,
-		title,
 		mal_id,
+		title,
+		en_title,
+		anidb_id,
 		tvdb_id,
-		tmdb_id
-	) values (?, ?, ?, ?, ?)`
+		tmdb_id,
+		type,
+		releaseDate
+	) values (?, ?, ?, ?, ?, ?, ?, ?)`
 
 	tx, err := db.Handler.Begin()
 	db.check(err)
@@ -88,8 +90,8 @@ func (db *DB) UpdateAnime() {
 
 	defer stmt.Close()
 
-	for _, anime := range am.Anime {
-		_, err := stmt.Exec(anime.AnidbID, anime.Title, anime.MalID, anime.TvdbID, anime.TmdbID)
+	for _, anime := range a {
+		_, err := stmt.Exec(anime.MalID, anime.MainTitle, anime.EnglishTitle, anime.AnidbID, anime.TvdbID, anime.TmdbID, anime.Type, anime.ReleaseDate)
 		db.check(err)
 	}
 

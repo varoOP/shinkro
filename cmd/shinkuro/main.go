@@ -14,13 +14,13 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/pflag"
 
-	"github.com/varoOP/shinkuro/internal/config"
-	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/domain"
-	"github.com/varoOP/shinkuro/internal/logger"
-	"github.com/varoOP/shinkuro/internal/malauth"
-	"github.com/varoOP/shinkuro/internal/notification"
-	"github.com/varoOP/shinkuro/internal/server"
+	"github.com/varoOP/shinkro/internal/config"
+	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/internal/logger"
+	"github.com/varoOP/shinkro/internal/malauth"
+	"github.com/varoOP/shinkro/internal/notification"
+	"github.com/varoOP/shinkro/internal/server"
 )
 
 const usage = `shinkuro

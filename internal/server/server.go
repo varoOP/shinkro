@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/domain"
+	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/domain"
 )
 
 type Server struct {

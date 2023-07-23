@@ -14,8 +14,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/domain"
+	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/domain"
 	"golang.org/x/oauth2"
 )
 

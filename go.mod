@@ -1,4 +1,4 @@
-module github.com/varoOP/shinkuro
+module github.com/varoOP/shinkro
 
 go 1.19
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/varoOP/shinkuro/internal/database"
+	"github.com/varoOP/shinkro/internal/database"
 )
 
 func TestUpdateTvdbToMal(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkuro/internal/database"
-	"github.com/varoOP/shinkuro/internal/domain"
-	"github.com/varoOP/shinkuro/pkg/plex"
+	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/plex"
 )
 
 func Plex(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.Notification) func(w http.ResponseWriter, r *http.Request) {

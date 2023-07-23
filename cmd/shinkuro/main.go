@@ -73,7 +73,7 @@ func main() {
 		db.UpdateAnime()
 
 		c := cron.New()
-		c.AddFunc("0 0 * * *", func() { db.UpdateAnime() })
+		c.AddFunc("0 1 * * MON", func() { db.UpdateAnime() })
 		c.Start()
 
 		n := notification.NewAppNotification(cfg.DiscordWebHookURL, log)

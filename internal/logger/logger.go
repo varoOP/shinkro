@@ -12,7 +12,7 @@ import (
 )
 
 func NewLogger(path string, c *domain.Config) *zerolog.Logger {
-	logPath := filepath.Join(path, "shinkuro.log")
+	logPath := filepath.Join(path, "shinkro.log")
 	lumberlog := &lumberjack.Logger{
 		Filename:   logPath,
 		MaxSize:    c.LogMaxSize,

@@ -22,7 +22,7 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 
 	var (
 		err error
-		DSN = filepath.Join(dir, "shinkuro.db") + "?_pragma=busy_timeout%3d1000"
+		DSN = filepath.Join(dir, "shinkro.db") + "?_pragma=busy_timeout%3d1000"
 	)
 
 	db.Handler, err = sql.Open("sqlite", DSN)
@@ -63,10 +63,11 @@ func (db *DB) CreateDB() {
 func (db *DB) UpdateAnime() {
 
 	db.check(db.checkDBForCreds())
-	db.log.Trace().Msg("updating anime in database")
+	db.log.Trace().Msg("Updating anime in database")
 	a, err := getAnime()
 	if err != nil {
-		db.log.Error().Err(err).Msg("unable to update anime in database")
+		db.log.Error().Err(err).Msg("Unable to update anime in database")
+		return
 	}
 
 	const addAnime = `INSERT OR REPLACE INTO anime (
@@ -103,7 +104,7 @@ func (db *DB) UpdateAnime() {
 		db.check(err)
 	}
 
-	db.log.Trace().Msg("updated anime in database")
+	db.log.Trace().Msg("Updated anime in database")
 }
 
 func (db *DB) UpdateMalAuth(m map[string]string) {
@@ -137,7 +138,7 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	row := db.Handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
-		db.log.Fatal().Str("possible fix", "run the command: shinkuro malauth").Err(errors.New("unable to get mal credentials")).Msg("database operation failed")
+		db.log.Fatal().Str("Possible fix", "Run the command: shinkro malauth").Err(errors.New("unable to get mal credentials")).Msg("Database operation failed")
 	}
 
 	return map[string]string{
@@ -158,6 +159,6 @@ func (db *DB) Close() {
 
 func (db *DB) check(err error) {
 	if err != nil {
-		db.log.Fatal().Err(err).Msg("database operation failed")
+		db.log.Fatal().Err(err).Msg("Database operation failed")
 	}
 }

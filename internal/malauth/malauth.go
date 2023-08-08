@@ -70,7 +70,7 @@ func getToken(ctx context.Context, creds map[string]string) *oauth2.Token {
 	)
 
 	cfg := getCfg(creds)
-	fmt.Println("Go to the URL given below and authorize shinkuro to access your MAL account:")
+	fmt.Println("Go to the URL given below and authorize shinkro to access your MAL account:")
 	fmt.Println(cfg.AuthCodeURL(state, CodeChallenge, ResponseType))
 	fmt.Println("Enter the URL from your browser after the re-direct below:")
 	sc := bufio.NewScanner(os.Stdin)
@@ -90,7 +90,7 @@ func getToken(ctx context.Context, creds map[string]string) *oauth2.Token {
 		code = q["code"][0]
 
 		if state != q["state"][0] {
-			log.Fatalln("state did not match. Run shinkuro malauth again.")
+			log.Fatalln("state did not match. Run shinkro malauth again.")
 		}
 	}
 

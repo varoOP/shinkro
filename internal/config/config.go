@@ -20,7 +20,7 @@ type AppConfig struct {
 func NewConfig(dir string) *AppConfig {
 	if dir == "" {
 		log.Println("path to configuration not set")
-		log.Fatal("Run: shinkuro help, for the help message.")
+		log.Fatal("Run: shinkro help, for the help message.")
 	}
 
 	c := &AppConfig{}
@@ -54,7 +54,7 @@ func (c *AppConfig) defaultConfig(dir string) {
 }
 
 func (c *AppConfig) createConfig(dir string) error {
-	var config = `#Sample shinkuro config
+	var config = `#Sample shinkro config
 
 host = "127.0.0.1"
 
@@ -66,7 +66,7 @@ animeLibraries = ["Your", "Anime", "Library", "Names", "Edit", "This"]
 
 apiKey = "` + c.Config.ApiKey + `"
 
-#baseUrl = "/shinkuro"
+#baseUrl = "/shinkro"
 
 #customMapPath = ""
 
@@ -101,10 +101,10 @@ func (c *AppConfig) checkConfig(dir string) {
 	if _, err := os.Stat(c.Config.ConfigPath); err != nil {
 		err = c.createConfig(dir)
 		if err != nil {
-			log.Fatal("unable to write shinkuro configuration file")
+			log.Fatal("unable to write shinkro configuration file")
 		}
 
-		log.Println("shinkuro configuration file not found")
+		log.Println("shinkro configuration file not found")
 		log.Fatalf("example config.toml created at %v", c.Config.ConfigPath)
 	}
 }

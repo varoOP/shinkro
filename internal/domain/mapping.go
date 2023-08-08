@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const communityMapUrl = "https://github.com/varoOP/shinkuro-mapping/raw/main/tvdb-mal.yaml"
+const communityMapUrl = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
 
 type AnimeSeasonMap struct {
 	Anime []Anime `yaml:"anime"`

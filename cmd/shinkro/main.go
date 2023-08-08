@@ -23,13 +23,13 @@ import (
 	"github.com/varoOP/shinkro/internal/server"
 )
 
-const usage = `shinkuro
+const usage = `shinkro
 Sync your Anime watch status in Plex to myanimelist.net!
 Usage:
-    shinkuro --config <path to shinkuro configuration>	Run shinkuro
-    shinkuro malauth --config <path to shinkuro configuration> Set up your MAL account for use with shinkuro
-    shinkuro version	Print version info
-    shinkuro help	Show this help message
+    shinkro --config <path to shinkro configuration>	Run shinkro
+    shinkro malauth --config <path to shinkro configuration> Set up your MAL account for use with shinkro
+    shinkro version	Print version info
+    shinkro help	Show this help message
 `
 
 func init() {
@@ -38,21 +38,27 @@ func init() {
 	}
 }
 
+var (
+	version = "dev"
+	commit  = ""
+	date    = ""
+)
+
 func main() {
 	var configPath string
 
 	d, err := homedir.Dir()
 	if err != nil {
-		fmt.Fprint(flag.CommandLine.Output(), "FATAL: unable to get home directory")
+		fmt.Fprint(flag.CommandLine.Output(), "FATAL: Unable to get home directory")
 		os.Exit(1)
 	}
 
-	d = filepath.Join(d, ".config", "shinkuro")
+	d = filepath.Join(d, ".config", "shinkro")
 	pflag.StringVar(&configPath, "config", d, "path to configuration")
 	pflag.Parse()
 	configPath, err = homedir.Expand(configPath)
 	if err != nil {
-		fmt.Fprint(flag.CommandLine.Output(), "FATAL: unable to expand configuration path")
+		fmt.Fprint(flag.CommandLine.Output(), "FATAL: Unable to expand configuration path")
 		os.Exit(1)
 	}
 
@@ -62,11 +68,18 @@ func main() {
 		log := logger.NewLogger(configPath, cfg)
 		db := database.NewDB(configPath, log)
 
+		log.Info().Msg("Starting shinkro")
+		log.Info().Msgf("Version: %s", version)
+		log.Info().Msgf("Commit: %s", commit)
+		log.Info().Msgf("Build date: %s", date)
+		log.Info().Msgf("Log-level: %s", cfg.LogLevel)
+
 		if cfg.CustomMapPath != "" {
 			err := domain.ChecklocalMap(cfg.CustomMapPath)
 			if err != nil {
-				log.Fatal().Err(err).Msg("unable to load local custom mapping")
+				log.Fatal().Err(err).Msg("Unable to load local custom mapping")
 			}
+			log.Info().Msg("Loaded local custom mapping")
 		}
 
 		db.CreateDB()
@@ -86,7 +99,7 @@ func main() {
 		sig := <-sigchnl
 
 		db.Close()
-		log.Fatal().Msgf("caught signal %v, shutting down", sig)
+		log.Fatal().Msgf("Caught signal %v, Shutting Down", sig)
 
 	case "malauth":
 		cfg := config.NewConfig(configPath).Config
@@ -107,10 +120,12 @@ func main() {
 		}
 
 		db.Close()
-		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! Run shinkuro now.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! Run shinkro now.")
 
 	case "version":
-		fmt.Fprintln(flag.CommandLine.Output(), "0.0")
+		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)
+		fmt.Fprintln(flag.CommandLine.Output(), "Commit:", commit)
+		fmt.Fprintln(flag.CommandLine.Output(), "Build Date:", date)
 
 	default:
 		pflag.Usage()

@@ -2,11 +2,14 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
+
+	"github.com/varoOP/shinkro/pkg/plex"
 )
 
 type Media struct {
@@ -19,64 +22,56 @@ type Media struct {
 	Ep       int
 }
 
-func NewMedia(guid, mediaType, title string) (*Media, error) {
+var AgentRegExMap = map[string]string{
+	"hama": `//(.* ?)-(\d+ ?)`,
+	"mal":  `.(m.*)://(\d+ ?)`,
+}
+
+func NewMedia(pw *plex.PlexWebhook, agent string, pc *plex.PlexClient, usePlex bool) (*Media, error) {
 	var (
-		agent    string
-		idSource string
-		id       int
-		season   int
-		ep       int
-		err      error
+		idSource  string
+		title     string = pw.Metadata.GrandparentTitle
+		mediaType string = pw.Metadata.Type
+		id        int
+		season    int = pw.Metadata.ParentIndex
+		ep        int = pw.Metadata.Index
+		err       error
 	)
 
-	r := regexp.MustCompile(`//(.* ?)-(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
-	agent = "hama"
+	if agent == "mal" || agent == "hama" {
+		idSource, id, err = hamaMALAgent(pw.Metadata.GUID.GUID, agent)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if usePlex {
+			guid := pw.Metadata.GUID
+			if mediaType == "episode" {
+				g, err := GetShowID(pc, pw.Metadata.GrandparentKey)
+				if err != nil {
+					return nil, err
+				}
 
-	if strings.Contains(guid, "net.fribbtastic.coding.plex.myanimelist") {
-		r = regexp.MustCompile(`(myanimelist)://(\d+ ?)/?(\d+ ?)?/?(\d+ ?)?`)
-		agent = "mal"
+				guid = *g
+			}
+
+			idSource, id, err = plexAgent(guid, mediaType)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, errors.New("plex token not provided")
+		}
 	}
 
-	if !r.MatchString(guid) {
-		return nil, fmt.Errorf("unable to parse GUID: %v", guid)
-	}
-
-	mm := r.FindStringSubmatch(guid)
-
-	switch mediaType {
-	case "episode":
-		idSource = mm[1]
-		id, err = strconv.Atoi(mm[2])
-		if err != nil {
-			return nil, err
-		}
-
-		season, err = strconv.Atoi(mm[3])
-		if err != nil {
-			return nil, err
-		}
-
-		ep, err = strconv.Atoi(mm[4])
-		if err != nil {
-			return nil, err
-		}
-
-	case "movie":
-		if agent == "hama" {
-			return nil, errors.New("hama agent for movies not supported")
-		}
-
+	if idSource == "myanimelist" {
 		idSource = "mal"
-		id, err = strconv.Atoi(mm[2])
-		if err != nil {
-			return nil, err
-		}
+	}
 
+	if mediaType == "movie" {
 		season = 1
 		ep = 1
-
-	default:
-		return nil, fmt.Errorf("%v media type not supported", mediaType)
+		title = pw.Metadata.Title
 	}
 
 	return &Media{
@@ -93,16 +88,58 @@ func NewMedia(guid, mediaType, title string) (*Media, error) {
 func (m *Media) GetMalID(ctx context.Context, db *DB) (int, error) {
 	var malid int
 	switch m.Agent {
-	case "hama":
+	case "mal":
+		malid = m.Id
+
+	default:
 		sqlstmt := fmt.Sprintf("SELECT mal_id from anime where %v_id=?;", m.IdSource)
 		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)
 		err := row.Scan(&malid)
 		if err != nil {
-			return -1, fmt.Errorf("mal_id of %v (%v:%v) not found in database",m.Title, m.IdSource, m.Id)
+			return -1, errors.Errorf("mal_id of %v (%v:%v) not found in database", m.Title, m.IdSource, m.Id)
 		}
-	case "mal":
-		malid = m.Id
 	}
 
 	return malid, nil
+}
+
+func hamaMALAgent(guid, agent string) (string, int, error) {
+	r := regexp.MustCompile(AgentRegExMap[agent])
+	if !r.MatchString(guid) {
+		return "", -1, errors.Errorf("unable to parse GUID: %v", guid)
+	}
+
+	mm := r.FindStringSubmatch(guid)
+	source := mm[1]
+	id, err := strconv.Atoi(mm[2])
+	if err != nil {
+		return "", -1, errors.Wrap(err, "conversion of id failed")
+	}
+
+	return source, id, nil
+}
+
+func plexAgent(guid plex.GUID, mediaType string) (string, int, error) {
+	for _, gid := range guid.GUIDS {
+		dbid := strings.Split(gid.ID, "://")
+		if (mediaType == "episode" && dbid[0] == "tvdb") || (mediaType == "movie" && dbid[0] == "tmdb") {
+			id, err := strconv.Atoi(dbid[1])
+			if err != nil {
+				return "", -1, errors.Wrap(err, "id conversion failed")
+			}
+
+			return dbid[0], id, nil
+		}
+	}
+
+	return "", -1, errors.New("no supported db found")
+}
+
+func GetShowID(p *plex.PlexClient, key string) (*plex.GUID, error) {
+	guid, err := p.GetShowID(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return guid, nil
 }

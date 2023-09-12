@@ -63,6 +63,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			log := hlog.FromRequest(r)
 			p := r.Context().Value(domain.PlexPayload).(*plex.PlexWebhook)
+			br := "bad request"
 			if !isPlexUser(p, cfg) {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				log.Debug().Err(errors.New("unauthorized plex user")).
@@ -74,7 +75,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 			}
 
 			if !isEvent(p) {
-				http.Error(w, "bad request", http.StatusBadRequest)
+				http.Error(w, br, http.StatusBadRequest)
 				log.Trace().Err(errors.New("incorrect event")).
 					Str("event", p.Event).
 					Str("allowedEvents", "media.scrobble, media.rate").
@@ -84,7 +85,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 			}
 
 			if !isAnimeLibrary(p, cfg) {
-				http.Error(w, "bad request", http.StatusBadRequest)
+				http.Error(w, br, http.StatusBadRequest)
 				log.Debug().Err(errors.New("not an anime library")).
 					Str("library received", p.Metadata.LibrarySectionTitle).
 					Str("anime libraries", strings.Join(cfg.AnimeLibraries, ",")).
@@ -95,7 +96,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 
 			allowed, agent := isMetadataAgent(p)
 			if !allowed {
-				http.Error(w, "bad request", http.StatusBadRequest)
+				http.Error(w, br, http.StatusBadRequest)
 				log.Debug().Err(errors.New("unsupported metadata agent")).
 					Str("guid", string(p.Metadata.GUID.GUID)).
 					Str("supported metadata agents", "HAMA, MyAnimeList.bundle, Plex Series, Plex Movie").
@@ -106,7 +107,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 
 			mediaTypeOk := mediaType(p)
 			if !mediaTypeOk {
-				http.Error(w, "bad request", http.StatusBadRequest)
+				http.Error(w, br, http.StatusBadRequest)
 				log.Debug().Err(errors.New("unsupported media type")).
 					Str("media type", p.Metadata.Type).
 					Str("supported media types", "episode, movie").

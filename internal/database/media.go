@@ -38,29 +38,31 @@ func NewMedia(pw *plex.PlexWebhook, agent string, pc *plex.PlexClient, usePlex b
 		err       error
 	)
 
-	if agent == "mal" || agent == "hama" {
+	switch agent {
+	case "mal", "hama":
 		idSource, id, err = hamaMALAgent(pw.Metadata.GUID.GUID, agent)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		if usePlex {
-			guid := pw.Metadata.GUID
-			if mediaType == "episode" {
-				g, err := GetShowID(pc, pw.Metadata.GrandparentKey)
-				if err != nil {
-					return nil, err
-				}
 
-				guid = *g
-			}
+	case "plex":
+		if !usePlex {
+			return nil, errors.New("plex token not provided or invalid")
+		}
 
-			idSource, id, err = plexAgent(guid, mediaType)
+		guid := pw.Metadata.GUID
+		if mediaType == "episode" {
+			g, err := GetShowID(pc, pw.Metadata.GrandparentKey)
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			return nil, errors.New("plex token not provided")
+
+			guid = *g
+		}
+
+		idSource, id, err = plexAgent(guid, mediaType)
+		if err != nil {
+			return nil, err
 		}
 	}
 

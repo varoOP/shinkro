@@ -28,7 +28,7 @@ func NewServer(cfg *domain.Config, n *domain.Notification, db *database.DB, log 
 func (s *Server) Start() {
 	router := NewRouter(s.config, s.db, s.notify, s.log)
 	addr := fmt.Sprintf("%v:%v", s.config.Host, s.config.Port)
-	s.log.Info().Msgf("starting http server on %v", addr)
+	s.log.Info().Msgf("Starting HTTP server on %v", addr)
 	if err := http.ListenAndServe(addr, router); err != nil {
 		s.log.Fatal().Err(err).Msg("failed to start http server")
 	}

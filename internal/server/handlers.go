@@ -21,7 +21,8 @@ func Plex(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.No
 
 		notify(&a, err)
 		if err != nil {
-			a.Log.Error().Err(err).Msg("failed to send update to myanimelist")
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			a.Log.Error().Stack().Err(err).Msg("failed to send update to myanimelist")
 			return
 		}
 

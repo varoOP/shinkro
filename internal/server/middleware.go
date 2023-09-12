@@ -2,10 +2,11 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -44,6 +45,7 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 		log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 		payload, err := plex.NewPlexWebhook([]byte(ps))
 		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			log.Error().Err(err).Msg("unable to unmarshal plex payload")
 			return
 		}
@@ -62,6 +64,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 			log := hlog.FromRequest(r)
 			p := r.Context().Value(domain.PlexPayload).(*plex.PlexWebhook)
 			if !isPlexUser(p, cfg) {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				log.Debug().Err(errors.New("unauthorized plex user")).
 					Str("plexUserReceived", p.Account.Title).
 					Str("AuthorizedPlexUser", cfg.PlexUser).
@@ -71,6 +74,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 			}
 
 			if !isEvent(p) {
+				http.Error(w, "bad request", http.StatusBadRequest)
 				log.Trace().Err(errors.New("incorrect event")).
 					Str("event", p.Event).
 					Str("allowedEvents", "media.scrobble, media.rate").
@@ -80,6 +84,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 			}
 
 			if !isAnimeLibrary(p, cfg) {
+				http.Error(w, "bad request", http.StatusBadRequest)
 				log.Debug().Err(errors.New("not an anime library")).
 					Str("library received", p.Metadata.LibrarySectionTitle).
 					Str("anime libraries", strings.Join(cfg.AnimeLibraries, ",")).
@@ -88,17 +93,20 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			if !isMetadataAgent(p) {
+			allowed, agent := isMetadataAgent(p)
+			if !allowed {
+				http.Error(w, "bad request", http.StatusBadRequest)
 				log.Debug().Err(errors.New("unsupported metadata agent")).
 					Str("guid", string(p.Metadata.GUID.GUID)).
-					Str("supported metadata agents", "HAMA, MyAnimeList.bundle").
+					Str("supported metadata agents", "HAMA, MyAnimeList.bundle, Plex Series, Plex Movie").
 					Msg("")
 
 				return
 			}
 
-			mediaTypeOk, title := mediaType(p)
+			mediaTypeOk := mediaType(p)
 			if !mediaTypeOk {
+				http.Error(w, "bad request", http.StatusBadRequest)
 				log.Debug().Err(errors.New("unsupported media type")).
 					Str("media type", p.Metadata.Type).
 					Str("supported media types", "episode, movie").
@@ -107,9 +115,10 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), domain.MediaTitle, title)
+			ctx := context.WithValue(r.Context(), domain.Agent, agent)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
+
 		return http.HandlerFunc(fn)
 	}
 }

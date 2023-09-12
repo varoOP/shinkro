@@ -2,11 +2,10 @@ package domain
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/malauth"
@@ -44,7 +43,7 @@ type Key string
 
 const (
 	PlexPayload Key = "plexPayload"
-	MediaTitle  Key = "mediaTitle"
+	Agent       Key = "agent"
 )
 
 func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notification) AnimeUpdate {
@@ -61,11 +60,11 @@ func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notifi
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 	c := malauth.NewOauth2Client(ctx, a.DB)
 	a.Client = mal.NewClient(c)
-	if err := a.getMapping(ctx); err != nil {
+	if err := a.parseMedia(ctx); err != nil {
 		return err
 	}
 
-	if err := a.parseMedia(ctx); err != nil {
+	if err := a.getMapping(ctx); err != nil {
 		return err
 	}
 
@@ -87,7 +86,7 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("unable to send update for %v (%v-%v)", a.Media.Title, a.Media.IdSource, a.Media.Id)
+	return errors.Wrap(errors.Errorf("unable to send update for %v (%v-%v)", a.Media.Title, a.Media.IdSource, a.Media.Id), "plex event check failed")
 }
 
 func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
@@ -120,7 +119,7 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("unable to scrobble %v (%v-%v-%v), not found in database or custom map", a.Media.Title, a.Media.Type, a.Media.Agent, a.Media.Id)
+	return errors.Wrap(errors.Errorf("unable to scrobble %v (%v-%v-%v)", a.Media.Title, a.Media.Type, a.Media.Agent, a.Media.Id), "not found in database or mapping")
 }
 
 func (a *AnimeUpdate) processRate(ctx context.Context) error {
@@ -153,7 +152,7 @@ func (a *AnimeUpdate) processRate(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("unable to rate %v (%v-%v-%v) not found in database or custom map", a.Media.Title, a.Media.Type, a.Media.Agent, a.Media.Id)
+	return errors.Wrap(errors.Errorf("unable to rate %v (%v-%v-%v)", a.Media.Title, a.Media.Type, a.Media.Agent, a.Media.Id), "not found in database or mapping")
 }
 
 func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
@@ -169,7 +168,7 @@ func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
 	}
 
 	if a.Ep <= 0 {
-		return errors.New("episode calculated incorrectly")
+		return errors.Wrap(errors.New("episode calculated incorrectly"), "episode 0 or negative")
 	}
 
 	return nil
@@ -202,7 +201,7 @@ func (a *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListSt
 	}
 
 	if a.Ep > a.MyList.EpNum && a.MyList.EpNum != 0 {
-		return nil, true, fmt.Errorf("%v (%v-%v): anime in plex has more episodes for season than mal, modify custom mapping", a.Media.Title, a.Media.IdSource, a.Media.Id)
+		return nil, true, errors.Wrap(errors.Errorf("%v (%v-%v): anime in plex has more episodes for season than mal", a.Media.Title, a.Media.IdSource, a.Media.Id), "update custom mappping to fix")
 	}
 
 	var options []mal.UpdateMyAnimeListStatusOption
@@ -290,7 +289,7 @@ func (a *AnimeUpdate) getStartID(ctx context.Context) (bool, error) {
 
 	a.Start = updateStart(ctx, a.Start)
 	if a.Malid <= 0 {
-		return isMultiSeason, errors.New("no malid found")
+		return isMultiSeason, errors.Wrap(errors.New("no malid found"), "mapping missing malid")
 	}
 
 	return isMultiSeason, nil
@@ -300,18 +299,28 @@ func (a *AnimeUpdate) getMapping(ctx context.Context) error {
 	var err error
 	a.Mapping, err = NewAnimeSeasonMap(a.Config)
 	if err != nil {
-		return errors.New("unable to load custom mapping")
+		return errors.Wrap(errors.New("unable to load custom mapping"), "check custom mapping against schema")
 	}
 
-	a.InMap, a.Anime = a.Mapping.CheckAnimeMap(a.Plex.Metadata.GrandparentTitle)
+	a.InMap, a.Anime = a.Mapping.CheckAnimeMap(a.Media.Title)
 	return nil
 }
 
 func (a *AnimeUpdate) parseMedia(ctx context.Context) error {
-	var err error
-	a.Media, err = database.NewMedia(a.Plex.Metadata.GUID.GUID, a.Plex.Metadata.Type, ctx.Value(MediaTitle).(string))
+	var (
+		err     error
+		pc      *plex.PlexClient
+		usePlex bool = false
+	)
+
+	if a.Config.PlexToken != "" {
+		pc = plex.NewPlexClient(a.Config.PlexUrl, a.Config.PlexToken)
+		usePlex = true
+	}
+
+	a.Media, err = database.NewMedia(a.Plex, ctx.Value(Agent).(string), pc, usePlex)
 	if err != nil {
-		return errors.New("unable to parse media")
+		return err
 	}
 
 	return nil

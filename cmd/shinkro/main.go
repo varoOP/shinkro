@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/nstratos/go-myanimelist/mal"
@@ -85,7 +86,7 @@ func main() {
 		db.CreateDB()
 		db.UpdateAnime()
 
-		c := cron.New()
+		c := cron.New(cron.WithLocation(time.UTC))
 		c.AddFunc("0 1 * * MON", func() { db.UpdateAnime() })
 		c.Start()
 

@@ -42,6 +42,8 @@ func (c *AppConfig) defaultConfig(dir string) {
 		Host:              "127.0.0.1",
 		Port:              7011,
 		PlexUser:          "",
+		PlexUrl:           "http://127.0.0.1:32400",
+		PlexToken:         "",
 		AnimeLibraries:    []string{""},
 		ApiKey:            genApikey(),
 		BaseUrl:           "/",
@@ -62,7 +64,13 @@ port = 7011
 
 plexUser = "Your_Plex_account_Title_EDIT_REQUIRED"
 
-animeLibraries = ["Your", "Anime", "Library", "Names", "Edit", "This"]
+#plexUrl and plexToken only need to be set if you are using Plex agents for your anime libraries.
+
+#plexUrl = "http://127.0.0.1:32400"
+
+#plexToken = "<X-Plex-Token value goes here>"
+
+animeLibraries = ["Anime", "Anime-Movies", "Anime2"]
 
 apiKey = "` + c.Config.ApiKey + `"
 

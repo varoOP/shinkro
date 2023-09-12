@@ -7,8 +7,20 @@ import (
 	"github.com/varoOP/shinkro/pkg/plex"
 )
 
-func isMetadataAgent(p *plex.PlexWebhook) bool {
-	return strings.Contains(p.Metadata.GUID.GUID, "com.plexapp.agents.hama") || strings.Contains(p.Metadata.GUID.GUID, "net.fribbtastic.coding.plex.myanimelist")
+func isMetadataAgent(p *plex.PlexWebhook) (bool, string) {
+	if strings.Contains(p.Metadata.GUID.GUID, "agents.hama") {
+		return true, "hama"
+	}
+
+	if strings.Contains(p.Metadata.GUID.GUID, "myanimelist") {
+		return true, "mal"
+	}
+
+	if strings.Contains(p.Metadata.GUID.GUID, "plex://") {
+		return true, "plex"
+	}
+
+	return false, ""
 }
 
 func isPlexUser(p *plex.PlexWebhook, c *domain.Config) bool {
@@ -24,16 +36,16 @@ func isAnimeLibrary(p *plex.PlexWebhook, c *domain.Config) bool {
 	return strings.Contains(l, p.Metadata.LibrarySectionTitle)
 }
 
-func mediaType(p *plex.PlexWebhook) (bool, string) {
+func mediaType(p *plex.PlexWebhook) bool {
 	if p.Metadata.Type == "episode" {
-		return true, p.Metadata.GrandparentTitle
+		return true
 	}
 
 	if p.Metadata.Type == "movie" {
-		return true, p.Metadata.Title
+		return true
 	}
 
-	return false, ""
+	return false
 }
 
 func notify(a *domain.AnimeUpdate, err error) {

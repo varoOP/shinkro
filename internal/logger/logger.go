@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 	"github.com/varoOP/shinkro/internal/domain"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -19,6 +20,7 @@ func NewLogger(path string, c *domain.Config) *zerolog.Logger {
 		MaxBackups: c.LogMaxBackups,
 	}
 
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	mw := io.MultiWriter(
 		zerolog.ConsoleWriter{
 			TimeFormat: time.DateTime,

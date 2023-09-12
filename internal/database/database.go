@@ -3,8 +3,9 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog"
 	_ "modernc.org/sqlite"
@@ -159,6 +160,6 @@ func (db *DB) Close() {
 
 func (db *DB) check(err error) {
 	if err != nil {
-		db.log.Fatal().Err(err).Msg("Database operation failed")
+		db.log.Fatal().Err(errors.WithStack(err)).Msg("Database operation failed")
 	}
 }

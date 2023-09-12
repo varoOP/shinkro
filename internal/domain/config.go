@@ -5,6 +5,8 @@ type Config struct {
 	Host              string   `koanf:"host"`
 	Port              int      `koanf:"port"`
 	PlexUser          string   `koanf:"plexUser"`
+	PlexUrl           string   `koanf:"plexUrl"`
+	PlexToken         string   `koanf:"plexToken"`
 	AnimeLibraries    []string `koanf:"animeLibraries"`
 	ApiKey            string   `koanf:"apiKey"`
 	BaseUrl           string   `koanf:"baseUrl"`

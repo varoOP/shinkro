@@ -47,7 +47,12 @@ func (c *AppConfig) defaultConfig(dir string) {
 		AnimeLibraries:    []string{""},
 		ApiKey:            genApikey(),
 		BaseUrl:           "/",
-		CustomMapPath:     "",
+		CustomMapTVDB:     false,
+		CustomMapTVDBPath: filepath.Join(dir, "tvdb-mal.yaml"),
+		CustomMapTMDB:     false,
+		CustomMapTMDBPath: filepath.Join(dir, "tmdb-mal.yaml"),
+		TMDBMalMap:        nil,
+		TVDBMalMap:        nil,
 		DiscordWebHookURL: "",
 		LogLevel:          "INFO",
 		LogMaxSize:        50,
@@ -75,8 +80,6 @@ animeLibraries = ["Anime", "Anime-Movies", "Anime2"]
 apiKey = "` + c.Config.ApiKey + `"
 
 #baseUrl = "/shinkro"
-
-#customMapPath = ""
 
 #discordWebhookUrl = ""
 
@@ -129,6 +132,7 @@ func (c *AppConfig) parseConfig() error {
 		return err
 	}
 
+	c.Config.LocalMapsExist()
 	return nil
 }
 

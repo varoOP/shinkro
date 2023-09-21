@@ -98,7 +98,7 @@ func (m *Media) GetMalID(ctx context.Context, db *DB) (int, error) {
 		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)
 		err := row.Scan(&malid)
 		if err != nil {
-			return -1, errors.Errorf("mal_id of %v (%v:%v) not found in database", m.Title, m.IdSource, m.Id)
+			return -1, errors.Errorf("mal_id of %v (%v:%v) not found in database, add to custom map", m.Title, m.IdSource, m.Id)
 		}
 	}
 

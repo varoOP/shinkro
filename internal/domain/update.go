@@ -13,21 +13,24 @@ import (
 )
 
 type AnimeUpdate struct {
-	Client  *mal.Client
-	DB      *database.DB
-	Config  *Config
-	Plex    *plex.PlexWebhook
-	Anime   *Anime
-	Mapping *AnimeSeasonMap
-	InMap   bool
-	Media   *database.Media
-	Malid   int
-	Start   int
-	Ep      int
-	MyList  *MyList
-	Malresp *mal.AnimeListStatus
-	Log     zerolog.Logger
-	Notify  *Notification
+	Client      *mal.Client
+	DB          *database.DB
+	Config      *Config
+	Plex        *plex.PlexWebhook
+	Anime       *Anime
+	AnimeMovie  *AnimeMovie
+	TVDBMapping *AnimeSeasonMap
+	TMDBMapping *AnimeMovies
+	InTVDBMap   bool
+	InTMDBMap   bool
+	Media       *database.Media
+	Malid       int
+	Start       int
+	Ep          int
+	MyList      *MyList
+	Malresp     *mal.AnimeListStatus
+	Log         zerolog.Logger
+	Notify      *Notification
 }
 
 type MyList struct {
@@ -91,7 +94,7 @@ func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 
 func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 	var err error
-	if a.InMap {
+	if a.InTVDBMap {
 		err = a.tvdbtoMal(ctx)
 		if err != nil {
 			return err
@@ -101,6 +104,16 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		return nil
+	}
+
+	if a.InTMDBMap {
+		a.Malid = a.AnimeMovie.MALID
+		err = a.updateWatchStatus(ctx)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 
@@ -124,12 +137,22 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 
 func (a *AnimeUpdate) processRate(ctx context.Context) error {
 	var err error
-	if a.InMap {
+	if a.InTVDBMap {
 		_, err := a.getStartID(ctx)
 		if err != nil {
 			return err
 		}
 
+		err = a.updateRating(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if a.InTMDBMap {
+		a.Malid = a.AnimeMovie.MALID
 		err = a.updateRating(ctx)
 		if err != nil {
 			return err
@@ -297,12 +320,19 @@ func (a *AnimeUpdate) getStartID(ctx context.Context) (bool, error) {
 
 func (a *AnimeUpdate) getMapping(ctx context.Context) error {
 	var err error
-	a.Mapping, err = NewAnimeSeasonMap(a.Config)
+	a.TVDBMapping, a.TMDBMapping, err = NewAnimeMaps(a.Config)
 	if err != nil {
 		return errors.Wrap(errors.New("unable to load custom mapping"), "check custom mapping against schema")
 	}
 
-	a.InMap, a.Anime = a.Mapping.CheckAnimeMap(a.Media.Title)
+	if a.Media.Type == "episode" {
+		a.InTVDBMap, a.Anime = a.TVDBMapping.CheckMap(a.Media.Title)
+	}
+
+	if a.Media.Type == "movie" {
+		a.InTMDBMap, a.AnimeMovie = a.TMDBMapping.CheckMap(a.Media.Id)
+	}
+
 	return nil
 }
 

@@ -2,15 +2,20 @@ package domain
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"github.com/santhosh-tekuri/jsonschema/v5"
+	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 )
 
-const communityMapUrl = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
+const (
+	communityMapTVDB = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
+	TVDBSchema       = "https://github.com/varoOP/shinkro-mapping/blob/main/.github/schema-tvdb.json"
+	communityMapTMDB = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
+	TMDBSchema       = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
+)
 
 type AnimeSeasonMap struct {
 	Anime []Anime `yaml:"anime"`
@@ -28,24 +33,29 @@ type Seasons struct {
 	Start  int `yaml:"start,omitempty"`
 }
 
-func NewAnimeSeasonMap(cfg *Config) (*AnimeSeasonMap, error) {
-	s := &AnimeSeasonMap{}
+type AnimeMovies struct {
+	AnimeMovie []AnimeMovie `yaml:"animeMovies"`
+}
 
-	if cfg.CustomMapPath != "" {
-		err := s.localMap(cfg.CustomMapPath)
-		if err != nil {
-			return nil, err
-		}
+type AnimeMovie struct {
+	MainTitle string `yaml:"mainTitle"`
+	TMDBID    int    `yaml:"tmdbid"`
+	MALID     int    `yaml:"malid"`
+}
 
-		return s, nil
-	}
-
-	err := s.communityMap()
+func NewAnimeMaps(cfg *Config) (*AnimeSeasonMap, *AnimeMovies, error) {
+	cfg.LocalMapsExist()
+	err := loadCommunityMaps(cfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return s, nil
+	err = loadLocalMaps(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cfg.TVDBMalMap, cfg.TMDBMalMap, nil
 }
 
 func (a *Anime) IsMultiSeason(ctx context.Context, malid int) bool {
@@ -59,8 +69,7 @@ func (a *Anime) IsMultiSeason(ctx context.Context, malid int) bool {
 	return count > 1
 }
 
-func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
-
+func (s *AnimeSeasonMap) CheckMap(title string) (bool, *Anime) {
 	for i, anime := range s.Anime {
 		if title == anime.Title || synonymExists(anime.Synonyms, title) {
 			return true, &Anime{
@@ -69,45 +78,77 @@ func (s *AnimeSeasonMap) CheckAnimeMap(title string) (bool, *Anime) {
 			}
 		}
 	}
+
 	return false, nil
 }
 
-func (s *AnimeSeasonMap) communityMap() error {
-	resp, err := http.Get(communityMapUrl)
-	if err != nil {
-		return err
+func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
+	for _, animeMovie := range am.AnimeMovie {
+		if animeMovie.TMDBID == tmdbid {
+			return true, &animeMovie
+		}
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	return false, nil
+}
+
+func loadCommunityMaps(cfg *Config) error {
+	if !cfg.CustomMapTVDB {
+		s := &AnimeSeasonMap{}
+		respTVDB, err := http.Get(communityMapTVDB)
+		if err != nil {
+			return err
+		}
+
+		err = readYamlHTTP(respTVDB, s)
+		if err != nil {
+			return err
+		}
+
+		cfg.TVDBMalMap = s
 	}
 
-	defer resp.Body.Close()
+	if !cfg.CustomMapTMDB {
+		am := &AnimeMovies{}
+		respTMDB, err := http.Get(communityMapTMDB)
+		if err != nil {
+			return err
+		}
 
-	err = yaml.Unmarshal(body, s)
-	if err != nil {
-		return err
+		err = readYamlHTTP(respTMDB, am)
+		if err != nil {
+			return err
+		}
+
+		cfg.TMDBMalMap = am
 	}
 
 	return nil
 }
 
-func (s *AnimeSeasonMap) localMap(path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+func loadLocalMaps(cfg *Config) error {
+	if cfg.CustomMapTVDB {
+		fTVDB, err := os.Open(cfg.CustomMapTVDBPath)
+		if err != nil {
+			return err
+		}
 
-	body, err := io.ReadAll(f)
-	if err != nil {
-		return err
+		err = readYamlFile(fTVDB, cfg.TVDBMalMap)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = yaml.Unmarshal(body, s)
-	if err != nil {
-		return err
+	if cfg.CustomMapTMDB {
+		fTMDB, err := os.Open(cfg.CustomMapTMDBPath)
+		if err != nil {
+			return err
+		}
+
+		err = readYamlFile(fTMDB, cfg.TMDBMalMap)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -123,21 +164,36 @@ func synonymExists(s []string, title string) bool {
 	return false
 }
 
-func ChecklocalMap(path string) error {
-	s := &AnimeSeasonMap{}
-	f, err := os.Open(path)
+func ChecklocalMaps(cfg *Config) (error, bool) {
+	loadLocalMaps(cfg)
+	localMapLoaded := false
+	if cfg.CustomMapTVDB {
+		if err := validateYaml(TVDBSchema, cfg.TVDBMalMap); err != nil {
+			return err, false
+		}
+
+		localMapLoaded = true
+	}
+
+	if cfg.CustomMapTMDB {
+		if err := validateYaml(TMDBSchema, cfg.TMDBMalMap); err != nil {
+			return err, false
+		}
+
+		localMapLoaded = true
+	}
+
+	return nil, localMapLoaded
+}
+
+func validateYaml(schema string, yaml any) error {
+	compiler := jsonschema.NewCompiler()
+	sch, err := compiler.Compile(schema)
 	if err != nil {
 		return err
 	}
 
-	defer f.Close()
-	body, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(body, s)
-	if err != nil {
+	if err := sch.Validate(yaml); err != nil {
 		return err
 	}
 

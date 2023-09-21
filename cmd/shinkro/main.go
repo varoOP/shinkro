@@ -75,11 +75,12 @@ func main() {
 		log.Info().Msgf("Build date: %s", date)
 		log.Info().Msgf("Log-level: %s", cfg.LogLevel)
 
-		if cfg.CustomMapPath != "" {
-			err := domain.ChecklocalMap(cfg.CustomMapPath)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Unable to load local custom mapping")
-			}
+		err, mapLoaded := domain.ChecklocalMaps(cfg)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Unable to load local custom mapping")
+		}
+
+		if mapLoaded {
 			log.Info().Msg("Loaded local custom mapping")
 		}
 

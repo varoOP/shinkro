@@ -55,8 +55,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: rateEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 52305),
 			},
@@ -80,8 +79,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: scrobbleEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 51462),
 			},
@@ -105,8 +103,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: scrobbleEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -130,8 +127,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: scrobbleEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -154,8 +150,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: scrobbleEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -179,8 +174,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: rateEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -203,8 +197,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: scrobbleEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},
@@ -228,8 +221,7 @@ func TestPlex(t *testing.T) {
 			}`,
 				event: rateEvent,
 				cfg: &domain.Config{
-					CustomMapPath: "",
-					PlexUser:      "TestPlexUser",
+					PlexUser: "TestPlexUser",
 				},
 				db: createMockDB(t, 0),
 			},

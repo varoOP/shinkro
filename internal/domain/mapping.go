@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -18,29 +19,29 @@ const (
 )
 
 type AnimeSeasonMap struct {
-	Anime []Anime `yaml:"anime"`
+	Anime []Anime `yaml:"anime" json:"anime"`
 }
 
 type Anime struct {
-	Title    string    `yaml:"title"`
-	Synonyms []string  `yaml:"synonyms,omitempty"`
-	Seasons  []Seasons `yaml:"seasons"`
+	Title    string    `yaml:"title" json:"title"`
+	Synonyms []string  `yaml:"synonyms,omitempty" json:"synonyms,omitempty"`
+	Seasons  []Seasons `yaml:"seasons" json:"seasons"`
 }
 
 type Seasons struct {
-	Season int `yaml:"season"`
-	MalID  int `yaml:"mal-id"`
-	Start  int `yaml:"start,omitempty"`
+	Season int `yaml:"season" json:"season"`
+	MalID  int `yaml:"mal-id" json:"mal-id"`
+	Start  int `yaml:"start,omitempty" json:"start,omitempty"`
 }
 
 type AnimeMovies struct {
-	AnimeMovie []AnimeMovie `yaml:"animeMovies"`
+	AnimeMovie []AnimeMovie `yaml:"animeMovies" json:"animeMovies"`
 }
 
 type AnimeMovie struct {
-	MainTitle string `yaml:"mainTitle"`
-	TMDBID    int    `yaml:"tmdbid"`
-	MALID     int    `yaml:"malid"`
+	MainTitle string `yaml:"mainTitle" json:"mainTitle"`
+	TMDBID    int    `yaml:"tmdbid" json:"tmdbid"`
+	MALID     int    `yaml:"malid" json:"malid"`
 }
 
 func NewAnimeMaps(cfg *Config) (*AnimeSeasonMap, *AnimeMovies, error) {
@@ -128,27 +129,33 @@ func loadCommunityMaps(cfg *Config) error {
 
 func loadLocalMaps(cfg *Config) error {
 	if cfg.CustomMapTVDB {
+		s := &AnimeSeasonMap{}
 		fTVDB, err := os.Open(cfg.CustomMapTVDBPath)
 		if err != nil {
 			return err
 		}
 
-		err = readYamlFile(fTVDB, cfg.TVDBMalMap)
+		err = readYamlFile(fTVDB, s)
 		if err != nil {
 			return err
 		}
+
+		cfg.TVDBMalMap = s
 	}
 
 	if cfg.CustomMapTMDB {
+		am := &AnimeMovies{}
 		fTMDB, err := os.Open(cfg.CustomMapTMDBPath)
 		if err != nil {
 			return err
 		}
 
-		err = readYamlFile(fTMDB, cfg.TMDBMalMap)
+		err = readYamlFile(fTMDB, am)
 		if err != nil {
 			return err
 		}
+
+		cfg.TMDBMalMap = am
 	}
 
 	return nil
@@ -193,7 +200,18 @@ func validateYaml(schema string, yaml any) error {
 		return err
 	}
 
-	if err := sch.Validate(yaml); err != nil {
+	var v interface{}
+	b, err := json.Marshal(yaml)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(b, &v)
+	if err != nil {
+		return err
+	}
+
+	if err := sch.Validate(v); err != nil {
 		return err
 	}
 

@@ -10,9 +10,26 @@ type Config struct {
 	AnimeLibraries    []string `koanf:"animeLibraries"`
 	ApiKey            string   `koanf:"apiKey"`
 	BaseUrl           string   `koanf:"baseUrl"`
-	CustomMapPath     string   `koanf:"customMapPath"`
-	DiscordWebHookURL string   `koanf:"discordWebhookUrl"`
-	LogLevel          string   `koanf:"logLevel"`
-	LogMaxSize        int      `koanf:"logMaxSize"`
-	LogMaxBackups     int      `koanf:"logMaxBackups"`
+	CustomMapTVDB     bool
+	CustomMapTVDBPath string
+	CustomMapTMDB     bool
+	CustomMapTMDBPath string
+	TVDBMalMap        *AnimeSeasonMap
+	TMDBMalMap        *AnimeMovies
+	DiscordWebHookURL string `koanf:"discordWebhookUrl"`
+	LogLevel          string `koanf:"logLevel"`
+	LogMaxSize        int    `koanf:"logMaxSize"`
+	LogMaxBackups     int    `koanf:"logMaxBackups"`
+}
+
+func (cfg *Config) LocalMapsExist() {
+	cfg.CustomMapTMDB = false
+	if fileExists(cfg.CustomMapTMDBPath) {
+		cfg.CustomMapTMDB = true
+	}
+
+	cfg.CustomMapTVDB = false
+	if fileExists(cfg.CustomMapTVDBPath) {
+		cfg.CustomMapTVDB = true
+	}
 }

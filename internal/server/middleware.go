@@ -33,15 +33,35 @@ func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 
 func ParsePlexPayload(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		var ps string
 		log := hlog.FromRequest(r)
-		err := r.ParseMultipartForm(32 << 20)
+		sourceType, err := contentType(r)
 		if err != nil {
-			http.Error(w, "recevied bad request", http.StatusBadRequest)
-			log.Trace().Msg("received bad request")
+			http.Error(w, "Unsupported content type", http.StatusNotAcceptable)
+			log.Trace().Err(err).Str("Content-Type", sourceType).Msg("received unsupported content type")
 			return
 		}
 
-		ps := r.PostFormValue("payload")
+		switch sourceType {
+		case "plexWebhook":
+			err = r.ParseMultipartForm(32 << 20)
+			if err != nil {
+				http.Error(w, "recevied bad request", http.StatusBadRequest)
+				log.Trace().Err(err).Msg("received bad request")
+				return
+			}
+
+			ps = r.PostFormValue("payload")
+
+		case "tautulli":
+			ps, err = readRequest(r)
+			if err != nil {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				log.Trace().Err(err).Msg("internal server error")
+				return
+			}
+		}
+
 		log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 		payload, err := plex.NewPlexWebhook([]byte(ps))
 		if err != nil {

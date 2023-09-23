@@ -40,16 +40,10 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 		)
 
 		log := hlog.FromRequest(r)
-		sourceType, err := contentType(r)
-		if err != nil {
-			http.Error(w, "Unsupported content type", http.StatusNotAcceptable)
-			log.Trace().Err(err).Str("Content-Type", sourceType).Msg("received unsupported content type")
-			return
-		}
-
+		sourceType := contentType(r)
 		switch sourceType {
 		case "plexWebhook":
-			err = r.ParseMultipartForm(0)
+			err := r.ParseMultipartForm(0)
 			if err != nil {
 				http.Error(w, "recevied bad request", http.StatusBadRequest)
 				log.Trace().Err(err).Msg("received bad request")
@@ -66,27 +60,24 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 			}
 
 		case "tautulli":
-			ps, err = readRequest(r)
+			ps, err := readRequest(r)
 			if err != nil {
 				http.Error(w, InternalServerError, http.StatusInternalServerError)
 				log.Trace().Err(err).Msg(InternalServerError)
 				return
 			}
-			
-			log.Trace().Str("sourceType", sourceType).RawJSON("rawPlexPayload", []byte(ps)).Msg("")
-			t, err := tautulli.NewTautulli([]byte(ps))
-			if err != nil {
-				http.Error(w, InternalServerError, http.StatusInternalServerError)
-				log.Error().Err(err).Msg("unable to unmarshal tautulli webhook payload")
-				return
-			}
 
-			payload, err = t.ToPlex()
+			log.Trace().Str("sourceType", sourceType).RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+			payload, err = tautulli.ToPlex([]byte(ps))
 			if err != nil {
 				http.Error(w, InternalServerError, http.StatusInternalServerError)
 				log.Error().Err(err).Msg("unable to convert tautulli to plex webhook")
 				return
 			}
+
+		default:
+			log.Error().Str("sourceType", sourceType).Msg("sourceType not supported")
+			return
 		}
 
 		ctx := context.WithValue(r.Context(), domain.PlexPayload, payload)

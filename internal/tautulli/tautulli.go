@@ -32,9 +32,14 @@ func NewTautulli(b []byte) (*Tautulli, error) {
 	}
 
 	return t, nil
-} 
+}
 
-func (t *Tautulli) ToPlex() (*plex.PlexWebhook, error) {
+func ToPlex(b []byte) (*plex.PlexWebhook, error) {
+	t, err := NewTautulli(b)
+	if err != nil {
+		return nil, err
+	}
+
 	parentIndex, err := strconv.Atoi(t.Metadata.ParentIndex)
 	if err != nil {
 		return nil, err

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/pkg/plex"
 )
@@ -86,17 +85,17 @@ func isAuthorized(apiKey string, in map[string][]string) bool {
 	return false
 }
 
-func contentType(r *http.Request) (string, error) {
+func contentType(r *http.Request) string {
 	contentType := r.Header.Get("Content-Type")
 	if strings.Contains(contentType, "multipart/form-data") {
-		return "plexWebhook", nil
+		return "plexWebhook"
 	}
 
 	if strings.Contains(contentType, "application/json") {
-		return "tautulli", nil
+		return "tautulli"
 	}
 
-	return contentType, errors.New("unsupported Content-Type")
+	return contentType
 }
 
 func readRequest(r *http.Request) (string, error) {

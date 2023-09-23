@@ -1,11 +1,15 @@
 package server
 
 import (
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/pkg/plex"
 )
+
+const InternalServerError string = "internal server error"
 
 func isMetadataAgent(p *plex.PlexWebhook) (bool, string) {
 	if strings.Contains(p.Metadata.GUID.GUID, "agents.hama") {
@@ -79,4 +83,27 @@ func isAuthorized(apiKey string, in map[string][]string) bool {
 	}
 
 	return false
+}
+
+func contentType(r *http.Request) string {
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		return "plexWebhook"
+	}
+
+	if strings.Contains(contentType, "application/json") {
+		return "tautulli"
+	}
+
+	return contentType
+}
+
+func readRequest(r *http.Request) (string, error) {
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return "", err
+	}
+
+	defer r.Body.Close()
+	return string(b), nil
 }

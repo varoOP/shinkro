@@ -10,6 +10,8 @@ import (
 	"github.com/varoOP/shinkro/pkg/plex"
 )
 
+const InternalServerError string = "internal server error"
+
 func isMetadataAgent(p *plex.PlexWebhook) (bool, string) {
 	if strings.Contains(p.Metadata.GUID.GUID, "agents.hama") {
 		return true, "hama"

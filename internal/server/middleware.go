@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/internal/tautulli"
 	"github.com/varoOP/shinkro/pkg/plex"
 )
 
@@ -33,7 +34,11 @@ func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 
 func ParsePlexPayload(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		var ps string
+		var (
+			ps      string
+			payload *plex.PlexWebhook
+		)
+
 		log := hlog.FromRequest(r)
 		sourceType, err := contentType(r)
 		if err != nil {
@@ -44,7 +49,7 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 
 		switch sourceType {
 		case "plexWebhook":
-			err = r.ParseMultipartForm(32 << 20)
+			err = r.ParseMultipartForm(0)
 			if err != nil {
 				http.Error(w, "recevied bad request", http.StatusBadRequest)
 				log.Trace().Err(err).Msg("received bad request")
@@ -52,22 +57,36 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 			}
 
 			ps = r.PostFormValue("payload")
+			log.Trace().Str("sourceType", sourceType).RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+			payload, err = plex.NewPlexWebhook([]byte(ps))
+			if err != nil {
+				http.Error(w, InternalServerError, http.StatusInternalServerError)
+				log.Error().Err(err).Msg("unable to unmarshal plex payload")
+				return
+			}
 
 		case "tautulli":
 			ps, err = readRequest(r)
 			if err != nil {
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				log.Trace().Err(err).Msg("internal server error")
+				http.Error(w, InternalServerError, http.StatusInternalServerError)
+				log.Trace().Err(err).Msg(InternalServerError)
 				return
 			}
-		}
+			
+			log.Trace().Str("sourceType", sourceType).RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+			t, err := tautulli.NewTautulli([]byte(ps))
+			if err != nil {
+				http.Error(w, InternalServerError, http.StatusInternalServerError)
+				log.Error().Err(err).Msg("unable to unmarshal tautulli webhook payload")
+				return
+			}
 
-		log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
-		payload, err := plex.NewPlexWebhook([]byte(ps))
-		if err != nil {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			log.Error().Err(err).Msg("unable to unmarshal plex payload")
-			return
+			payload, err = t.ToPlex()
+			if err != nil {
+				http.Error(w, InternalServerError, http.StatusInternalServerError)
+				log.Error().Err(err).Msg("unable to convert tautulli to plex webhook")
+				return
+			}
 		}
 
 		ctx := context.WithValue(r.Context(), domain.PlexPayload, payload)

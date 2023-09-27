@@ -17,23 +17,23 @@ const (
 )
 
 type AnimeTVDBMap struct {
-	Anime []Anime `yaml:"AnimeMap"`
+	Anime []Anime `yaml:"AnimeMap" json:"AnimeMap"`
 }
 
 type Anime struct {
-	Malid        int            `yaml:"malid"`
-	Title        string         `yaml:"title"`
-	Type         string         `yaml:"type"`
-	Tvdbid       int            `yaml:"tvdbid"`
-	TvdbSeason   int            `yaml:"tvdbseason"`
-	Start        int            `yaml:"start"`
-	UseMapping   bool           `yaml:"useMapping"`
-	AnimeMapping []AnimeMapping `yaml:"animeMapping"`
+	Malid        int            `yaml:"malid" json:"malid"`
+	Title        string         `yaml:"title" json:"title"`
+	Type         string         `yaml:"type" json:"type"`
+	Tvdbid       int            `yaml:"tvdbid" json:"tvdbid"`
+	TvdbSeason   int            `yaml:"tvdbseason" json:"tvdbseason"`
+	Start        int            `yaml:"start" json:"start"`
+	UseMapping   bool           `yaml:"useMapping" json:"useMapping"`
+	AnimeMapping []AnimeMapping `yaml:"animeMapping" json:"animeMapping"`
 }
 
 type AnimeMapping struct {
-	TvdbSeason int `yaml:"tvdbseason"`
-	Start      int `yaml:"start"`
+	TvdbSeason int `yaml:"tvdbseason" json:"tvdbseason"`
+	Start      int `yaml:"start" json:"start"`
 }
 
 type AnimeMovies struct {

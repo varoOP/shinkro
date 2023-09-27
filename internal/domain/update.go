@@ -19,7 +19,7 @@ type AnimeUpdate struct {
 	Plex        *plex.PlexWebhook
 	Anime       *Anime
 	AnimeMovie  *AnimeMovie
-	TVDBMapping *AnimeSeasonMap
+	TVDBMapping *AnimeTVDBMap
 	TMDBMapping *AnimeMovies
 	InTVDBMap   bool
 	InTMDBMap   bool
@@ -138,7 +138,7 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 func (a *AnimeUpdate) processRate(ctx context.Context) error {
 	var err error
 	if a.InTVDBMap {
-		_, err := a.getStartID(ctx)
+		err := a.getStartID(ctx)
 		if err != nil {
 			return err
 		}
@@ -179,12 +179,12 @@ func (a *AnimeUpdate) processRate(ctx context.Context) error {
 }
 
 func (a *AnimeUpdate) tvdbtoMal(ctx context.Context) error {
-	isMultiSeason, err := a.getStartID(ctx)
+	err := a.getStartID(ctx)
 	if err != nil {
 		return err
 	}
 
-	if isMultiSeason {
+	if a.Anime.UseMapping {
 		a.Ep = a.Start + a.Media.Ep - 1
 	} else {
 		a.Ep = a.Media.Ep - a.Start + 1
@@ -294,28 +294,11 @@ func (a *AnimeUpdate) updateRating(ctx context.Context) error {
 	return nil
 }
 
-func (a *AnimeUpdate) getStartID(ctx context.Context) (bool, error) {
-	var isMultiSeason bool
-	for _, anime := range a.Anime.Seasons {
-		if a.Media.Season == anime.Season {
-			if isMultiSeason = a.Anime.IsMultiSeason(ctx, anime.MalID); isMultiSeason {
-				a.Malid = anime.MalID
-				a.Start = anime.Start
-			} else {
-				if a.Media.Ep >= anime.Start {
-					a.Malid = anime.MalID
-					a.Start = anime.Start
-				}
-			}
-		}
-	}
-
+func (a *AnimeUpdate) getStartID(ctx context.Context) error {
+	a.Malid = a.Anime.Malid
+	a.Start = a.Anime.Start
 	a.Start = updateStart(ctx, a.Start)
-	if a.Malid <= 0 {
-		return isMultiSeason, errors.Wrap(errors.New("no malid found"), "mapping missing malid")
-	}
-
-	return isMultiSeason, nil
+	return nil
 }
 
 func (a *AnimeUpdate) getMapping(ctx context.Context) error {
@@ -326,7 +309,7 @@ func (a *AnimeUpdate) getMapping(ctx context.Context) error {
 	}
 
 	if a.Media.Type == "episode" {
-		a.InTVDBMap, a.Anime = a.TVDBMapping.CheckMap(a.Media.Title)
+		a.InTVDBMap, a.Anime = a.TVDBMapping.CheckMap(a.Media.Id, a.Media.Season, a.Media.Ep)
 	}
 
 	if a.Media.Type == "movie" {

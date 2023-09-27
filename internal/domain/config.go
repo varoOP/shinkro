@@ -14,7 +14,7 @@ type Config struct {
 	CustomMapTVDBPath string
 	CustomMapTMDB     bool
 	CustomMapTMDBPath string
-	TVDBMalMap        *AnimeSeasonMap
+	TVDBMalMap        *AnimeTVDBMap
 	TMDBMalMap        *AnimeMovies
 	DiscordWebHookURL string `koanf:"discordWebhookUrl"`
 	LogLevel          string `koanf:"logLevel"`

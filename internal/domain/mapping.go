@@ -76,8 +76,8 @@ func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *Anime) {
 func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []Anime {
 	var matchingAnime []Anime
 	for _, anime := range s.Anime {
-		if tvdbid == anime.Tvdbid && !anime.UseMapping {
-			if tvdbseason == anime.TvdbSeason {
+		if tvdbid == anime.Tvdbid {
+			if tvdbseason == anime.TvdbSeason && !anime.UseMapping {
 				matchingAnime = append(matchingAnime, anime)
 			}
 

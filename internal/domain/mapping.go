@@ -1,11 +1,9 @@
 package domain
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
@@ -13,25 +11,29 @@ import (
 
 const (
 	communityMapTVDB = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
-	TVDBSchema       = "https://github.com/varoOP/shinkro-mapping/blob/main/.github/schema-tvdb.json"
+	TVDBSchema       = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tvdb.json"
 	communityMapTMDB = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
 	TMDBSchema       = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
 )
 
-type AnimeSeasonMap struct {
-	Anime []Anime `yaml:"anime" json:"anime"`
+type AnimeTVDBMap struct {
+	Anime []Anime `yaml:"AnimeMap" json:"AnimeMap"`
 }
 
 type Anime struct {
-	Title    string    `yaml:"title" json:"title"`
-	Synonyms []string  `yaml:"synonyms,omitempty" json:"synonyms,omitempty"`
-	Seasons  []Seasons `yaml:"seasons" json:"seasons"`
+	Malid        int            `yaml:"malid" json:"malid"`
+	Title        string         `yaml:"title" json:"title"`
+	Type         string         `yaml:"type" json:"type"`
+	Tvdbid       int            `yaml:"tvdbid" json:"tvdbid"`
+	TvdbSeason   int            `yaml:"tvdbseason" json:"tvdbseason"`
+	Start        int            `yaml:"start" json:"start"`
+	UseMapping   bool           `yaml:"useMapping" json:"useMapping"`
+	AnimeMapping []AnimeMapping `yaml:"animeMapping" json:"animeMapping"`
 }
 
-type Seasons struct {
-	Season int `yaml:"season" json:"season"`
-	MalID  int `yaml:"mal-id" json:"mal-id"`
-	Start  int `yaml:"start,omitempty" json:"start,omitempty"`
+type AnimeMapping struct {
+	TvdbSeason int `yaml:"tvdbseason" json:"tvdbseason"`
+	Start      int `yaml:"start" json:"start"`
 }
 
 type AnimeMovies struct {
@@ -44,7 +46,7 @@ type AnimeMovie struct {
 	MALID     int    `yaml:"malid" json:"malid"`
 }
 
-func NewAnimeMaps(cfg *Config) (*AnimeSeasonMap, *AnimeMovies, error) {
+func NewAnimeMaps(cfg *Config) (*AnimeTVDBMap, *AnimeMovies, error) {
 	cfg.LocalMapsExist()
 	err := loadCommunityMaps(cfg)
 	if err != nil {
@@ -59,28 +61,51 @@ func NewAnimeMaps(cfg *Config) (*AnimeSeasonMap, *AnimeMovies, error) {
 	return cfg.TVDBMalMap, cfg.TMDBMalMap, nil
 }
 
-func (a *Anime) IsMultiSeason(ctx context.Context, malid int) bool {
-	var count int
-	for _, s := range a.Seasons {
-		if s.MalID == malid {
-			count++
-		}
+func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *Anime) {
+	candidates := s.findMatchingAnime(tvdbid, tvdbseason)
+	if len(candidates) == 1 {
+		return true, &candidates[0]
+	} else if len(candidates) > 1 {
+		anime := s.findBestMatchingAnime(ep, candidates)
+		return true, &anime
 	}
 
-	return count > 1
+	return false, nil
 }
 
-func (s *AnimeSeasonMap) CheckMap(title string) (bool, *Anime) {
-	for i, anime := range s.Anime {
-		if title == anime.Title || synonymExists(anime.Synonyms, title) {
-			return true, &Anime{
-				Title:   s.Anime[i].Title,
-				Seasons: s.Anime[i].Seasons,
+func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []Anime {
+	var matchingAnime []Anime
+	for _, anime := range s.Anime {
+		if tvdbid == anime.Tvdbid {
+			if tvdbseason == anime.TvdbSeason && !anime.UseMapping {
+				matchingAnime = append(matchingAnime, anime)
+			}
+
+			if anime.UseMapping {
+				for _, animeMap := range anime.AnimeMapping {
+					if tvdbseason == animeMap.TvdbSeason {
+						a := anime
+						a.TvdbSeason = animeMap.TvdbSeason
+						a.Start = animeMap.Start
+						return []Anime{a}
+					}
+				}
 			}
 		}
 	}
 
-	return false, nil
+	return matchingAnime
+}
+
+func (s *AnimeTVDBMap) findBestMatchingAnime(ep int, candidates []Anime) Anime {
+	var anime Anime
+	for _, v := range candidates {
+		if ep >= v.Start {
+			anime = v
+		}
+	}
+
+	return anime
 }
 
 func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
@@ -95,7 +120,7 @@ func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
 
 func loadCommunityMaps(cfg *Config) error {
 	if !cfg.CustomMapTVDB {
-		s := &AnimeSeasonMap{}
+		s := &AnimeTVDBMap{}
 		respTVDB, err := http.Get(communityMapTVDB)
 		if err != nil {
 			return err
@@ -129,7 +154,7 @@ func loadCommunityMaps(cfg *Config) error {
 
 func loadLocalMaps(cfg *Config) error {
 	if cfg.CustomMapTVDB {
-		s := &AnimeSeasonMap{}
+		s := &AnimeTVDBMap{}
 		fTVDB, err := os.Open(cfg.CustomMapTVDBPath)
 		if err != nil {
 			return err
@@ -159,16 +184,6 @@ func loadLocalMaps(cfg *Config) error {
 	}
 
 	return nil
-}
-
-func synonymExists(s []string, title string) bool {
-
-	for _, v := range s {
-		if strings.EqualFold(v, title) {
-			return true
-		}
-	}
-	return false
 }
 
 func ChecklocalMaps(cfg *Config) (error, bool) {

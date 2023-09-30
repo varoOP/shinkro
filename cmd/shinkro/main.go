@@ -110,19 +110,19 @@ func main() {
 
 		db.CreateDB()
 		malauth.NewMalAuth(db)
-		fmt.Fprintf(flag.CommandLine.Output(), "MAL API credentials saved. Testing client..\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "\nMAL API credentials saved.\nTesting client..\n")
 
 		cc := malauth.NewOauth2Client(context.Background(), db)
 		client := mal.NewClient(cc)
 		_, _, err := client.User.MyInfo(context.Background())
 		if err != nil {
-			fmt.Fprintln(flag.CommandLine.Output(), "Unabled to load user info from MAL. Retry MAL authentication.")
+			fmt.Fprintln(flag.CommandLine.Output(), "Unable to load user info from MAL. Retry MAL authentication.")
 			db.Close()
 			os.Exit(1)
 		}
 
 		db.Close()
-		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! Run shinkro now.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! You can run shinkro now.")
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)

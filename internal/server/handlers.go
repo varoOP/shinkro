@@ -27,13 +27,9 @@ func Plex(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.No
 		}
 
 		a.Log.Info().
-			Str("status", string(a.Malresp.Status)).
-			Int("score", a.Malresp.Score).
-			Int("episdoesWatched", a.Malresp.NumEpisodesWatched).
-			Int("timesRewatched", a.Malresp.NumTimesRewatched).
-			Str("startDate", a.Malresp.StartDate).
-			Str("finishDate", a.Malresp.FinishDate).
-			Msg("updated myanimelist successfully")
+			Str("title", string(a.Media.Title)).
+			Interface("listStatus", a.Malresp).
+			Msg("Updated myanimelist successfully!")
 
 		w.WriteHeader(http.StatusNoContent)
 	}

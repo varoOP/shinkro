@@ -2,24 +2,24 @@ package domain
 
 type Config struct {
 	ConfigPath        string
-	Host              string   `koanf:"host"`
-	Port              int      `koanf:"port"`
-	PlexUser          string   `koanf:"plexUser"`
-	PlexUrl           string   `koanf:"plexUrl"`
-	PlexToken         string   `koanf:"plexToken"`
-	AnimeLibraries    []string `koanf:"animeLibraries"`
-	ApiKey            string   `koanf:"apiKey"`
-	BaseUrl           string   `koanf:"baseUrl"`
+	Host              string   `koanf:"Host"`
+	Port              int      `koanf:"Port"`
+	PlexUser          string   `koanf:"UserName"`
+	PlexUrl           string   `koanf:"Url"`
+	PlexToken         string   `koanf:"Token"`
+	AnimeLibraries    []string `koanf:"AnimeLibraries"`
+	ApiKey            string   `koanf:"ApiKey"`
+	BaseUrl           string   `koanf:"BaseUrl"`
 	CustomMapTVDB     bool
 	CustomMapTVDBPath string
 	CustomMapTMDB     bool
 	CustomMapTMDBPath string
 	TVDBMalMap        *AnimeTVDBMap
 	TMDBMalMap        *AnimeMovies
-	DiscordWebHookURL string `koanf:"discordWebhookUrl"`
-	LogLevel          string `koanf:"logLevel"`
-	LogMaxSize        int    `koanf:"logMaxSize"`
-	LogMaxBackups     int    `koanf:"logMaxBackups"`
+	DiscordWebHookURL string `koanf:"DiscordWebhookUrl"`
+	LogLevel          string `koanf:"LogLevel"`
+	LogMaxSize        int    `koanf:"LogMaxSize"`
+	LogMaxBackups     int    `koanf:"LogMaxBackups"`
 }
 
 func (cfg *Config) LocalMapsExist() {

@@ -6,14 +6,19 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/domain"
 )
 
 type AppConfig struct {
+	log    zerolog.Logger
 	Config *domain.Config
 }
 
@@ -23,16 +28,21 @@ func NewConfig(dir string) *AppConfig {
 		log.Fatal("Run: shinkro help, for the help message.")
 	}
 
-	c := &AppConfig{}
-	c.defaultConfig(dir)
-	c.checkConfig(dir)
-
-	err := c.parseConfig()
-	if err != nil {
-		log.Println(err)
-		log.Fatal("unable to parse config.toml")
+	c := &AppConfig{
+		log: zerolog.New(
+			zerolog.ConsoleWriter{
+				Out:        os.Stdout,
+				TimeFormat: time.DateTime,
+			}).With().Timestamp().Logger(),
 	}
 
+	c.defaultConfig(dir)
+	err := c.parseConfig(dir)
+	if err != nil {
+		c.log.Fatal().Err(err).Msg("unable to parse config.toml")
+	}
+
+	c.checkConfig(dir)
 	return c
 }
 
@@ -42,9 +52,9 @@ func (c *AppConfig) defaultConfig(dir string) {
 		Host:              "127.0.0.1",
 		Port:              7011,
 		PlexUser:          "",
-		PlexUrl:           "http://127.0.0.1:32400",
+		PlexUrl:           "",
 		PlexToken:         "",
-		AnimeLibraries:    []string{""},
+		AnimeLibraries:    []string{},
 		ApiKey:            genApikey(),
 		BaseUrl:           "/",
 		CustomMapTVDB:     false,
@@ -61,34 +71,34 @@ func (c *AppConfig) defaultConfig(dir string) {
 }
 
 func (c *AppConfig) createConfig(dir string) error {
-	var config = `#Sample shinkro config
+	var config = `###Example config.toml for shinkro
+###[shinkro]
+###Discord webhook, and BaseUrl are optional.
+###LogLevel can be set to any one of the following: "INFO", "ERROR", "DEBUG", "TRACE"
+###LogxMaxSize is in MB.
+###[plex]
+###UserName and AnimeLibraries must be set to the correct values. 
+###AnimeLibraries is a list of your plex library names that contain anime - the ones shinkro will use to update your MAL account.
+###Example: AnimeLibraries = ["Anime", "Anime Movies"]
+###Url and Token are optional - only required if you have anime libraries that use the plex agents.
 
-host = "127.0.0.1"
+[shinkro]
+Host = "127.0.0.1"
+Port = 7011
+ApiKey = "` + c.Config.ApiKey + `"
+#BaseUrl = "/"
+#DiscordWebhookUrl = ""
+LogLevel = "INFO"
+LogMaxSize = 50
+LogMaxBackups = 3
 
-port = 7011
-
-plexUser = "Your_Plex_account_Title_EDIT_REQUIRED"
-
-#plexUrl and plexToken only need to be set if you are using Plex agents for your anime libraries.
-
-#plexUrl = "http://127.0.0.1:32400"
-
-#plexToken = "<X-Plex-Token value goes here>"
-
-animeLibraries = ["Anime", "Anime-Movies", "Anime2"]
-
-apiKey = "` + c.Config.ApiKey + `"
-
-#baseUrl = "/shinkro"
-
-#discordWebhookUrl = ""
-
-#logLevel = ""
-
-#logMaxSize = 50
-
-#logMaxBackups = 3
+[plex]
+UserName = ""
+AnimeLibraries = []
+#Url = "http://127.0.0.1:32400"
+#Token = "<Value of X-Plex-Token>"
 `
+
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return err
@@ -109,25 +119,44 @@ apiKey = "` + c.Config.ApiKey + `"
 }
 
 func (c *AppConfig) checkConfig(dir string) {
-	if _, err := os.Stat(c.Config.ConfigPath); err != nil {
-		err = c.createConfig(dir)
-		if err != nil {
-			log.Fatal("unable to write shinkro configuration file")
-		}
+	if c.Config.ApiKey == "" {
+		c.log.Fatal().Msgf("shinkro.ApiKey not set in %v/config.toml", dir)
+	}
 
-		log.Println("shinkro configuration file not found")
-		log.Fatalf("example config.toml created at %v", c.Config.ConfigPath)
+	if c.Config.PlexUser == "" {
+		c.log.Fatal().Msgf("plex.UserName not set in %v/config.toml", dir)
+	}
+
+	if len(c.Config.AnimeLibraries) < 1 {
+		c.log.Fatal().Msgf("plex.AnimeLibraries not set in %v/config.toml", dir)
+	}
+
+	for i, v := range c.Config.AnimeLibraries {
+		c.Config.AnimeLibraries[i] = strings.TrimSpace(v)
 	}
 }
 
-func (c *AppConfig) parseConfig() error {
-	k := koanf.New(".")
+func (c *AppConfig) parseConfig(dir string) error {
+	if _, err := os.Stat(c.Config.ConfigPath); err != nil {
+		err = c.createConfig(dir)
+		if err != nil {
+			c.log.Fatal().Msg("unable to write shinkro configuration file")
+		}
 
+		c.log.Fatal().Err(errors.New("shinkro configuration file not found")).Msgf("No config.toml found, example config.toml created at %v. Edit and run shinkro again", c.Config.ConfigPath)
+	}
+
+	k := koanf.New(".")
 	if err := k.Load(file.Provider(c.Config.ConfigPath), toml.Parser()); err != nil {
 		return err
 	}
 
-	err := k.Unmarshal("", c.Config)
+	err := k.Unmarshal("shinkro", c.Config)
+	if err != nil {
+		return err
+	}
+
+	err = k.Unmarshal("plex", c.Config)
 	if err != nil {
 		return err
 	}

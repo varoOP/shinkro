@@ -32,15 +32,24 @@ func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 	}
 }
 
-func ParsePlexPayload(next http.Handler) http.Handler {
+func OnlyAllowPost(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		log := hlog.FromRequest(r)
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			log.Error().Err(errors.New("method not allowed")).Msg("")
 			return
 		}
 
+		next.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+func ParsePlexPayload(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		log := hlog.FromRequest(r)
 		var (
 			ps      string
 			payload *plex.PlexWebhook

@@ -86,7 +86,7 @@ func (c *AppConfig) createConfig(dir string) error {
 Host = "127.0.0.1"
 Port = 7011
 ApiKey = "` + c.Config.ApiKey + `"
-#BaseUrl = "/"
+#BaseUrl = "/shinkro"
 #DiscordWebhookUrl = ""
 LogLevel = "INFO"
 LogMaxSize = 50

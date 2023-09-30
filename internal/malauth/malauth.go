@@ -42,11 +42,12 @@ func NewMalAuth(db *database.DB) {
 
 	fmt.Println("Enter MAL API client-id:")
 	fmt.Scanln(&client_id)
+
 	fmt.Println("Enter MAL API client-secret:")
 	fmt.Scanln(&client_secret)
 
 	if client_id == "" || client_secret == "" {
-		log.Fatalf("client-id or client-secret not provided.")
+		log.Fatal("client-id or client-secret not provided.")
 	}
 
 	creds := map[string]string{
@@ -70,8 +71,10 @@ func getToken(ctx context.Context, creds map[string]string) *oauth2.Token {
 	)
 
 	cfg := getCfg(creds)
+	fmt.Println()
 	fmt.Println("Go to the URL given below and authorize shinkro to access your MAL account:")
-	fmt.Println(cfg.AuthCodeURL(state, CodeChallenge, ResponseType))
+	fmt.Println("URL:", cfg.AuthCodeURL(state, CodeChallenge, ResponseType))
+	fmt.Println()
 	fmt.Println("Enter the URL from your browser after the re-direct below:")
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Scan()

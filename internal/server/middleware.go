@@ -32,14 +32,29 @@ func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 	}
 }
 
+func OnlyAllowPost(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		log := hlog.FromRequest(r)
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			log.Error().Err(errors.New("method not allowed")).Msg("")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
+}
+
 func ParsePlexPayload(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		log := hlog.FromRequest(r)
 		var (
 			ps      string
 			payload *plex.PlexWebhook
 		)
 
-		log := hlog.FromRequest(r)
 		sourceType := contentType(r)
 		switch sourceType {
 		case "plexWebhook":
@@ -96,7 +111,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 			br := "bad request"
 			if !isPlexUser(p, cfg) {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				log.Debug().Err(errors.New("unauthorized plex user")).
+				log.Error().Err(errors.New("unauthorized plex user")).
 					Str("plexUserReceived", p.Account.Title).
 					Str("AuthorizedPlexUser", cfg.PlexUser).
 					Msg("")
@@ -116,7 +131,7 @@ func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 
 			if !isAnimeLibrary(p, cfg) {
 				http.Error(w, br, http.StatusBadRequest)
-				log.Debug().Err(errors.New("not an anime library")).
+				log.Error().Err(errors.New("not an anime library")).
 					Str("library received", p.Metadata.LibrarySectionTitle).
 					Str("anime libraries", strings.Join(cfg.AnimeLibraries, ",")).
 					Msg("")

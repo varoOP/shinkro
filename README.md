@@ -34,71 +34,7 @@ shinkro enables you to sync your Plex ratings and watch status for anime to myan
 
 ## Installation
 
-Full installation guide and documentation can be found at https://docs.shinkro.com
-
-### Windows
-
-Check the windows setup guide [here](https://autobrr.com/installation/windows)
-
-### Linux generic
-
-Download the latest release,
-
-```bash
-wget $(curl -s https://api.github.com/repos/varoOP/shinkro/releases/latest | grep download | grep linux_x86_64 | cut -d\" -f4)
-```
-
-#### Unpack
-
-Run with `root` or `sudo`. If you do not have root, or are on a shared system, place the binaries somewhere in your home
-directory like `~/.bin`.
-
-```bash
-tar -C /usr/local/bin -xzf shinkro*.tar.gz
-```
-
-This will extract `shinkro` to `/usr/local/bin`.
-Note: If the command fails, prefix it with `sudo ` and re-run again.
-
-#### Systemd (Recommended)
-
-On Linux-based systems, it is recommended to run shinkro as a sort of service with auto-restarting capabilities, in
-order to account for potential downtime. The most common way is to do it via systemd.
-
-You will need to create a service file in `/etc/systemd/system/` called `shinkro.service`.
-
-```bash
-touch /etc/systemd/system/shinkro@.service
-```
-
-Then place the following content inside the file (e.g. via nano/vim/ed):
-
-```systemd title="/etc/systemd/system/shinkro@.service"
-[Unit]
-Description=shinkro service for %i
-After=syslog.target network-online.target
-
-[Service]
-Type=simple
-User=%i
-Group=%i
-ExecStart=/usr/bin/shinkro --config=/home/%i/.config/shinkro
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Start the service. Enable will make it startup on reboot.
-
-```bash
-systemctl enable -q --now --user shinkro@$USER
-```
-
-By default, the configuration is set to listen on `127.0.0.1`. While shinkro works fine as is exposed to the internet,
-it is recommended to use a reverse proxy
-like [nginx](https://docs.shinkro.com/installation/linux#nginx)
-
-If you are not running a reverse proxy change `Host` in the `config.toml` to `0.0.0.0`.
+Full installation guide and documentation can be found at https://docs.shinkro.com/installation
 
 ## Community
 

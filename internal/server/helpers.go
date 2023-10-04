@@ -3,6 +3,7 @@ package server
 import (
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/varoOP/shinkro/internal/domain"
@@ -106,4 +107,13 @@ func readRequest(r *http.Request) (string, error) {
 
 	defer r.Body.Close()
 	return string(b), nil
+}
+
+func joinUrlPath(base, extra string) string {
+	u, err := url.JoinPath(base, extra)
+	if err != nil {
+		return extra
+	}
+
+	return u
 }

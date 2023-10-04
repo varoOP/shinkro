@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/hlog"
+	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/tautulli"
 	"github.com/varoOP/shinkro/pkg/plex"
 )
@@ -22,6 +25,40 @@ func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				log.Error().Err(errors.New("ApiKey invalid")).Msg("")
 				log.Debug().Str("query", fmt.Sprintf("%v", r.URL.Query())).Str("headers", fmt.Sprintf("%v", r.Header)).Msg("")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
+func BasicAuth(username, password string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, pass, ok := r.BasicAuth()
+			if !ok || user != username || pass != password {
+				w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+				http.Error(w, "Unauthorized.", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func CheckMalAuth(db *database.DB) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			log := hlog.FromRequest(r)
+			client, _ := malauth.NewOauth2Client(r.Context(), db)
+			c := mal.NewClient(client)
+			_, _, err := c.User.MyInfo(r.Context())
+			if err == nil {
+				w.Write([]byte("Authentication with myanimelist is successful."))
+				log.Trace().Msg("user already authenticated")
 				return
 			}
 

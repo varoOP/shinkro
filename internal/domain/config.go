@@ -2,9 +2,11 @@ package domain
 
 type Config struct {
 	ConfigPath        string
+	Username          string   `koanf:"Username"`
+	Password          string   `koanf:"Password"`
 	Host              string   `koanf:"Host"`
 	Port              int      `koanf:"Port"`
-	PlexUser          string   `koanf:"UserName"`
+	PlexUser          string   `koanf:"PlexUser"`
 	PlexUrl           string   `koanf:"Url"`
 	PlexToken         string   `koanf:"Token"`
 	AnimeLibraries    []string `koanf:"AnimeLibraries"`

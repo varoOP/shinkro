@@ -73,16 +73,19 @@ func (c *AppConfig) defaultConfig(dir string) {
 func (c *AppConfig) createConfig(dir string) error {
 	var config = `###Example config.toml for shinkro
 ###[shinkro]
+### Username and Password is required for basic authentication.
 ###Discord webhook, and BaseUrl are optional.
 ###LogLevel can be set to any one of the following: "INFO", "ERROR", "DEBUG", "TRACE"
 ###LogxMaxSize is in MB.
 ###[plex]
-###UserName and AnimeLibraries must be set to the correct values. 
+###PlexUser and AnimeLibraries must be set to the correct values. 
 ###AnimeLibraries is a list of your plex library names that contain anime - the ones shinkro will use to update your MAL account.
 ###Example: AnimeLibraries = ["Anime", "Anime Movies"]
 ###Url and Token are optional - only required if you have anime libraries that use the plex agents.
 
 [shinkro]
+Username = ""
+Password = ""
 Host = "127.0.0.1"
 Port = 7011
 ApiKey = "` + c.Config.ApiKey + `"
@@ -93,7 +96,7 @@ LogMaxSize = 50
 LogMaxBackups = 3
 
 [plex]
-UserName = ""
+PlexUser = ""
 AnimeLibraries = []
 #Url = "http://127.0.0.1:32400"
 #Token = "<Value of X-Plex-Token>"
@@ -123,8 +126,16 @@ func (c *AppConfig) checkConfig(dir string) {
 		c.log.Fatal().Msgf("shinkro.ApiKey not set in %v/config.toml", dir)
 	}
 
+	if c.Config.Username == "" {
+		c.log.Fatal().Msgf("shinkro.Username not set in %v/config.toml", dir)
+	}
+
+	if c.Config.Password == "" {
+		c.log.Fatal().Msgf("shinkro.Password not set in %v/config.toml", dir)
+	}
+
 	if c.Config.PlexUser == "" {
-		c.log.Fatal().Msgf("plex.UserName not set in %v/config.toml", dir)
+		c.log.Fatal().Msgf("plex.PlexUser not set in %v/config.toml", dir)
 	}
 
 	if len(c.Config.AnimeLibraries) < 1 {

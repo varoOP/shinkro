@@ -127,7 +127,7 @@ func (db *DB) UpdateMalAuth(m map[string]string) {
 	}
 }
 
-func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
+func (db *DB) GetMalCreds(ctx context.Context) (map[string]string, error) {
 	var (
 		client_id     string
 		client_secret string
@@ -139,14 +139,14 @@ func (db *DB) GetMalCreds(ctx context.Context) map[string]string {
 	row := db.Handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
-		db.log.Fatal().Str("Possible fix", "Run the command: shinkro malauth").Err(errors.New("unable to get mal credentials")).Msg("Database operation failed")
+		return nil, err
 	}
 
 	return map[string]string{
 		"client_id":     client_id,
 		"client_secret": client_secret,
 		"access_token":  access_token,
-	}
+	}, nil
 }
 
 func (db *DB) checkDBForCreds() error {

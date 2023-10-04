@@ -38,15 +38,15 @@ func NewOauth2Client(ctx context.Context, db *database.DB) (*http.Client, error)
 	return client, nil
 }
 
-func GetOauth(ctx context.Context, client_id, client_secret string) (*oauth2.Config, map[string]string) {
+func GetOauth(ctx context.Context, clientId, clientSecret string) (*oauth2.Config, map[string]string) {
 	var (
 		pkce          string                = randomString(128)
 		state         string                = randomString(32)
 		CodeChallenge oauth2.AuthCodeOption = oauth2.SetAuthURLParam("code_challenge", pkce)
 		ResponseType  oauth2.AuthCodeOption = oauth2.SetAuthURLParam("response_type", "code")
 		creds                               = map[string]string{
-			"client_id":     client_id,
-			"client_secret": client_secret,
+			"client_id":     clientId,
+			"client_secret": clientSecret,
 		}
 	)
 
@@ -58,15 +58,15 @@ func GetOauth(ctx context.Context, client_id, client_secret string) (*oauth2.Con
 	}
 }
 
-func SaveToken(token *oauth2.Token, client_id, client_secret string, db *database.DB) {
+func SaveToken(token *oauth2.Token, clientId, clientSecret string, db *database.DB) {
 	t, err := json.Marshal(token)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	db.UpdateMalAuth(map[string]string{
-		"client_id":     client_id,
-		"client_secret": client_secret,
+		"client_id":     clientId,
+		"client_secret": clientSecret,
 		"access_token":  string(t),
 	})
 }

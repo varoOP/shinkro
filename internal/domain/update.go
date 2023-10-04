@@ -61,7 +61,11 @@ func NewAnimeUpdate(db *database.DB, cfg *Config, log *zerolog.Logger, n *Notifi
 }
 
 func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
-	c := malauth.NewOauth2Client(ctx, a.DB)
+	c, err := malauth.NewOauth2Client(ctx, a.DB)
+	if err != nil {
+		return errors.Wrap(err, "unable to create new mal oauth2 client")
+	}
+
 	a.Client = mal.NewClient(c)
 	if err := a.parseMedia(ctx); err != nil {
 		return err
@@ -336,5 +340,6 @@ func (a *AnimeUpdate) parseMedia(ctx context.Context) error {
 		return err
 	}
 
+	a.Media.ConvertToTVDB(ctx, a.DB)
 	return nil
 }

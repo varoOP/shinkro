@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/pflag"
 
@@ -19,7 +17,6 @@ import (
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/logger"
-	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/notification"
 	"github.com/varoOP/shinkro/internal/server"
 )
@@ -102,27 +99,6 @@ func main() {
 
 		db.Close()
 		log.Fatal().Msgf("Caught signal %v, Shutting Down", sig)
-
-	case "malauth":
-		cfg := config.NewConfig(configPath).Config
-		log := logger.NewLogger(configPath, cfg)
-		db := database.NewDB(configPath, log)
-
-		db.CreateDB()
-		malauth.NewMalAuth(db)
-		fmt.Fprintf(flag.CommandLine.Output(), "\nMAL API credentials saved.\nTesting client..\n")
-
-		cc := malauth.NewOauth2Client(context.Background(), db)
-		client := mal.NewClient(cc)
-		_, _, err := client.User.MyInfo(context.Background())
-		if err != nil {
-			fmt.Fprintln(flag.CommandLine.Output(), "Unable to load user info from MAL. Retry MAL authentication.")
-			db.Close()
-			os.Exit(1)
-		}
-
-		db.Close()
-		fmt.Fprintln(flag.CommandLine.Output(), "Test successful! You can run shinkro now.")
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)

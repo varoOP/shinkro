@@ -30,19 +30,23 @@ func NewRouter(cfg *domain.Config, db *database.DB, n *domain.Notification, log 
 	}
 
 	r.Route(baseUrl, func(r chi.Router) {
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("You shall not pass!"))
+		r.Route("/api", func(r chi.Router) {
+			r.Use(Auth(cfg))
+			r.Route("/plex", func(r chi.Router) {
+				r.Use(OnlyAllowPost, middleware.AllowContentType("application/json", "multipart/form-data"), ParsePlexPayload, CheckPlexPayload(cfg))
+				r.Post("/", Plex(db, cfg, &log, n))
+			})
 		})
 
-		r.Route("/plex", func(r chi.Router) {
-			r.Use(OnlyAllowPost)
-			r.Use(middleware.AllowContentType("application/json", "multipart/form-data"))
-			r.Use(Auth(cfg))
-			r.Use(ParsePlexPayload)
-			r.Use(CheckPlexPayload(cfg))
-			r.Post("/", Plex(db, cfg, &log, n))
+		r.Route("/malauth", func(r chi.Router) {
+			r.Use(BasicAuth(cfg.Username, cfg.Password))
+			r.With(CheckMalAuth(db)).Get("/", MalAuth(cfg))
+			r.Post("/login", MalAuthLogin())
+			r.Get("/callback", MalAuthCallback(cfg, db, &log))
+			r.Get("/status", MalAuthStatus(cfg, db))
 		})
+
+		r.NotFound(NotFound(cfg))
 	})
 
 	return r

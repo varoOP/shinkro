@@ -105,6 +105,21 @@ func (m *Media) GetMalID(ctx context.Context, db *DB) (int, error) {
 	return malid, nil
 }
 
+func (m *Media) ConvertToTVDB(ctx context.Context, db *DB) {
+	if m.IdSource == "anidb" && m.Season > 1 {
+		var tvdbid int
+		sqlstmt := "SELECT tvdb_id from anime where anidb_id=?;"
+		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)
+		err := row.Scan(&tvdbid)
+		if err != nil {
+			return
+		}
+
+		m.IdSource = "tvdb"
+		m.Id = tvdbid
+	}
+}
+
 func hamaMALAgent(guid, agent string) (string, int, error) {
 	r := regexp.MustCompile(AgentRegExMap[agent])
 	if !r.MatchString(guid) {

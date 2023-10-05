@@ -1,7 +1,8 @@
 .gitignore
 .github
-.goreleaser.yml
+.goreleaser.yaml
 Dockerfile
 ci.Dockerfile
 docker-compose.yml
 README.md
+bin

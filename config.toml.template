@@ -11,11 +11,11 @@
 ###Url and Token are optional - only required if you have anime libraries that use the plex agents.
 
 [shinkro]
-Username = "${Username}"
-Password = "${Password}"
+Username = "${SHINKRO_USERNAME}"
+Password = "${SHINKRO_PASSWORD}"
 Host = "0.0.0.0"
 Port = 7011
-ApiKey = "${ApiKey}"
+ApiKey = "${SHINKRO_APIKEY}"
 #BaseUrl = "/shinkro"
 #DiscordWebhookUrl = ""
 LogLevel = "INFO"
@@ -23,7 +23,7 @@ LogMaxSize = 50
 LogMaxBackups = 3
 
 [plex]
-PlexUsername = "${PlexUsername}"
-AnimeLibraries = [${AnimeLibraries}]
+PlexUsername = "${PLEX_USERNAME}"
+AnimeLibraries = [${ANIME_LIBRARIES}]
 #Url = "http://127.0.0.1:32400"
 #Token = "<Value of X-Plex-Token>"

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/logger"
+	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/notification"
 	"github.com/varoOP/shinkro/internal/server"
 )
@@ -24,10 +26,10 @@ import (
 const usage = `shinkro
 Sync your Anime watch status in Plex to myanimelist.net!
 Usage:
-    shinkro --config <path to shinkro configuration>	Run shinkro
-    shinkro malauth --config <path to shinkro configuration> Set up your MAL account for use with shinkro
-    shinkro version	Print version info
-    shinkro help	Show this help message
+    shinkro --config <path to shinkro configuration directory> Run shinkro
+    shinkro genkey                                             Generate an API key
+    shinkro version                                            Print version info
+    shinkro help                                               Show this help message
 `
 
 func init() {
@@ -70,6 +72,7 @@ func main() {
 		log.Info().Msgf("Version: %s", version)
 		log.Info().Msgf("Commit: %s", commit)
 		log.Info().Msgf("Build date: %s", date)
+		log.Info().Msgf("Base URL: %s", cfg.BaseUrl)
 		log.Info().Msgf("Log-level: %s", cfg.LogLevel)
 
 		err, mapLoaded := domain.ChecklocalMaps(cfg)
@@ -82,10 +85,14 @@ func main() {
 		}
 
 		db.CreateDB()
+		db.MigrateDB()
 		db.UpdateAnime()
 
 		c := cron.New(cron.WithLocation(time.UTC))
-		c.AddFunc("0 1 * * MON", func() { db.UpdateAnime() })
+		c.AddFunc("0 1 * * MON", func() {
+			db.UpdateAnime()
+			malauth.NewOauth2Client(context.Background(), db)
+		})
 		c.Start()
 
 		n := notification.NewAppNotification(cfg.DiscordWebHookURL, log)
@@ -99,6 +106,9 @@ func main() {
 
 		db.Close()
 		log.Fatal().Msgf("Caught signal %v, Shutting Down", sig)
+
+	case "genkey":
+		fmt.Fprintln(flag.CommandLine.Output(), config.GenApikey())
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)

@@ -40,6 +40,25 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 	return db
 }
 
+func (db *DB) MigrateDB() {
+	const migrations = `CREATE TABLE IF NOT EXISTS malauth_temp (
+			id INTEGER PRIMARY KEY,
+			client_id TEXT,
+			client_secret TEXT,
+			access_token TEXT
+		);
+
+		INSERT INTO malauth_temp (id, client_id, client_secret, access_token)
+		SELECT 1, client_id, client_secret, access_token FROM malauth;
+
+		DROP TABLE malauth;
+
+		ALTER TABLE malauth_temp RENAME TO malauth;`
+
+	_, err := db.Handler.Exec(migrations)
+	db.check(err)
+}
+
 func (db *DB) CreateDB() {
 	const scheme = `CREATE TABLE IF NOT EXISTS anime (
 		mal_id INTEGER PRIMARY KEY,
@@ -52,7 +71,8 @@ func (db *DB) CreateDB() {
 		releaseDate TEXT
 	);
 	CREATE TABLE IF NOT EXISTS malauth (
-		client_id TEXT PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
+		client_id TEXT,
 		client_secret TEXT,
 		access_token TEXT
 	);`
@@ -63,7 +83,6 @@ func (db *DB) CreateDB() {
 
 func (db *DB) UpdateAnime() {
 
-	db.check(db.checkDBForCreds())
 	db.log.Trace().Msg("Updating anime in database")
 	a, err := getAnime()
 	if err != nil {
@@ -110,16 +129,17 @@ func (db *DB) UpdateAnime() {
 
 func (db *DB) UpdateMalAuth(m map[string]string) {
 	const addMalauth = `INSERT OR REPLACE INTO malauth (
+		id,
 		client_id,
 		client_secret,
 		access_token
-	) values (?, ?, ?)`
+	) values (?, ?, ?, ?)`
 
 	stmt, err := db.Handler.Prepare(addMalauth)
 	db.check(err)
 	defer stmt.Close()
 
-	_, err = stmt.Exec(m["client_id"], m["client_secret"], m["access_token"])
+	_, err = stmt.Exec(1, m["client_id"], m["client_secret"], m["access_token"])
 	db.check(err)
 
 	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
@@ -134,7 +154,7 @@ func (db *DB) GetMalCreds(ctx context.Context) (map[string]string, error) {
 		access_token  string
 	)
 
-	sqlstmt := "SELECT * from malauth;"
+	sqlstmt := "SELECT client_id, client_secret, access_token from malauth;"
 
 	row := db.Handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
@@ -147,11 +167,6 @@ func (db *DB) GetMalCreds(ctx context.Context) (map[string]string, error) {
 		"client_secret": client_secret,
 		"access_token":  access_token,
 	}, nil
-}
-
-func (db *DB) checkDBForCreds() error {
-	db.GetMalCreds(context.Background())
-	return nil
 }
 
 func (db *DB) Close() {

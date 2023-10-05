@@ -158,6 +158,6 @@ func MalAuth(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
 func NotFound(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := joinUrlPath(cfg.BaseUrl, "/malauth")
-		http.Redirect(w, r, u, http.StatusMovedPermanently)
+		http.Redirect(w, r, u, http.StatusSeeOther)
 	}
 }

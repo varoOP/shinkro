@@ -55,7 +55,7 @@ func (c *AppConfig) defaultConfig(dir string) {
 		PlexUrl:           "",
 		PlexToken:         "",
 		AnimeLibraries:    []string{},
-		ApiKey:            genApikey(),
+		ApiKey:            GenApikey(),
 		BaseUrl:           "/",
 		CustomMapTVDB:     false,
 		CustomMapTVDBPath: filepath.Join(dir, "tvdb-mal.yaml"),
@@ -96,7 +96,7 @@ LogMaxSize = 50
 LogMaxBackups = 3
 
 [plex]
-PlexUser = ""
+PlexUsername = ""
 AnimeLibraries = []
 #Url = "http://127.0.0.1:32400"
 #Token = "<Value of X-Plex-Token>"
@@ -176,7 +176,7 @@ func (c *AppConfig) parseConfig(dir string) error {
 	return nil
 }
 
-func genApikey() string {
+func GenApikey() string {
 	allowed := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 	b := make([]rune, 32)
 	for i := range b {

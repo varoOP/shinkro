@@ -1,0 +1,7 @@
+.gitignore
+.github
+.goreleaser.yml
+Dockerfile
+ci.Dockerfile
+docker-compose.yml
+README.md

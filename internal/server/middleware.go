@@ -93,6 +93,7 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 		)
 
 		sourceType := contentType(r)
+		log.Trace().Str("sourceType", sourceType).Msg("")
 		switch sourceType {
 		case "plexWebhook":
 			err := r.ParseMultipartForm(0)
@@ -103,7 +104,12 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 			}
 
 			ps = r.PostFormValue("payload")
-			log.Trace().Str("sourceType", sourceType).RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+			if ps == "" {
+				log.Info().Msg("Received empty payload from Plex, webhook added successfully.")
+				return
+			}
+
+			log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 			payload, err = plex.NewPlexWebhook([]byte(ps))
 			if err != nil {
 				http.Error(w, InternalServerError, http.StatusInternalServerError)
@@ -119,7 +125,7 @@ func ParsePlexPayload(next http.Handler) http.Handler {
 				return
 			}
 
-			log.Trace().Str("sourceType", sourceType).RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+			log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 			payload, err = tautulli.ToPlex([]byte(ps))
 			if err != nil {
 				http.Error(w, InternalServerError, http.StatusInternalServerError)

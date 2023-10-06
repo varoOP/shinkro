@@ -108,7 +108,7 @@ func main() {
 		log.Fatal().Msgf("Caught signal %v, Shutting Down", sig)
 
 	case "genkey":
-		fmt.Fprintln(flag.CommandLine.Output(), config.GenApikey())
+		fmt.Fprintln(os.Stdout, config.GenApikey())
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)

@@ -12,6 +12,7 @@ builds:
       - linux
       - windows
       - darwin
+      - freebsd
     goarch:
       - amd64
       - arm
@@ -64,3 +65,12 @@ release:
   prerelease: auto
   footer: |
     **Full Changelog**: https://github.com/varoOP/shinkro/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    ## Docker images
+    
+    - `docker pull ghcr.io/varoOP/shinkro:{{ .Tag }}`
+    
+    ## What to do next?
+    
+    - Read the [documentation](https://docs.shinkro.com)
+    - Join our [Discord server](https://discord.gg/ZkYdfNgbAT)

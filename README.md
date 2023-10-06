@@ -36,6 +36,30 @@ shinkro enables you to sync your Plex ratings and watch status for anime to myan
 
 Full installation guide and documentation can be found at https://docs.shinkro.com/installation
 
+### Quickstart via Docker:
+
+Before your first launch, ensure you've set these environment variables:
+- SHINKRO_USERNAME
+- SHINKRO_PASSWORD
+- PLEX_USERNAME
+- ANIME_LIBRARIES
+
+After shinkro is initialized, configurations are primarily managed through the `config.toml` file. The environment variables above won't override the settings in this config file.
+
+```
+docker run \
+    --name shinkro \
+    -v /path/to/shinkro/config:/config \
+    -e TZ=US/Pacific \
+    -e SHINKRO_USERNAME=shinkro \
+    -e SHINKRO_PASSWORD=shinkro \
+    -e PLEX_USERNAME=shinkro \
+    -e ANIME_LIBRARIES=Library1,Library2,Library3 \
+    -p 7011:7011 \
+    --restart unless-stopped \
+    ghcr.io/varoop/shinkro:latest
+```
+
 ## Community
 
 Come join us on [Discord](https://discord.gg/ZkYdfNgbAT)!

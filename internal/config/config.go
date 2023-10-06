@@ -135,7 +135,7 @@ func (c *AppConfig) checkConfig(dir string) {
 	}
 
 	if c.Config.PlexUser == "" {
-		c.log.Fatal().Msgf("plex.PlexUser not set in %v/config.toml", dir)
+		c.log.Fatal().Msgf("plex.PlexUsername not set in %v/config.toml", dir)
 	}
 
 	if len(c.Config.AnimeLibraries) < 1 {

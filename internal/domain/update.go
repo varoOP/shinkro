@@ -121,7 +121,7 @@ func (a *AnimeUpdate) processScrobble(ctx context.Context) error {
 		return nil
 	}
 
-	if a.Media.Season == 1 {
+	if a.Media.Season == 1 || a.Media.IdSource == "mal" {
 		a.Malid, err = a.Media.GetMalID(ctx, a.DB)
 		if err != nil {
 			return err
@@ -165,7 +165,7 @@ func (a *AnimeUpdate) processRate(ctx context.Context) error {
 		return nil
 	}
 
-	if a.Media.Season == 1 {
+	if a.Media.Season == 1 || a.Media.IdSource == "mal" {
 		a.Malid, err = a.Media.GetMalID(ctx, a.DB)
 		if err != nil {
 			return err

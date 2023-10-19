@@ -13,11 +13,10 @@ import (
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/malauth"
-	"github.com/varoOP/shinkro/internal/tautulli"
 	"github.com/varoOP/shinkro/pkg/plex"
 )
 
-func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
+func auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			log := hlog.FromRequest(r)
@@ -35,7 +34,7 @@ func Auth(cfg *domain.Config) func(next http.Handler) http.Handler {
 	}
 }
 
-func BasicAuth(username, password string) func(http.Handler) http.Handler {
+func basicAuth(username, password string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, pass, ok := r.BasicAuth()
@@ -49,7 +48,7 @@ func BasicAuth(username, password string) func(http.Handler) http.Handler {
 	}
 }
 
-func CheckMalAuth(db *database.DB) func(next http.Handler) http.Handler {
+func checkMalAuth(db *database.DB) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			log := hlog.FromRequest(r)
@@ -69,7 +68,7 @@ func CheckMalAuth(db *database.DB) func(next http.Handler) http.Handler {
 	}
 }
 
-func OnlyAllowPost(next http.Handler) http.Handler {
+func onlyAllowPost(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		log := hlog.FromRequest(r)
 		if r.Method != http.MethodPost {
@@ -84,69 +83,25 @@ func OnlyAllowPost(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func ParsePlexPayload(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+func parsePlexPayload(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := hlog.FromRequest(r)
-		var (
-			ps      string
-			payload *plex.PlexWebhook
-		)
 
 		sourceType := contentType(r)
 		log.Trace().Str("sourceType", sourceType).Msg("")
-		switch sourceType {
-		case "plexWebhook":
-			err := r.ParseMultipartForm(0)
-			if err != nil {
-				http.Error(w, "recevied bad request", http.StatusBadRequest)
-				log.Trace().Err(err).Msg("received bad request")
-				return
-			}
 
-			ps = r.PostFormValue("payload")
-			if ps == "" {
-				log.Info().Msg("Received empty payload from Plex, webhook added successfully.")
-				return
-			}
-
-			log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
-			payload, err = plex.NewPlexWebhook([]byte(ps))
-			if err != nil {
-				http.Error(w, InternalServerError, http.StatusInternalServerError)
-				log.Error().Err(err).Msg("unable to unmarshal plex payload")
-				return
-			}
-
-		case "tautulli":
-			ps, err := readRequest(r)
-			if err != nil {
-				http.Error(w, InternalServerError, http.StatusInternalServerError)
-				log.Trace().Err(err).Msg(InternalServerError)
-				return
-			}
-
-			log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
-			payload, err = tautulli.ToPlex([]byte(ps))
-			if err != nil {
-				http.Error(w, InternalServerError, http.StatusInternalServerError)
-				log.Error().Err(err).Msg("unable to convert tautulli to plex webhook")
-				return
-			}
-
-		default:
-			log.Error().Str("sourceType", sourceType).Msg("sourceType not supported")
+		payload, err := parsePayloadBySourceType(w, r, sourceType)
+		if err != nil {
 			return
 		}
 
 		ctx := context.WithValue(r.Context(), domain.PlexPayload, payload)
 		log.Debug().Str("parsedPlexPayload", fmt.Sprintf("%+v", payload)).Msg("")
 		next.ServeHTTP(w, r.WithContext(ctx))
-	}
-
-	return http.HandlerFunc(fn)
+	})
 }
 
-func CheckPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
+func checkPlexPayload(cfg *domain.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			log := hlog.FromRequest(r)

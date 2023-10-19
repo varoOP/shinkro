@@ -24,13 +24,13 @@ var (
 	CodeVerify    oauth2.AuthCodeOption
 )
 
-type AuthPageData struct {
+type authPageData struct {
 	IsAuthenticated bool
 	ActionURL       string
 	RetryURL        string
 }
 
-func Plex(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.Notification) func(w http.ResponseWriter, r *http.Request) {
+func plexHandler(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.Notification) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		a := domain.NewAnimeUpdate(db, cfg, log, n)
@@ -56,7 +56,7 @@ func Plex(db *database.DB, cfg *domain.Config, log *zerolog.Logger, n *domain.No
 	}
 }
 
-func MalAuthLogin() func(w http.ResponseWriter, r *http.Request) {
+func malAuthLogin() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			var authMap map[string]string
@@ -71,7 +71,7 @@ func MalAuthLogin() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func MalAuthCallback(cfg *domain.Config, db *database.DB, log *zerolog.Logger) func(w http.ResponseWriter, r *http.Request) {
+func malAuthCallback(cfg *domain.Config, db *database.DB, log *zerolog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var code string
 		u := joinUrlPath(cfg.BaseUrl, "/malauth/status")
@@ -98,7 +98,7 @@ func MalAuthCallback(cfg *domain.Config, db *database.DB, log *zerolog.Logger) f
 	}
 }
 
-func MalAuthStatus(cfg *domain.Config, db *database.DB) func(w http.ResponseWriter, r *http.Request) {
+func malAuthStatus(cfg *domain.Config, db *database.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -119,7 +119,7 @@ func MalAuthStatus(cfg *domain.Config, db *database.DB) func(w http.ResponseWrit
 			isAuthenticated = true
 		}
 
-		data := AuthPageData{
+		data := authPageData{
 			IsAuthenticated: isAuthenticated,
 			RetryURL:        joinUrlPath(cfg.BaseUrl, "/malauth"),
 		}
@@ -131,14 +131,14 @@ func MalAuthStatus(cfg *domain.Config, db *database.DB) func(w http.ResponseWrit
 	}
 }
 
-func MalAuth(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
+func malAuth(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		data := AuthPageData{
+		data := authPageData{
 			ActionURL: joinUrlPath(cfg.BaseUrl, "/malauth/login"),
 		}
 
@@ -155,7 +155,7 @@ func MalAuth(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NotFound(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
+func notFound(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := joinUrlPath(cfg.BaseUrl, "/malauth")
 		http.Redirect(w, r, u, http.StatusSeeOther)

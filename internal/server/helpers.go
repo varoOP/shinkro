@@ -1,12 +1,15 @@
 package server
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/internal/tautulli"
 	"github.com/varoOP/shinkro/pkg/plex"
 )
 
@@ -116,4 +119,50 @@ func joinUrlPath(base, extra string) string {
 	}
 
 	return u
+}
+
+func parsePayloadBySourceType(w http.ResponseWriter, r *http.Request, sourceType string) (*plex.PlexWebhook, error) {
+	log := hlog.FromRequest(r)
+	switch sourceType {
+	case "plexWebhook":
+		return handlePlexWebhook(w, r)
+
+	case "tautulli":
+		return handleTautulli(w, r)
+
+	default:
+		log.Error().Str("sourceType", sourceType).Msg("sourceType not supported")
+		return nil, errors.New("unsupported source type")
+	}
+}
+
+func handlePlexWebhook(w http.ResponseWriter, r *http.Request) (*plex.PlexWebhook, error) {
+	log := hlog.FromRequest(r)
+	if err := r.ParseMultipartForm(0); err != nil {
+		http.Error(w, "received bad request", http.StatusBadRequest)
+		log.Trace().Err(err).Msg("received bad request")
+		return nil, err
+	}
+
+	ps := r.PostFormValue("payload")
+	if ps == "" {
+		log.Info().Msg("Received empty payload from Plex, webhook added successfully.")
+		return nil, nil
+	}
+
+	log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+	return plex.NewPlexWebhook([]byte(ps))
+}
+
+func handleTautulli(w http.ResponseWriter, r *http.Request) (*plex.PlexWebhook, error) {
+	log := hlog.FromRequest(r)
+	ps, err := readRequest(r)
+	if err != nil {
+		http.Error(w, InternalServerError, http.StatusInternalServerError)
+		log.Trace().Err(err).Msg(InternalServerError)
+		return nil, err
+	}
+
+	log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+	return tautulli.ToPlex([]byte(ps))
 }

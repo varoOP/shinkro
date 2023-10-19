@@ -21,9 +21,9 @@ COPY . ./
 RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/shinkro cmd/shinkro/main.go
 
 # build runner
-FROM alpine:latest
+FROM alpine:3.18.4
 
-LABEL org.opencontainers.image.source = "https://github.com/varoOP/shinkro"
+LABEL org.opencontainers.image.source="https://github.com/varoOP/shinkro"
 
 ENV HOME="/config" \
     XDG_CONFIG_HOME="/config" \

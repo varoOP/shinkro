@@ -254,7 +254,7 @@ func TestPlex(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := createRequest(t, tt.have.data)
-			ServeHTTP := Plex(tt.have.db, tt.have.cfg, &log, &domain.Notification{})
+			ServeHTTP := plexHandler(tt.have.db, tt.have.cfg, &log, &domain.Notification{})
 			ServeHTTP(rr, req)
 			if rr.Result().StatusCode != 204 {
 				t.Errorf("%s test failed", tt.name)

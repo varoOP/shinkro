@@ -112,8 +112,10 @@ func (s *AnimeTVDBMap) findMatchingMappedAnime(anime Anime, tvdbseason int) *Ani
 
 func (s *AnimeTVDBMap) findBestMatchingAnime(ep int, candidates []Anime) Anime {
 	var anime Anime
+	largestStart := 0
 	for _, v := range candidates {
-		if ep >= v.Start {
+		if ep >= v.Start && v.Start >= largestStart {
+			largestStart = v.Start
 			anime = v
 		}
 	}

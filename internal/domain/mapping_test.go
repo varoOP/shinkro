@@ -72,6 +72,33 @@ func TestMappingCheckMap(t *testing.T) {
 			want3:      0,
 		},
 		{
+			name: "SPYXFAMILY S1-2",
+			animeMap: &AnimeTVDBMap{
+				Anime: []Anime{
+					{
+						Malid:      50602,
+						Tvdbid:     405920,
+						TvdbSeason: 1,
+						Start:      13,
+						UseMapping: false,
+					},
+					{
+						Malid:      50265,
+						Tvdbid:     405920,
+						TvdbSeason: 1,
+						Start:      0,
+						UseMapping: false,
+					},
+				},
+			},
+			tvdbid:     405920,
+			tvdbseason: 1,
+			ep:         19,
+			want1:      true,
+			want2:      50602,
+			want3:      13,
+		},
+		{
 			name: "One Piece-1",
 			animeMap: &AnimeTVDBMap{
 				Anime: []Anime{

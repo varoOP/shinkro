@@ -76,25 +76,38 @@ func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *Anime) {
 func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []Anime {
 	var matchingAnime []Anime
 	for _, anime := range s.Anime {
-		if tvdbid == anime.Tvdbid {
-			if tvdbseason == anime.TvdbSeason && !anime.UseMapping {
-				matchingAnime = append(matchingAnime, anime)
-			}
+		if tvdbid != anime.Tvdbid {
+			continue
+		}
+		
+		if !anime.UseMapping && tvdbseason == anime.TvdbSeason {
+			matchingAnime = append(matchingAnime, anime)
+			continue
+		}
 
-			if anime.UseMapping {
-				for _, animeMap := range anime.AnimeMapping {
-					if tvdbseason == animeMap.TvdbSeason {
-						a := anime
-						a.TvdbSeason = animeMap.TvdbSeason
-						a.Start = animeMap.Start
-						return []Anime{a}
-					}
-				}
-			}
+		matchingMappedAnime := s.findMatchingMappedAnime(anime, tvdbseason)
+		if matchingMappedAnime != nil {
+			return []Anime{*matchingMappedAnime}
 		}
 	}
 
 	return matchingAnime
+}
+
+func (s *AnimeTVDBMap) findMatchingMappedAnime(anime Anime, tvdbseason int) *Anime {
+	if !anime.UseMapping {
+		return nil
+	}
+
+	for _, animeMap := range anime.AnimeMapping {
+		if tvdbseason == animeMap.TvdbSeason {
+			anime.TvdbSeason = animeMap.TvdbSeason
+			anime.Start = animeMap.Start
+			return &anime
+		}
+	}
+
+	return nil
 }
 
 func (s *AnimeTVDBMap) findBestMatchingAnime(ep int, candidates []Anime) Anime {

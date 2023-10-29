@@ -1,7 +1,7 @@
 package server
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -147,7 +147,8 @@ func handlePlexWebhook(w http.ResponseWriter, r *http.Request) (*plex.PlexWebhoo
 	ps := r.PostFormValue("payload")
 	if ps == "" {
 		log.Info().Msg("Received empty payload from Plex, webhook added successfully.")
-		return nil, nil
+		w.WriteHeader(http.StatusNoContent)
+		return nil, errors.New("empty paylod")
 	}
 
 	log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")

@@ -3,8 +3,11 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
+	"sync"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog"
@@ -12,8 +15,10 @@ import (
 )
 
 type DB struct {
-	Handler *sql.DB
-	log     zerolog.Logger
+	handler  *sql.DB
+	log      zerolog.Logger
+	lock     sync.RWMutex
+	squirrel sq.StatementBuilderType
 }
 
 func NewDB(dir string, log *zerolog.Logger) *DB {
@@ -26,12 +31,12 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 		DSN = filepath.Join(dir, "shinkro.db") + "?_pragma=busy_timeout%3d1000"
 	)
 
-	db.Handler, err = sql.Open("sqlite", DSN)
+	db.handler, err = sql.Open("sqlite", DSN)
 	if err != nil {
 		db.log.Fatal().Err(err).Msg("unable to connect to database")
 	}
 
-	if _, err = db.Handler.Exec(`PRAGMA journal_mode = wal;`); err != nil {
+	if _, err = db.handler.Exec(`PRAGMA journal_mode = wal;`); err != nil {
 		if err != nil {
 			db.log.Fatal().Err(err).Msg("unable to enable WAL mode")
 		}
@@ -40,45 +45,47 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 	return db
 }
 
-func (db *DB) MigrateDB() {
-	const migrations = `CREATE TABLE IF NOT EXISTS malauth_temp (
-			id INTEGER PRIMARY KEY,
-			client_id TEXT,
-			client_secret TEXT,
-			access_token TEXT
-		);
+func (db *DB) Migrate() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+	var version int
+	if err := db.handler.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		return errors.Wrap(err, "failed to query schema version")
+	}
 
-		INSERT INTO malauth_temp (id, client_id, client_secret, access_token)
-		SELECT 1, client_id, client_secret, access_token FROM malauth;
+	if version == len(migrations) {
+		return nil
+	} else if version > len(migrations) {
+		return errors.Errorf("shinkro (version %d) older than schema (version: %d)", len(migrations), version)
+	}
 
-		DROP TABLE malauth;
+	db.log.Info().Msgf("Beginning database schema upgrade from version %v to version: %v", version, len(migrations))
+	tx, err := db.handler.Begin()
+	if err != nil {
+		return err
+	}
 
-		ALTER TABLE malauth_temp RENAME TO malauth;`
+	defer tx.Rollback()
+	if version == 0 {
+		if _, err := tx.Exec(schema); err != nil {
+			return errors.Wrap(err, "failed to initialize schema")
+		}
+	} else {
+		for i := version; i < len(migrations); i++ {
+			db.log.Info().Msgf("Upgrading Database schema to version: %v", i)
+			if _, err := tx.Exec(migrations[i]); err != nil {
+				return errors.Wrapf(err, "failed to execute migration #%v", i)
+			}
+		}
+	}
 
-	_, err := db.Handler.Exec(migrations)
-	db.check(err)
-}
+	_, err = tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", len(migrations)))
+	if err != nil {
+		return errors.Wrap(err, "failed to bump schema version")
+	}
 
-func (db *DB) CreateDB() {
-	const scheme = `CREATE TABLE IF NOT EXISTS anime (
-		mal_id INTEGER PRIMARY KEY,
-		title TEXT,
-		en_title TEXT,
-		anidb_id INTEGER,
-		tvdb_id INTEGER,
-		tmdb_id INTEGER,
-		type TEXT,
-		releaseDate TEXT
-	);
-	CREATE TABLE IF NOT EXISTS malauth (
-		id INTEGER PRIMARY KEY,
-		client_id TEXT,
-		client_secret TEXT,
-		access_token TEXT
-	);`
-
-	_, err := db.Handler.Exec(scheme)
-	db.check(err)
+	db.log.Info().Msgf("Database schema upgraded to version: %v", len(migrations))
+	return tx.Commit()
 }
 
 func (db *DB) UpdateAnime() {
@@ -101,7 +108,7 @@ func (db *DB) UpdateAnime() {
 		releaseDate
 	) values (?, ?, ?, ?, ?, ?, ?, ?)`
 
-	tx, err := db.Handler.Begin()
+	tx, err := db.handler.Begin()
 	db.check(err)
 
 	defer tx.Rollback()
@@ -120,7 +127,7 @@ func (db *DB) UpdateAnime() {
 		db.check(err)
 	}
 
-	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
+	if _, err = db.handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
 		db.check(err)
 	}
 
@@ -135,14 +142,14 @@ func (db *DB) UpdateMalAuth(m map[string]string) {
 		access_token
 	) values (?, ?, ?, ?)`
 
-	stmt, err := db.Handler.Prepare(addMalauth)
+	stmt, err := db.handler.Prepare(addMalauth)
 	db.check(err)
 	defer stmt.Close()
 
 	_, err = stmt.Exec(1, m["client_id"], m["client_secret"], m["access_token"])
 	db.check(err)
 
-	if _, err = db.Handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
+	if _, err = db.handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
 		db.check(err)
 	}
 }
@@ -156,7 +163,7 @@ func (db *DB) GetMalCreds(ctx context.Context) (map[string]string, error) {
 
 	sqlstmt := "SELECT client_id, client_secret, access_token from malauth;"
 
-	row := db.Handler.QueryRowContext(ctx, sqlstmt)
+	row := db.handler.QueryRowContext(ctx, sqlstmt)
 	err := row.Scan(&client_id, &client_secret, &access_token)
 	if err != nil {
 		return nil, err
@@ -169,12 +176,38 @@ func (db *DB) GetMalCreds(ctx context.Context) (map[string]string, error) {
 	}, nil
 }
 
-func (db *DB) Close() {
-	db.Handler.Close()
+func (db *DB) Close() error {
+	if _, err := db.handler.Exec(`PRAGMA optimize;`); err != nil {
+		return errors.Wrap(err, "query planner optimization")
+	}
+
+	db.handler.Close()
+	return nil
 }
 
 func (db *DB) check(err error) {
 	if err != nil {
 		db.log.Fatal().Err(errors.WithStack(err)).Msg("Database operation failed")
 	}
+}
+
+func (db *DB) Ping() error {
+	return db.handler.Ping()
+}
+
+func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+	tx, err := db.handler.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tx{
+		Tx:      tx,
+		handler: db,
+	}, nil
+}
+
+type Tx struct {
+	*sql.Tx
+	handler *DB
 }

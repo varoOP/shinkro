@@ -6,37 +6,37 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"log"
-	"net/http"
 
+	// "github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/database"
 	"golang.org/x/oauth2"
 )
 
-func NewOauth2Client(ctx context.Context, db *database.DB) (*http.Client, error) {
-	creds, err := db.GetMalCreds(ctx)
-	if err != nil {
-		return nil, err
-	}
+// func NewOauth2Client(ctx context.Context) (*http.Client, error) {
+// 	creds, err := db.GetMalCreds(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	cfg := GetCfg(creds)
-	t := &oauth2.Token{}
-	err = json.Unmarshal([]byte(creds["access_token"]), t)
-	if err != nil {
-		return nil, err
-	}
+// 	cfg := GetCfg(creds)
+// 	t := &oauth2.Token{}
+// 	err = json.Unmarshal([]byte(creds["access_token"]), t)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	fresh_token, err := cfg.TokenSource(ctx, t).Token()
-	if err != nil {
-		return nil, err
-	}
+// 	fresh_token, err := cfg.TokenSource(ctx, t).Token()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if err == nil && (fresh_token != t) {
-		SaveToken(fresh_token, creds["client_id"], creds["client_secret"], db)
-	}
+// 	if err == nil && (fresh_token != t) {
+// 		SaveToken(fresh_token, creds["client_id"], creds["client_secret"], db)
+// 	}
 
-	client := cfg.Client(ctx, fresh_token)
-	return client, nil
-}
+// 	client := cfg.Client(ctx, fresh_token)
+// 	return client, nil
+// }
 
 func GetOauth(ctx context.Context, clientId, clientSecret string) (*oauth2.Config, map[string]string) {
 	var (

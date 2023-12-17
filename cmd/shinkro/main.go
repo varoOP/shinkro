@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -17,10 +16,12 @@ import (
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/internal/http"
 	"github.com/varoOP/shinkro/internal/logger"
-	"github.com/varoOP/shinkro/internal/malauth"
+	"github.com/varoOP/shinkro/internal/plex"
+
+	// "github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/notification"
-	"github.com/varoOP/shinkro/internal/server"
 )
 
 const usage = `shinkro
@@ -66,7 +67,7 @@ func main() {
 	case "":
 		cfg := config.NewConfig(configPath).Config
 		log := logger.NewLogger(configPath, cfg)
-		db := database.NewDB(configPath, log)
+		db := database.NewDB(configPath, &log)
 
 		log.Info().Msg("Starting shinkro")
 		log.Info().Msgf("Version: %s", version)
@@ -84,21 +85,41 @@ func main() {
 			log.Info().Msg("Loaded local custom mapping")
 		}
 
-		db.CreateDB()
-		db.MigrateDB()
-		db.UpdateAnime()
+		err = db.Migrate()
+		if err != nil {
+			log.Fatal().Err(err).Msg("")
+		}
 
+		db.UpdateAnime()
 		c := cron.New(cron.WithLocation(time.UTC))
 		c.AddFunc("0 1 * * MON", func() {
 			db.UpdateAnime()
-			malauth.NewOauth2Client(context.Background(), db)
+			// malauth.NewOauth2Client(context.Background(), db)
 		})
 		c.Start()
 
-		n := notification.NewAppNotification(cfg.DiscordWebHookURL, log)
+		n := notification.NewAppNotification(cfg.DiscordWebHookURL, &log)
 		go n.ListenforNotification()
-		s := server.NewServer(cfg, n.Notification, db, log)
-		go s.Start()
+		// s := server.NewServer(cfg, n.Notification, db, log)
+		// go s.Start()
+
+		var plexRepo = database.NewPlexRepo(log, db)
+		var plexService = plex.NewService(log, plexRepo)
+
+		errorChannel := make(chan error)
+
+		go func() {
+			httpServer := http.NewServer(
+				log,
+				cfg,
+				db,
+				version,
+				commit,
+				date,
+				plexService,
+			)
+			errorChannel <- httpServer.Open()
+		}()
 
 		sigchnl := make(chan os.Signal, 1)
 		signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)

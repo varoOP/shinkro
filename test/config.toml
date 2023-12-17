@@ -1,0 +1,29 @@
+###Example config.toml for shinkro
+###[shinkro]
+### Username and Password is required for basic authentication.
+###Discord webhook, and BaseUrl are optional.
+###LogLevel can be set to any one of the following: "INFO", "ERROR", "DEBUG", "TRACE"
+###LogxMaxSize is in MB.
+###[plex]
+###PlexUser and AnimeLibraries must be set to the correct values. 
+###AnimeLibraries is a list of your plex library names that contain anime - the ones shinkro will use to update your MAL account.
+###Example: AnimeLibraries = ["Anime", "Anime Movies"]
+###Url and Token are optional - only required if you have anime libraries that use the plex agents.
+
+[shinkro]
+Username = "varo"
+Password = "varo"
+Host = "127.0.0.1"
+Port = 7012
+ApiKey = "d06xm86elfmyaz4hblqn7vfji4fljg10"
+#BaseUrl = "/shinkro"
+#DiscordWebhookUrl = ""
+LogLevel = "TRACE"
+LogMaxSize = 50
+LogMaxBackups = 3
+
+[plex]
+PlexUsername = "varo"
+AnimeLibraries = ["Anime"]
+#Url = "http://127.0.0.1:32400"
+#Token = "<Value of X-Plex-Token>"

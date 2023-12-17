@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"os"
@@ -9,12 +8,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func updateStart(ctx context.Context, s int) int {
-	if s == 0 {
-		return 1
-	}
-	return s
-}
+// func updateStart(ctx context.Context, s int) int {
+// 	if s == 0 {
+// 		return 1
+// 	}
+// 	return s
+// }
 
 func readYamlHTTP(resp *http.Response, mapping interface{}) error {
 	body, err := io.ReadAll(resp.Body)

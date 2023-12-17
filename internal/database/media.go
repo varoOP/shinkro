@@ -95,7 +95,7 @@ func (m *Media) GetMalID(ctx context.Context, db *DB) (int, error) {
 
 	default:
 		sqlstmt := fmt.Sprintf("SELECT mal_id from anime where %v_id=?;", m.IdSource)
-		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)
+		row := db.handler.QueryRowContext(ctx, sqlstmt, m.Id)
 		err := row.Scan(&malid)
 		if err != nil {
 			return -1, errors.Errorf("mal_id of %v (%v:%v) not found in database, add to custom map", m.Title, m.IdSource, m.Id)
@@ -109,7 +109,7 @@ func (m *Media) ConvertToTVDB(ctx context.Context, db *DB) {
 	if m.IdSource == "anidb" && m.Season > 1 {
 		var tvdbid int
 		sqlstmt := "SELECT tvdb_id from anime where anidb_id=?;"
-		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)
+		row := db.handler.QueryRowContext(ctx, sqlstmt, m.Id)
 		err := row.Scan(&tvdbid)
 		if err != nil {
 			return

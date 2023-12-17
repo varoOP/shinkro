@@ -12,7 +12,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func NewLogger(path string, c *domain.Config) *zerolog.Logger {
+func NewLogger(path string, c *domain.Config) zerolog.Logger {
 	logPath := filepath.Join(path, "shinkro.log")
 	lumberlog := &lumberjack.Logger{
 		Filename:   logPath,
@@ -44,5 +44,5 @@ func NewLogger(path string, c *domain.Config) *zerolog.Logger {
 		log = log.Level(zerolog.InfoLevel)
 	}
 
-	return &log
+	return log
 }

@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
@@ -23,15 +25,24 @@ func NewPlexRepo(log zerolog.Logger, db *DB) domain.PlexRepo {
 }
 
 func (repo *PlexRepo) Store(ctx context.Context, r *domain.Plex) error {
+
+	b, err := json.Marshal(r.Metadata.GUID)
+	if err != nil {
+		return err
+	}
+
+	guidString := string(b)
+
 	queryBuilder := repo.db.squirrel.
 		Insert("plex").
-		Columns("rating", "event", "source", "account_title", "guid", "grand_parent_key", "grand_parent_title", "metadata_index", "library_section_title", "parent_index", "title", "type").
-		Values(r.Rating, r.Event, r.Source, r.Account.Title, "something", r.Metadata.GrandparentKey, r.Metadata.GrandparentTitle, r.Metadata.Index, r.Metadata.LibrarySectionTitle, r.Metadata.ParentIndex, r.Metadata.Title, r.Metadata.Type).
+		Columns("rating", "event", "source", "account_title", "guid", "grand_parent_key", "grand_parent_title", "metadata_index", "library_section_title", "parent_index", "title", "type", "time_stamp").
+		Values(r.Rating, r.Event, r.Source, r.Account.Title, guidString, r.Metadata.GrandparentKey, r.Metadata.GrandparentTitle, r.Metadata.Index, r.Metadata.LibrarySectionTitle, r.Metadata.ParentIndex, r.Metadata.Title, r.Metadata.Type, r.TimeStamp.Format(time.RFC3339)).
 		Suffix("RETURNING id").RunWith(repo.db.handler)
 
 	var retID int64
 
 	if err := queryBuilder.QueryRowContext(ctx).Scan(&retID); err != nil {
+		repo.log.Debug().Err(err).Msg("error executing query")
 		return errors.Wrap(err, "error executing query")
 	}
 
@@ -71,12 +82,18 @@ func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*dom
 	var rating sql.NullFloat64
 	var index, parent_index sql.NullInt32
 	var grandParentKey, grandParentTitle, title sql.NullString
+	var guid string
 
-	if err := row.Scan(&plex.ID, &rating, &plex.Event, &plex.Source, &plex.Account.Title, &plex.Metadata.GUID, &grandParentKey, &grandParentTitle, &index, &plex.Metadata.LibrarySectionTitle, &parent_index, &title, &plex.Metadata.Type, &plex.TimeStamp); err != nil {
+	if err := row.Scan(&plex.ID, &rating, &plex.Event, &plex.Source, &plex.Account.Title, &guid, &grandParentKey, &grandParentTitle, &index, &plex.Metadata.LibrarySectionTitle, &parent_index, &title, &plex.Metadata.Type, &plex.TimeStamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, "error scanning row")
+	}
+
+	err = json.Unmarshal([]byte(guid), &plex.Metadata.GUID)
+	if err != nil {
+		return nil, err
 	}
 
 	plex.Rating = float32(rating.Float64)

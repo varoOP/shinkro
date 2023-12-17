@@ -68,7 +68,7 @@ func (h plexHandler) PostPlex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "BAD_REQUEST_PARAMS",
-			"message": "id parameter is invalid",
+			"message": err.Error(),
 		})
 		return
 	}

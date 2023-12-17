@@ -23,7 +23,8 @@ type DB struct {
 
 func NewDB(dir string, log *zerolog.Logger) *DB {
 	db := &DB{
-		log: log.With().Str("module", "database").Logger(),
+		log:      log.With().Str("module", "database").Logger(),
+		squirrel: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}
 
 	var (

@@ -86,7 +86,7 @@ func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*dom
 
 	if err := row.Scan(&plex.ID, &rating, &plex.Event, &plex.Source, &plex.Account.Title, &guid, &grandParentKey, &grandParentTitle, &index, &plex.Metadata.LibrarySectionTitle, &parent_index, &title, &plex.Metadata.Type, &plex.TimeStamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, err
 		}
 		return nil, errors.Wrap(err, "error scanning row")
 	}

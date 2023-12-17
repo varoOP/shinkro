@@ -2,3 +2,4 @@
 *.json
 dist/
 bin/
+test/

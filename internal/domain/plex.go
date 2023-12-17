@@ -13,7 +13,7 @@ type PlexRepo interface {
 	Store(ctx context.Context, plex *Plex) error
 	FindAll(ctx context.Context) ([]*Plex, error)
 	Get(ctx context.Context, req *GetPlexRequest) (*Plex, error)
-	
+
 	Delete(ctx context.Context, req *DeletePlexRequest) error
 }
 
@@ -196,7 +196,23 @@ type GUID struct {
 }
 
 func (g *GUID) UnmarshalJSON(data []byte) error {
-	// Try to unmarshal as a string first
+	// Define a temporary struct to match the incoming JSON structure
+	temp := struct {
+		GUIDS []struct {
+			ID string `json:"id"`
+		} `json:"GUIDS"`
+		GUID string `json:"GUID"`
+	}{}
+
+	// Unmarshal into the temporary struct
+	if err := json.Unmarshal(data, &temp); err == nil {
+		return nil
+	}
+
+	// Assign the values to the GUID struct
+	g.GUIDS = temp.GUIDS
+	g.GUID = temp.GUID
+
 	if err := json.Unmarshal(data, &g.GUID); err == nil {
 		return nil
 	}

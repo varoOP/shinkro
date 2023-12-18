@@ -86,7 +86,7 @@ func parsePlexPayload(next http.Handler) http.Handler {
 		log := hlog.FromRequest(r)
 
 		sourceType := contentType(r)
-		log.Trace().Str("sourceType", sourceType).Msg("")
+		log.Trace().Str("sourceType", string(sourceType)).Msg("")
 
 		payload, err := parsePayloadBySourceType(w, r, sourceType)
 		if err != nil {

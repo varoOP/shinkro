@@ -89,17 +89,18 @@ func isAuthorized(apiKey string, in map[string][]string) bool {
 	return false
 }
 
-func contentType(r *http.Request) string {
+func contentType(r *http.Request) domain.PlexPayloadSource {
 	contentType := r.Header.Get("Content-Type")
+	var sourceType domain.PlexPayloadSource
 	if strings.Contains(contentType, "multipart/form-data") {
-		return "plexWebhook"
+		sourceType = domain.PlexWebhook
 	}
 
 	if strings.Contains(contentType, "application/json") {
-		return "tautulli"
+		sourceType = domain.Tautulli
 	}
 
-	return contentType
+	return sourceType
 }
 
 func readRequest(r *http.Request) (string, error) {
@@ -121,17 +122,17 @@ func joinUrlPath(base, extra string) string {
 	return u
 }
 
-func parsePayloadBySourceType(w http.ResponseWriter, r *http.Request, sourceType string) (*domain.Plex, error) {
+func parsePayloadBySourceType(w http.ResponseWriter, r *http.Request, sourceType domain.PlexPayloadSource) (*domain.Plex, error) {
 	log := hlog.FromRequest(r)
 	switch sourceType {
-	case "plexWebhook":
+	case domain.PlexWebhook:
 		return handlePlexWebhook(w, r)
 
-	case "tautulli":
+	case domain.Tautulli:
 		return handleTautulli(w, r)
 
 	default:
-		log.Error().Str("sourceType", sourceType).Msg("sourceType not supported")
+		log.Error().Str("sourceType", string(sourceType)).Msg("sourceType not supported")
 		return nil, errors.New("unsupported source type")
 	}
 }

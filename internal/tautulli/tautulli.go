@@ -3,6 +3,7 @@ package tautulli
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/varoOP/shinkro/internal/domain"
 )
@@ -51,7 +52,9 @@ func ToPlex(b []byte) (*domain.Plex, error) {
 	}
 
 	return &domain.Plex{
-		Event: t.Event,
+		Event:     t.Event,
+		Source:    domain.Tautulli,
+		TimeStamp: time.Now(),
 		Account: struct {
 			Id           int    `json:"id"`
 			ThumbnailUrl string `json:"thumb"`

@@ -13,18 +13,17 @@ type PlexRepo interface {
 	Store(ctx context.Context, plex *Plex) error
 	FindAll(ctx context.Context) ([]*Plex, error)
 	Get(ctx context.Context, req *GetPlexRequest) (*Plex, error)
-
 	Delete(ctx context.Context, req *DeletePlexRequest) error
 }
 
 type Plex struct {
-	ID        int64     `json:"id"`
-	Rating    float32   `json:"rating"`
-	TimeStamp time.Time `json:"-"`
-	Event     string    `json:"event"`
-	User      bool      `json:"user"`
-	Source    string    `json:"source"`
-	Owner     bool      `json:"owner"`
+	ID        int64             `json:"id"`
+	Rating    float32           `json:"rating"`
+	TimeStamp time.Time         `json:"timestamp"`
+	Event     string            `json:"event"`
+	User      bool              `json:"user"`
+	Source    PlexPayloadSource `json:"source"`
+	Owner     bool              `json:"owner"`
 	Account   struct {
 		Id           int    `json:"id"`
 		ThumbnailUrl string `json:"thumb"`
@@ -178,7 +177,8 @@ const (
 
 func NewPlexWebhook(payload []byte) (*Plex, error) {
 	p := &Plex{}
-	p.Source = string(PlexWebhook)
+	p.Source = PlexWebhook
+	p.TimeStamp = time.Now()
 	err := json.Unmarshal(payload, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal plex payload")
@@ -196,22 +196,6 @@ type GUID struct {
 }
 
 func (g *GUID) UnmarshalJSON(data []byte) error {
-	// Define a temporary struct to match the incoming JSON structure
-	temp := struct {
-		GUIDS []struct {
-			ID string `json:"id"`
-		} `json:"GUIDS"`
-		GUID string `json:"GUID"`
-	}{}
-
-	// Unmarshal into the temporary struct
-	if err := json.Unmarshal(data, &temp); err == nil {
-		return nil
-	}
-
-	// Assign the values to the GUID struct
-	g.GUIDS = temp.GUIDS
-	g.GUID = temp.GUID
 
 	if err := json.Unmarshal(data, &g.GUID); err == nil {
 		return nil

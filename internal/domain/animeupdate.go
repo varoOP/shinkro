@@ -22,7 +22,7 @@ type AnimeUpdate struct {
 	// DB          *database.DB
 	Config      *Config
 	Plex        *plex.PlexWebhook
-	Anime       *Anime
+	Anime       *AnimeMap
 	AnimeMovie  *AnimeMovie
 	TVDBMapping *AnimeTVDBMap
 	TMDBMapping *AnimeMovies

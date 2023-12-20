@@ -13,6 +13,7 @@ import (
 type plexService interface {
 	Store(ctx context.Context, plex *domain.Plex) error
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
+	CheckPlex(plex *domain.Plex) bool
 }
 
 type plexHandler struct {
@@ -67,8 +68,16 @@ func (h plexHandler) PostPlex(w http.ResponseWriter, r *http.Request) {
 	err := h.service.Store(r.Context(), plex)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
-			"code":    "BAD_REQUEST_PARAMS",
+			"code":    "BAD_REQUEST",
 			"message": err.Error(),
+		})
+		return
+	}
+
+	if !h.service.CheckPlex(plex) {
+		h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
+			"code":    "OK",
+			"message": "Check Plex false",
 		})
 		return
 	}

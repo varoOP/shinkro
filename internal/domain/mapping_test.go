@@ -20,7 +20,7 @@ func TestMappingCheckMap(t *testing.T) {
 		{
 			name: "DanMachi S4-1",
 			animeMap: &AnimeTVDBMap{
-				Anime: []Anime{
+				Anime: []AnimeMap{
 					{
 						Malid:      47164,
 						Tvdbid:     289882,
@@ -47,7 +47,7 @@ func TestMappingCheckMap(t *testing.T) {
 		{
 			name: "DanMachi S4-2",
 			animeMap: &AnimeTVDBMap{
-				Anime: []Anime{
+				Anime: []AnimeMap{
 					{
 						Malid:      47164,
 						Tvdbid:     289882,
@@ -74,7 +74,7 @@ func TestMappingCheckMap(t *testing.T) {
 		{
 			name: "SPYXFAMILY S1-2",
 			animeMap: &AnimeTVDBMap{
-				Anime: []Anime{
+				Anime: []AnimeMap{
 					{
 						Malid:      50602,
 						Tvdbid:     405920,
@@ -101,7 +101,7 @@ func TestMappingCheckMap(t *testing.T) {
 		{
 			name: "One Piece-1",
 			animeMap: &AnimeTVDBMap{
-				Anime: []Anime{
+				Anime: []AnimeMap{
 					{
 						Malid:      21,
 						Tvdbid:     81797,
@@ -139,7 +139,7 @@ func TestMappingCheckMap(t *testing.T) {
 		{
 			name: "One Piece-2",
 			animeMap: &AnimeTVDBMap{
-				Anime: []Anime{
+				Anime: []AnimeMap{
 					{
 						Malid:      21,
 						Tvdbid:     81797,

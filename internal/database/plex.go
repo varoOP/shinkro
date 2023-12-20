@@ -73,7 +73,7 @@ func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*dom
 	}
 
 	if err := row.Err(); err != nil {
-		return nil, errors.Wrap(err, "error rows find release")
+		return nil, errors.Wrap(err, "error rows find plex")
 	}
 
 	var plex domain.Plex

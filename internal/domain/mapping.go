@@ -17,10 +17,10 @@ const (
 )
 
 type AnimeTVDBMap struct {
-	Anime []Anime `yaml:"AnimeMap" json:"AnimeMap"`
+	Anime []AnimeMap `yaml:"AnimeMap" json:"AnimeMap"`
 }
 
-type Anime struct {
+type AnimeMap struct {
 	Malid        int            `yaml:"malid" json:"malid"`
 	Title        string         `yaml:"title" json:"title"`
 	Type         string         `yaml:"type" json:"type"`
@@ -61,7 +61,7 @@ func NewAnimeMaps(cfg *Config) (*AnimeTVDBMap, *AnimeMovies, error) {
 	return cfg.TVDBMalMap, cfg.TMDBMalMap, nil
 }
 
-func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *Anime) {
+func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeMap) {
 	candidates := s.findMatchingAnime(tvdbid, tvdbseason)
 	if len(candidates) == 1 {
 		return true, &candidates[0]
@@ -73,8 +73,8 @@ func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *Anime) {
 	return false, nil
 }
 
-func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []Anime {
-	var matchingAnime []Anime
+func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []AnimeMap {
+	var matchingAnime []AnimeMap
 	for _, anime := range s.Anime {
 		if tvdbid != anime.Tvdbid {
 			continue
@@ -87,14 +87,14 @@ func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []Anime {
 
 		matchingMappedAnime := s.findMatchingMappedAnime(anime, tvdbseason)
 		if matchingMappedAnime != nil {
-			return []Anime{*matchingMappedAnime}
+			return []AnimeMap{*matchingMappedAnime}
 		}
 	}
 
 	return matchingAnime
 }
 
-func (s *AnimeTVDBMap) findMatchingMappedAnime(anime Anime, tvdbseason int) *Anime {
+func (s *AnimeTVDBMap) findMatchingMappedAnime(anime AnimeMap, tvdbseason int) *AnimeMap {
 	if !anime.UseMapping {
 		return nil
 	}
@@ -110,8 +110,8 @@ func (s *AnimeTVDBMap) findMatchingMappedAnime(anime Anime, tvdbseason int) *Ani
 	return nil
 }
 
-func (s *AnimeTVDBMap) findBestMatchingAnime(ep int, candidates []Anime) Anime {
-	var anime Anime
+func (s *AnimeTVDBMap) findBestMatchingAnime(ep int, candidates []AnimeMap) AnimeMap {
+	var anime AnimeMap
 	largestStart := 0
 	for _, v := range candidates {
 		if ep >= v.Start && v.Start >= largestStart {

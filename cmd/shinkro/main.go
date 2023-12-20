@@ -7,18 +7,18 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/robfig/cron/v3"
 	"github.com/spf13/pflag"
 
+	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/http"
 	"github.com/varoOP/shinkro/internal/logger"
 	"github.com/varoOP/shinkro/internal/plex"
+	"github.com/varoOP/shinkro/internal/server"
 
 	// "github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/notification"
@@ -90,13 +90,14 @@ func main() {
 			log.Fatal().Err(err).Msg("")
 		}
 
-		db.UpdateAnime()
-		c := cron.New(cron.WithLocation(time.UTC))
-		c.AddFunc("0 1 * * MON", func() {
-			db.UpdateAnime()
-			// malauth.NewOauth2Client(context.Background(), db)
-		})
-		c.Start()
+		var animeRepo = database.NewAnimeRepo(log, db)
+		var animeService = anime.NewService(log, animeRepo)
+		// c := cron.New(cron.WithLocation(time.UTC))
+		// c.AddFunc("0 1 * * MON", func() {
+		// 	// db.UpdateAnime()
+		// 	// malauth.NewOauth2Client(context.Background(), db)
+		// })
+		// c.Start()
 
 		n := notification.NewAppNotification(cfg.DiscordWebHookURL, &log)
 		go n.ListenforNotification()
@@ -104,7 +105,13 @@ func main() {
 		// go s.Start()
 
 		var plexRepo = database.NewPlexRepo(log, db)
-		var plexService = plex.NewService(log, plexRepo)
+		var plexService = plex.NewService(log, cfg, plexRepo, animeService)
+
+		srv := server.NewServer(log, cfg, animeService)
+		if err := srv.Start(); err != nil {
+			log.Fatal().Stack().Err(err).Msg("could not start server")
+			return
+		}
 
 		errorChannel := make(chan error)
 
@@ -123,10 +130,15 @@ func main() {
 
 		sigchnl := make(chan os.Signal, 1)
 		signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
-		sig := <-sigchnl
 
-		db.Close()
-		log.Fatal().Msgf("Caught signal %v, Shutting Down", sig)
+		for sig := range sigchnl {
+			log.Info().Msgf("received signal: %v, shutting down server.", sig)
+			if err := db.Close(); err != nil {
+				log.Error().Err(err).Msg("failed to close the database connection properly")
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
 
 	case "genkey":
 		fmt.Fprintln(os.Stdout, config.GenApikey())

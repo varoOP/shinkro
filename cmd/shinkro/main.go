@@ -17,6 +17,7 @@ import (
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/http"
 	"github.com/varoOP/shinkro/internal/logger"
+	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/plex"
 	"github.com/varoOP/shinkro/internal/server"
 
@@ -91,7 +92,9 @@ func main() {
 		}
 
 		var animeRepo = database.NewAnimeRepo(log, db)
-		var animeService = anime.NewService(log, animeRepo)
+		var plexRepo = database.NewPlexRepo(log, db)
+		var malauthRepo = database.NewMalAuthRepo(log, db)
+
 		// c := cron.New(cron.WithLocation(time.UTC))
 		// c.AddFunc("0 1 * * MON", func() {
 		// 	// db.UpdateAnime()
@@ -104,8 +107,9 @@ func main() {
 		// s := server.NewServer(cfg, n.Notification, db, log)
 		// go s.Start()
 
-		var plexRepo = database.NewPlexRepo(log, db)
+		var animeService = anime.NewService(log, animeRepo)
 		var plexService = plex.NewService(log, cfg, plexRepo, animeService)
+		var malauthService = malauth.NewService(log, malauthRepo)
 
 		srv := server.NewServer(log, cfg, animeService)
 		if err := srv.Start(); err != nil {
@@ -124,6 +128,7 @@ func main() {
 				commit,
 				date,
 				plexService,
+				malauthService,
 			)
 			errorChannel <- httpServer.Open()
 		}()

@@ -29,11 +29,11 @@ func newPlexHandler(encoder encoder, service plexService) *plexHandler {
 }
 
 func (h plexHandler) Routes(r chi.Router) {
-	r.Get("/", h.GetPlex)
-	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.PostPlex)
+	r.Get("/", h.getPlex)
+	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.postPlex)
 }
 
-func (h plexHandler) GetPlex(w http.ResponseWriter, r *http.Request) {
+func (h plexHandler) getPlex(w http.ResponseWriter, r *http.Request) {
 	idP := r.URL.Query().Get("id")
 	id, err := strconv.Atoi(idP)
 	if err != nil && idP != "" {
@@ -63,7 +63,7 @@ func (h plexHandler) GetPlex(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h plexHandler) PostPlex(w http.ResponseWriter, r *http.Request) {
+func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 	plex := r.Context().Value(domain.PlexPayload).(*domain.Plex)
 	err := h.service.Store(r.Context(), plex)
 	if err != nil {

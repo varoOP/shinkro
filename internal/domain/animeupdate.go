@@ -5,10 +5,8 @@ import (
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/rs/zerolog"
-
 	// "github.com/varoOP/shinkro/internal/database"
 	// "github.com/varoOP/shinkro/internal/malauth"
-	"github.com/varoOP/shinkro/pkg/plex"
 )
 
 type AnimeUpdateRepo interface {
@@ -21,7 +19,7 @@ type AnimeUpdate struct {
 	Client *mal.Client
 	// DB          *database.DB
 	Config      *Config
-	Plex        *plex.PlexWebhook
+	Plex        *Plex
 	Anime       *AnimeMap
 	AnimeMovie  *AnimeMovie
 	TVDBMapping *AnimeTVDBMap

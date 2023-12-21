@@ -4,6 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -20,7 +27,7 @@ type Plex struct {
 	ID        int64             `json:"id"`
 	Rating    float32           `json:"rating"`
 	TimeStamp time.Time         `json:"timestamp"`
-	Event     string            `json:"event"`
+	Event     PlexEvent         `json:"event"`
 	User      bool              `json:"user"`
 	Source    PlexPayloadSource `json:"source"`
 	Owner     bool              `json:"owner"`
@@ -43,41 +50,41 @@ type Plex struct {
 }
 
 type Metadata struct {
-	RatingGlobal          float32 `json:"rating"`
-	RatingKey             string  `json:"ratingKey"`
-	Key                   string  `json:"key"`
-	ParentRatingKey       string  `json:"parentRatingKey"`
-	GrandparentRatingKey  string  `json:"grandparentRatingKey"`
-	GUID                  GUID    `json:"guid"`
-	ParentGUID            string  `json:"parentGuid"`
-	GrandparentGUID       string  `json:"grandparentGuid"`
-	Type                  string  `json:"type"`
-	Title                 string  `json:"title"`
-	GrandparentKey        string  `json:"grandparentKey"`
-	ParentKey             string  `json:"parentKey"`
-	LibrarySectionTitle   string  `json:"librarySectionTitle"`
-	LibrarySectionID      int     `json:"librarySectionID"`
-	LibrarySectionKey     string  `json:"librarySectionKey"`
-	GrandparentTitle      string  `json:"grandparentTitle"`
-	ParentTitle           string  `json:"parentTitle"`
-	OriginalTitle         string  `json:"originalTitle"`
-	ContentRating         string  `json:"contentRating"`
-	Summary               string  `json:"summary"`
-	Index                 int     `json:"index"`
-	ParentIndex           int     `json:"parentIndex"`
-	AudienceRating        float64 `json:"audienceRating"`
-	UserRating            float64 `json:"userRating"`
-	LastRatedAt           int     `json:"lastRatedAt"`
-	Year                  int     `json:"year"`
-	Thumb                 string  `json:"thumb"`
-	Art                   string  `json:"art"`
-	GrandparentThumb      string  `json:"grandparentThumb"`
-	GrandparentArt        string  `json:"grandparentArt"`
-	Duration              int     `json:"duration"`
-	OriginallyAvailableAt string  `json:"originallyAvailableAt"`
-	AddedAt               int     `json:"addedAt"`
-	UpdatedAt             int     `json:"updatedAt"`
-	AudienceRatingImage   string  `json:"audienceRatingImage"`
+	RatingGlobal          float32       `json:"rating"`
+	RatingKey             string        `json:"ratingKey"`
+	Key                   string        `json:"key"`
+	ParentRatingKey       string        `json:"parentRatingKey"`
+	GrandparentRatingKey  string        `json:"grandparentRatingKey"`
+	GUID                  GUID          `json:"guid"`
+	ParentGUID            string        `json:"parentGuid"`
+	GrandparentGUID       string        `json:"grandparentGuid"`
+	Type                  PlexMediaType `json:"type"`
+	Title                 string        `json:"title"`
+	GrandparentKey        string        `json:"grandparentKey"`
+	ParentKey             string        `json:"parentKey"`
+	LibrarySectionTitle   string        `json:"librarySectionTitle"`
+	LibrarySectionID      int           `json:"librarySectionID"`
+	LibrarySectionKey     string        `json:"librarySectionKey"`
+	GrandparentTitle      string        `json:"grandparentTitle"`
+	ParentTitle           string        `json:"parentTitle"`
+	OriginalTitle         string        `json:"originalTitle"`
+	ContentRating         string        `json:"contentRating"`
+	Summary               string        `json:"summary"`
+	Index                 int           `json:"index"`
+	ParentIndex           int           `json:"parentIndex"`
+	AudienceRating        float64       `json:"audienceRating"`
+	UserRating            float64       `json:"userRating"`
+	LastRatedAt           int           `json:"lastRatedAt"`
+	Year                  int           `json:"year"`
+	Thumb                 string        `json:"thumb"`
+	Art                   string        `json:"art"`
+	GrandparentThumb      string        `json:"grandparentThumb"`
+	GrandparentArt        string        `json:"grandparentArt"`
+	Duration              int           `json:"duration"`
+	OriginallyAvailableAt string        `json:"originallyAvailableAt"`
+	AddedAt               int           `json:"addedAt"`
+	UpdatedAt             int           `json:"updatedAt"`
+	AudienceRatingImage   string        `json:"audienceRatingImage"`
 	Media                 []struct {
 		ID              int     `json:"id"`
 		Duration        int     `json:"duration"`
@@ -168,11 +175,70 @@ type Metadata struct {
 	} `json:"Role"`
 }
 
+type PlexClient struct {
+	Url    string
+	Token  string
+	Client http.Client
+	Resp   PlexResponse
+}
+
+type PlexResponse struct {
+	MediaContainer struct {
+		Size                int        `json:"size"`
+		AllowSync           bool       `json:"allowSync"`
+		Identifier          string     `json:"identifier"`
+		LibrarySectionID    int        `json:"librarySectionID"`
+		LibrarySectionTitle string     `json:"librarySectionTitle"`
+		LibrarySectionUUID  string     `json:"librarySectionUUID"`
+		MediaTagPrefix      string     `json:"mediaTagPrefix"`
+		MediaTagVersion     int        `json:"mediaTagVersion"`
+		Metadata            []Metadata `json:"metadata"`
+	} `json:"MediaContainer"`
+}
+
+type GUID struct {
+	GUIDS []struct {
+		ID string `json:"id"`
+	}
+
+	GUID string
+}
+
+type GetPlexRequest struct {
+	Id int
+}
+
+type DeletePlexRequest struct {
+	OlderThan int
+}
+
 type PlexPayloadSource string
 
 const (
 	PlexWebhook PlexPayloadSource = "Plex Webhook"
 	Tautulli    PlexPayloadSource = "Tautulli"
+)
+
+type PlexEvent string
+
+const (
+	PlexScrobbleEvent PlexEvent = "media.scrobble"
+	PlexRateEvent     PlexEvent = "media.rate"
+)
+
+type PlexMediaType string
+
+const (
+	PlexEpisode PlexMediaType = "episode"
+	PlexMovie   PlexMediaType = "movie"
+)
+
+type PlexSupportedAgents string
+
+const (
+	MALAgent  PlexSupportedAgents = "mal"
+	HAMA      PlexSupportedAgents = "hama"
+	PlexAgent PlexSupportedAgents = "plex"
 )
 
 func NewPlexWebhook(payload []byte) (*Plex, error) {
@@ -187,16 +253,29 @@ func NewPlexWebhook(payload []byte) (*Plex, error) {
 	return p, nil
 }
 
-type GUID struct {
-	GUIDS []struct {
-		ID string `json:"id"`
+func (p *Plex) GetPlexMediaType() PlexMediaType {
+	switch p.Metadata.Type {
+	case PlexEpisode:
+		return PlexEpisode
+	case PlexMovie:
+		return PlexMovie
 	}
 
-	GUID string
+	return ""
+}
+
+func (p *Plex) GetPlexEvent() PlexEvent {
+	switch p.Event {
+	case PlexScrobbleEvent:
+		return PlexScrobbleEvent
+	case PlexRateEvent:
+		return PlexRateEvent
+	}
+
+	return ""
 }
 
 func (g *GUID) UnmarshalJSON(data []byte) error {
-
 	if err := json.Unmarshal(data, &g.GUID); err == nil {
 		return nil
 	}
@@ -206,13 +285,103 @@ func (g *GUID) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	return fmt.Errorf("guid: cannot unmarshal %q", data)
+	return errors.Errorf("guid: cannot unmarshal %q", data)
 }
 
-type GetPlexRequest struct {
-	Id int
+func (g *GUID) HamaMALAgent(agent PlexSupportedAgents) (string, int, error) {
+	var agentRegExMap = map[PlexSupportedAgents]string{
+		HAMA:     `//(.* ?)-(\d+ ?)`,
+		MALAgent: `.(m.*)://(\d+ ?)`,
+	}
+
+	guid := g.GUID
+	r := regexp.MustCompile(agentRegExMap[agent])
+	if !r.MatchString(guid) {
+		return "", -1, errors.Errorf("unable to parse GUID: %v", guid)
+	}
+
+	mm := r.FindStringSubmatch(guid)
+	source := mm[1]
+	id, err := strconv.Atoi(mm[2])
+	if err != nil {
+		return "", -1, errors.Wrap(err, "conversion of id failed")
+	}
+
+	return source, id, nil
 }
 
-type DeletePlexRequest struct {
-	OlderThan int
+func (g *GUID) PlexAgent(mediaType PlexMediaType) (string, int, error) {
+	for _, gid := range g.GUIDS {
+		dbid := strings.Split(gid.ID, "://")
+		if (mediaType == PlexEpisode && dbid[0] == "tvdb") || (mediaType == PlexMovie && dbid[0] == "tmdb") {
+			id, err := strconv.Atoi(dbid[1])
+			if err != nil {
+				return "", -1, errors.Wrap(err, "id conversion failed")
+			}
+
+			return dbid[0], id, nil
+		}
+	}
+
+	return "", -1, errors.New("no supported online database found")
+}
+
+// func GetShowID(p *PlexClient, key string) (*GUID, error) {
+// 	guid, err := p.GetShowID(key)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return guid, nil
+// }
+
+// func NewPlexClient(url string, token string) *PlexClient {
+// 	return &PlexClient{
+// 		Url:   url,
+// 		Token: token,
+// 	}
+// }
+
+func (p *PlexClient) GetShowID(key string) (*GUID, error) {
+	baseUrl, err := url.Parse(p.Url)
+	if err != nil {
+		return nil, errors.Wrap(err, "plex url invalid")
+	}
+
+	baseUrl = baseUrl.JoinPath(key)
+	params := url.Values{}
+	params.Add("X-Plex-Token", p.Token)
+	baseUrl.RawQuery = params.Encode()
+	req, err := http.NewRequest(http.MethodGet, baseUrl.String(), nil)
+	if err != nil {
+		return nil, errors.Errorf("%v, request=%v", err, *req)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Add("ContainerStart", "X-Plex-Container-Start=0")
+	req.Header.Add("ContainerSize", "Plex-Container-Size=100")
+	req.Header.Set("User-Agent", fmt.Sprintf("shinkro/%v (%v;%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH))
+
+	resp, err := p.Client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "network error")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Errorf("%v, response status: %v, response body: %v", err, resp.StatusCode, string(body))
+	}
+
+	defer resp.Body.Close()
+	err = json.Unmarshal(body, &p.Resp)
+	if err != nil {
+		return nil, errors.Errorf("%v, response status: %v, response body: %v", err, resp.StatusCode, string(body))
+	}
+
+	if len(p.Resp.MediaContainer.Metadata) == 1 {
+		return &p.Resp.MediaContainer.Metadata[0].GUID, nil
+	}
+
+	return nil, errors.Errorf("something went wrong in getting guid from plex:%v, response status: %v, response body: %v", err, resp.StatusCode, string(body))
 }

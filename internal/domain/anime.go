@@ -41,6 +41,7 @@ const AniDBID IDTypes = "anidb_id"
 const TMDBID IDTypes = "tmdb_id"
 
 type AnimeUrl string
+
 const ShinkroDB AnimeUrl = "https://github.com/varoOP/shinkrodb/raw/main/for-shinkro.json"
 
 type GetAnimeRequest struct {

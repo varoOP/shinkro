@@ -63,7 +63,6 @@ func (h malauthHandler) login(w http.ResponseWriter, r *http.Request) {
 	oauthConfig = maopts.MalAuth.Config
 
 	http.Redirect(w, r, maopts.AuthCodeUrl, http.StatusSeeOther)
-	return
 }
 
 func (h malauthHandler) callback(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +96,6 @@ func (h malauthHandler) callback(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
-	return
 }
 
 func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +137,15 @@ func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h malauthHandler) malAuth(w http.ResponseWriter, r *http.Request) {
+
+	client, _ := h.service.GetMalAuthClient(r.Context())
+	c := mal.NewClient(client)
+	_, _, err := c.User.MyInfo(r.Context())
+	if err == nil {
+		w.Write([]byte("Authentication with myanimelist is successful."))
+		return
+	}
+
 	baseURL := url.URL{
 		Scheme: r.URL.Scheme,
 		Host:   r.Host,

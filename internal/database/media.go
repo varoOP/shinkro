@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/varoOP/shinkro/pkg/plex"
+	"github.com/varoOP/shinkro/internal/domain"
 )
 
 type Media struct {
@@ -22,16 +22,16 @@ type Media struct {
 	Ep       int
 }
 
-var AgentRegExMap = map[string]string{
-	"hama": `//(.* ?)-(\d+ ?)`,
-	"mal":  `.(m.*)://(\d+ ?)`,
-}
+// var AgentRegExMap = map[string]string{
+// 	"hama": `//(.* ?)-(\d+ ?)`,
+// 	"mal":  `.(m.*)://(\d+ ?)`,
+// }
 
-func NewMedia(pw *plex.PlexWebhook, agent string, pc *plex.PlexClient, usePlex bool) (*Media, error) {
+func NewMedia(pw *domain.Plex, agent string, pc *domain.PlexClient, usePlex bool) (*Media, error) {
 	var (
 		idSource  string
 		title     string = pw.Metadata.GrandparentTitle
-		mediaType string = pw.Metadata.Type
+		mediaType string = string(pw.Metadata.Type)
 		id        int
 		season    int = pw.Metadata.ParentIndex
 		ep        int = pw.Metadata.Index
@@ -121,7 +121,12 @@ func (m *Media) ConvertToTVDB(ctx context.Context, db *DB) {
 }
 
 func hamaMALAgent(guid, agent string) (string, int, error) {
-	r := regexp.MustCompile(AgentRegExMap[agent])
+	var agentRegExMap = map[string]string{
+		"hama": `//(.* ?)-(\d+ ?)`,
+		"mal":  `.(m.*)://(\d+ ?)`,
+	}
+
+	r := regexp.MustCompile(agentRegExMap[agent])
 	if !r.MatchString(guid) {
 		return "", -1, errors.Errorf("unable to parse GUID: %v", guid)
 	}
@@ -136,7 +141,7 @@ func hamaMALAgent(guid, agent string) (string, int, error) {
 	return source, id, nil
 }
 
-func plexAgent(guid plex.GUID, mediaType string) (string, int, error) {
+func plexAgent(guid domain.GUID, mediaType string) (string, int, error) {
 	for _, gid := range guid.GUIDS {
 		dbid := strings.Split(gid.ID, "://")
 		if (mediaType == "episode" && dbid[0] == "tvdb") || (mediaType == "movie" && dbid[0] == "tmdb") {
@@ -152,7 +157,7 @@ func plexAgent(guid plex.GUID, mediaType string) (string, int, error) {
 	return "", -1, errors.New("no supported db found")
 }
 
-func GetShowID(p *plex.PlexClient, key string) (*plex.GUID, error) {
+func GetShowID(p *domain.PlexClient, key string) (*domain.GUID, error) {
 	guid, err := p.GetShowID(key)
 	if err != nil {
 		return nil, err

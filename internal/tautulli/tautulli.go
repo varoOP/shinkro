@@ -13,16 +13,16 @@ type Tautulli struct {
 		Title string `json:"title"`
 	} `json:"Account"`
 	Metadata struct {
-		GrandparentKey      string      `json:"grandparentKey"`
-		GrandparentTitle    string      `json:"grandparentTitle"`
-		GUID                domain.GUID `json:"guid"`
-		Index               string      `json:"index"`
-		LibrarySectionTitle string      `json:"librarySectionTitle"`
-		ParentIndex         string      `json:"parentIndex"`
-		Title               string      `json:"title"`
-		Type                string      `json:"type"`
+		GrandparentKey      string               `json:"grandparentKey"`
+		GrandparentTitle    string               `json:"grandparentTitle"`
+		GUID                domain.GUID          `json:"guid"`
+		Index               string               `json:"index"`
+		LibrarySectionTitle string               `json:"librarySectionTitle"`
+		ParentIndex         string               `json:"parentIndex"`
+		Title               string               `json:"title"`
+		Type                domain.PlexMediaType `json:"type"`
 	} `json:"Metadata"`
-	Event string `json:"event"`
+	Event domain.PlexEvent `json:"event"`
 }
 
 func NewTautulli(b []byte) (*Tautulli, error) {

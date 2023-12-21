@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/varoOP/shinkro/pkg/plex"
+	"github.com/varoOP/shinkro/internal/domain"
 )
 
 func TestHamaMalAgent(t *testing.T) {
@@ -79,7 +79,7 @@ func TestHamaMalAgent(t *testing.T) {
 func TestPlexAgent(t *testing.T) {
 	tests := []struct {
 		name      string
-		guid      plex.GUID
+		guid      domain.GUID
 		mediaType string
 		want1     string
 		want2     int
@@ -87,7 +87,7 @@ func TestPlexAgent(t *testing.T) {
 	}{
 		{
 			name: "PlexTV",
-			guid: plex.GUID{GUIDS: []struct {
+			guid: domain.GUID{GUIDS: []struct {
 				ID string "json:\"id\""
 			}{{ID: "imdb://tt21210326"}, {ID: "tmdb://205308"}, {ID: "tvdb://421994"}},
 				GUID: "plex://show/63031ea849f1f16d698849ba"},
@@ -98,7 +98,7 @@ func TestPlexAgent(t *testing.T) {
 		},
 		{
 			name: "PlexMovie",
-			guid: plex.GUID{GUIDS: []struct {
+			guid: domain.GUID{GUIDS: []struct {
 				ID string "json:\"id\""
 			}{{ID: "imdb://tt0259534"}, {ID: "tmdb://84092"}, {ID: "tvdb://64694"}},
 				GUID: "plex://movie/5d7768d196b655001fdc2678"},

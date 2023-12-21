@@ -14,10 +14,10 @@ import (
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
-	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/http"
 	"github.com/varoOP/shinkro/internal/logger"
 	"github.com/varoOP/shinkro/internal/malauth"
+	"github.com/varoOP/shinkro/internal/mapping"
 	"github.com/varoOP/shinkro/internal/plex"
 	"github.com/varoOP/shinkro/internal/server"
 
@@ -77,14 +77,14 @@ func main() {
 		log.Info().Msgf("Base URL: %s", cfg.BaseUrl)
 		log.Info().Msgf("Log-level: %s", cfg.LogLevel)
 
-		err, mapLoaded := domain.ChecklocalMaps(cfg)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Unable to load local custom mapping")
-		}
+		// err, mapLoaded := domain.ChecklocalMaps(cfg)
+		// if err != nil {
+		// 	log.Fatal().Err(err).Msg("Unable to load local custom mapping")
+		// }
 
-		if mapLoaded {
-			log.Info().Msg("Loaded local custom mapping")
-		}
+		// if mapLoaded {
+		// 	log.Info().Msg("Loaded local custom mapping")
+		// }
 
 		err = db.Migrate()
 		if err != nil {
@@ -108,10 +108,11 @@ func main() {
 		// go s.Start()
 
 		var animeService = anime.NewService(log, animeRepo)
-		var plexService = plex.NewService(log, cfg, plexRepo, animeService)
 		var malauthService = malauth.NewService(log, malauthRepo)
+		var mapService = mapping.NewService(log, cfg)
+		var plexService = plex.NewService(log, cfg, plexRepo, animeService, mapService, malauthService)
 
-		srv := server.NewServer(log, cfg, animeService)
+		srv := server.NewServer(log, cfg, animeService, mapService)
 		if err := srv.Start(); err != nil {
 			log.Fatal().Stack().Err(err).Msg("could not start server")
 			return

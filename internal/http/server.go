@@ -16,13 +16,13 @@ import (
 )
 
 type Server struct {
-	log         zerolog.Logger
-	db          *database.DB
-	config      *domain.Config
-	version     string
-	commit      string
-	date        string
-	plexService plexService
+	log            zerolog.Logger
+	db             *database.DB
+	config         *domain.Config
+	version        string
+	commit         string
+	date           string
+	plexService    plexService
 	malauthService malauthService
 }
 
@@ -35,7 +35,7 @@ func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, versi
 		commit:  commit,
 		date:    date,
 
-		plexService: plexSvc,
+		plexService:    plexSvc,
 		malauthService: malauthSvc,
 	}
 }
@@ -81,13 +81,15 @@ func (s Server) Handler() http.Handler {
 			r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
 		})
 
-		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes) 
-			// r.Use(basicAuth(s.config.Username, s.config.Password))
-			// r.With(checkMalAuth(s.db)).Get("/", malAuth(s.config))
-			// r.Post("/login", malAuthLogin())
-			// r.Get("/callback", malAuthCallback(s.config, s.db, &s.log))
-			// r.Get("/status", malAuthStatus(s.config, s.db))
-		
+		r.Route("/malauth", func(r chi.Router) {
+			r.Use(basicAuth(s.config.Username, s.config.Password))
+			r.Route("/", newmalauthHandler(encoder, s.malauthService).Routes)
+		})
+		// r.Use(basicAuth(s.config.Username, s.config.Password))
+		// r.With(checkMalAuth(s.db)).Get("/", malAuth(s.config))
+		// r.Post("/login", malAuthLogin())
+		// r.Get("/callback", malAuthCallback(s.config, s.db, &s.log))
+		// r.Get("/status", malAuthStatus(s.config, s.db))
 
 		r.NotFound(notFound(s.config))
 	})

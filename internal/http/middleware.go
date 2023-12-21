@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/hlog"
-	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
 	// "github.com/varoOP/shinkro/internal/malauth"
 )
@@ -46,25 +44,25 @@ func basicAuth(username, password string) func(http.Handler) http.Handler {
 	}
 }
 
-func checkMalAuth(db *database.DB) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			log := hlog.FromRequest(r)
-			// client, _ := malauth.NewOauth2Client(r.Context(), db)
-			c := mal.NewClient(&http.Client{})
-			_, _, err := c.User.MyInfo(r.Context())
-			if err == nil {
-				w.Write([]byte("Authentication with myanimelist is successful."))
-				log.Trace().Msg("user already authenticated")
-				return
-			}
+// func checkMalAuth(db *database.DB) func(next http.Handler) http.Handler {
+// 	return func(next http.Handler) http.Handler {
+// 		fn := func(w http.ResponseWriter, r *http.Request) {
+// 			log := hlog.FromRequest(r)
+// 			// client, _ := malauth.NewOauth2Client(r.Context(), db)
+// 			c := mal.NewClient(&http.Client{})
+// 			_, _, err := c.User.MyInfo(r.Context())
+// 			if err == nil {
+// 				w.Write([]byte("Authentication with myanimelist is successful."))
+// 				log.Trace().Msg("user already authenticated")
+// 				return
+// 			}
 
-			next.ServeHTTP(w, r)
-		}
+// 			next.ServeHTTP(w, r)
+// 		}
 
-		return http.HandlerFunc(fn)
-	}
-}
+// 		return http.HandlerFunc(fn)
+// 	}
+// }
 
 // func onlyAllowPost(next http.Handler) http.Handler {
 // 	fn := func(w http.ResponseWriter, r *http.Request) {

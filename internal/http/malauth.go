@@ -136,11 +136,13 @@ func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
 
 func (h malauthHandler) malAuth(w http.ResponseWriter, r *http.Request) {
 
-	c, _ := h.service.GetMalClient(r.Context())
-	_, _, err := c.User.MyInfo(r.Context())
+	c, err := h.service.GetMalClient(r.Context())
 	if err == nil {
-		w.Write([]byte("Authentication with myanimelist is successful."))
-		return
+		_, _, err := c.User.MyInfo(r.Context())
+		if err == nil {
+			w.Write([]byte("Authentication with myanimelist is successful."))
+			return
+		}
 	}
 
 	baseURL := url.URL{

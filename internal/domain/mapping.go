@@ -15,8 +15,9 @@ type AnimeMap struct {
 }
 
 type AnimeMapDetails struct {
-	Malid int
-	Start int
+	Malid      int
+	Start      int
+	UseMapping bool
 }
 
 type AnimeTVShows struct {
@@ -134,6 +135,14 @@ func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
 	}
 
 	return false, nil
+}
+
+func (ad *AnimeMapDetails) CalculateEpNum(oldEpNum int) int {
+	if ad.UseMapping {
+		return ad.Start + oldEpNum - 1
+	}
+	
+	return oldEpNum - ad.Start + 1
 }
 
 // func loadCommunityMaps(cfg *Config) error {

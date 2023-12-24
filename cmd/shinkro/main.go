@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/varoOP/shinkro/internal/anime"
+	"github.com/varoOP/shinkro/internal/animeupdate"
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/http"
@@ -92,6 +93,7 @@ func main() {
 		}
 
 		var animeRepo = database.NewAnimeRepo(log, db)
+		var animeUpdateRepo = database.NewAnimeUpdateRepo(log, db)
 		var plexRepo = database.NewPlexRepo(log, db)
 		var malauthRepo = database.NewMalAuthRepo(log, db)
 
@@ -110,7 +112,8 @@ func main() {
 		var animeService = anime.NewService(log, animeRepo)
 		var malauthService = malauth.NewService(log, malauthRepo)
 		var mapService = mapping.NewService(log, cfg)
-		var plexService = plex.NewService(log, cfg, plexRepo, animeService, mapService, malauthService)
+		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
+		var plexService = plex.NewService(log, cfg, plexRepo, animeService, mapService, malauthService, animeUpdateService)
 
 		srv := server.NewServer(log, cfg, animeService, mapService)
 		if err := srv.Start(); err != nil {

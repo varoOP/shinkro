@@ -9,11 +9,21 @@ const (
 	TMDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
 )
 
-type AnimeTVDBMap struct {
-	Anime []AnimeMap `yaml:"AnimeMap" json:"AnimeMap"`
+type AnimeMap struct {
+	AnimeTVShows *AnimeTVShows
+	AnimeMovies  *AnimeMovies
 }
 
-type AnimeMap struct {
+type AnimeMapDetails struct {
+	Malid int
+	Start int
+}
+
+type AnimeTVShows struct {
+	Anime []AnimeTV `yaml:"AnimeMap" json:"AnimeMap"`
+}
+
+type AnimeTV struct {
 	Malid        int            `yaml:"malid" json:"malid"`
 	Title        string         `yaml:"title" json:"title"`
 	Type         string         `yaml:"type" json:"type"`
@@ -54,7 +64,7 @@ type AnimeMovie struct {
 // 	return cfg.TVDBMalMap, cfg.TMDBMalMap, nil
 // }
 
-func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeMap) {
+func (s *AnimeTVShows) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeTV) {
 	candidates := s.findMatchingAnime(tvdbid, tvdbseason)
 	if len(candidates) == 1 {
 		return true, &candidates[0]
@@ -66,8 +76,8 @@ func (s *AnimeTVDBMap) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeMap) {
 	return false, nil
 }
 
-func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []AnimeMap {
-	var matchingAnime []AnimeMap
+func (s *AnimeTVShows) findMatchingAnime(tvdbid, tvdbseason int) []AnimeTV {
+	var matchingAnime []AnimeTV
 	for _, anime := range s.Anime {
 		if tvdbid != anime.Tvdbid {
 			continue
@@ -80,14 +90,14 @@ func (s *AnimeTVDBMap) findMatchingAnime(tvdbid, tvdbseason int) []AnimeMap {
 
 		matchingMappedAnime := s.findMatchingMappedAnime(anime, tvdbseason)
 		if matchingMappedAnime != nil {
-			return []AnimeMap{*matchingMappedAnime}
+			return []AnimeTV{*matchingMappedAnime}
 		}
 	}
 
 	return matchingAnime
 }
 
-func (s *AnimeTVDBMap) findMatchingMappedAnime(anime AnimeMap, tvdbseason int) *AnimeMap {
+func (s *AnimeTVShows) findMatchingMappedAnime(anime AnimeTV, tvdbseason int) *AnimeTV {
 	if !anime.UseMapping {
 		return nil
 	}
@@ -103,8 +113,8 @@ func (s *AnimeTVDBMap) findMatchingMappedAnime(anime AnimeMap, tvdbseason int) *
 	return nil
 }
 
-func (s *AnimeTVDBMap) findBestMatchingAnime(ep int, candidates []AnimeMap) AnimeMap {
-	var anime AnimeMap
+func (s *AnimeTVShows) findBestMatchingAnime(ep int, candidates []AnimeTV) AnimeTV {
+	var anime AnimeTV
 	largestStart := 0
 	for _, v := range candidates {
 		if ep >= v.Start && v.Start >= largestStart {

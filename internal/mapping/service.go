@@ -15,7 +15,7 @@ import (
 )
 
 type Service interface {
-	NewAnimeMaps(ctx context.Context) (*domain.AnimeTVDBMap, *domain.AnimeMovies, error)
+	NewAnimeMaps(ctx context.Context) (*domain.AnimeMap, error)
 	CheckLocalMaps() (error, bool)
 }
 
@@ -31,19 +31,22 @@ func NewService(log zerolog.Logger, config *domain.Config) Service {
 	}
 }
 
-func (s *service) NewAnimeMaps(ctx context.Context) (*domain.AnimeTVDBMap, *domain.AnimeMovies, error) {
+func (s *service) NewAnimeMaps(ctx context.Context) (*domain.AnimeMap, error) {
 	s.config.LocalMapsExist()
 	err := loadCommunityMaps(ctx, s.config)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	err = loadLocalMaps(s.config)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return s.config.TVDBMalMap, s.config.TMDBMalMap, nil
+	return &domain.AnimeMap{
+		AnimeTVShows: s.config.TVDBMalMap,
+		AnimeMovies: s.config.TMDBMalMap,
+	}, nil
 }
 
 func (s *service) CheckLocalMaps() (error, bool) {
@@ -70,7 +73,7 @@ func (s *service) CheckLocalMaps() (error, bool) {
 
 func loadCommunityMaps(ctx context.Context, cfg *domain.Config) error {
 	if !cfg.CustomMapTVDB {
-		s := &domain.AnimeTVDBMap{}
+		s := &domain.AnimeTVShows{}
 		respTVDB, err := domain.GetWithContext(ctx, string(domain.CommunityMapTVDB))
 		if err != nil {
 			return err
@@ -104,7 +107,7 @@ func loadCommunityMaps(ctx context.Context, cfg *domain.Config) error {
 
 func loadLocalMaps(cfg *domain.Config) error {
 	if cfg.CustomMapTVDB {
-		s := &domain.AnimeTVDBMap{}
+		s := &domain.AnimeTVShows{}
 		fTVDB, err := os.Open(cfg.CustomMapTVDBPath)
 		if err != nil {
 			return err

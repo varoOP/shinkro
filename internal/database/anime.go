@@ -24,7 +24,7 @@ func NewAnimeRepo(log zerolog.Logger, db *DB) domain.AnimeRepo {
 
 func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest) (*domain.Anime, error) {
 
-	id := "a." + string(req.IDtype)
+	id := "a." + string(req.IDtype) + "_id"
 
 	queryBuilder := repo.db.squirrel.
 		Select("a.mal_id", "a.title", "a.en_title", "a.anidb_id", "a.tvdb_id", "a.tmdb_id", "a.type", "a.releaseDate").

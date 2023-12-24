@@ -241,6 +241,22 @@ const (
 	PlexAgent PlexSupportedAgents = "plex"
 )
 
+type PlexSupportedDBs string
+
+const (
+	TVDB  PlexSupportedDBs = "tvdb"
+	TMDB  PlexSupportedDBs = "tmdb"
+	AniDB PlexSupportedDBs = "anidb"
+	MAL   PlexSupportedDBs = "myanimelist"
+)
+
+func NewPlexClient(c *Config) *PlexClient {
+	return &PlexClient{
+		Url:   c.PlexUrl,
+		Token: c.PlexToken,
+	}
+}
+
 func NewPlexWebhook(payload []byte) (*Plex, error) {
 	p := &Plex{}
 	p.Source = PlexWebhook
@@ -275,6 +291,112 @@ func (p *Plex) GetPlexEvent() PlexEvent {
 	return ""
 }
 
+func (p *Plex) IsEventAllowed() bool {
+	return p.Event == PlexRateEvent || p.Event == PlexScrobbleEvent
+}
+
+func (p *Plex) IsPlexUserAllowed(c *Config) bool {
+	return p.Account.Title == c.PlexUser
+}
+
+func (p *Plex) IsAnimeLibrary(c *Config) bool {
+	l := strings.Join(c.AnimeLibraries, ",")
+	return strings.Contains(l, p.Metadata.LibrarySectionTitle)
+}
+
+func (p *Plex) IsMediaTypeAllowed() bool {
+	return p.Metadata.Type == PlexEpisode || p.Metadata.Type == PlexMovie
+}
+
+func (p *Plex) SetAnimeFields(source PlexSupportedDBs, id int) AnimeUpdate {
+	if p.Metadata.Type == PlexMovie {
+		return AnimeUpdate{
+			PlexId:     p.ID,
+			Plex:       p,
+			SourceId:   id,
+			SourceDB:   source,
+			Timestamp:  time.Now(),
+			SeasonNum:  1,
+			EpisodeNum: 1,
+		}
+	}
+	return AnimeUpdate{
+		PlexId:     p.ID,
+		Plex:       p,
+		SourceId:   id,
+		SourceDB:   source,
+		Timestamp:  time.Now(),
+		SeasonNum:  p.Metadata.ParentIndex,
+		EpisodeNum: p.Metadata.Index,
+	}
+}
+
+func (p *Plex) IsMetadataAgentAllowed() (bool, PlexSupportedAgents) {
+	if strings.Contains(p.Metadata.GUID.GUID, "agents.hama") {
+		return true, HAMA
+	}
+
+	if strings.Contains(p.Metadata.GUID.GUID, "myanimelist") {
+		return true, MALAgent
+	}
+
+	if strings.Contains(p.Metadata.GUID.GUID, "plex://") {
+		return true, PlexAgent
+	}
+
+	return false, ""
+}
+
+func (p *Plex) HandlePlexAgent(c *Config) (PlexSupportedDBs, int, error) {
+	if !c.isPlexClient() {
+		err := errors.New("plex metadata agent cannot be used: Plex Token not set")
+		return "", 0, err
+	}
+	if p.Metadata.Type == PlexEpisode {
+		pc := NewPlexClient(c)
+		guid, err := pc.GetShowID(p.Metadata.GrandparentKey)
+		if err != nil {
+			return "", 0, err
+		}
+		return guid.PlexAgent(p.Metadata.Type)
+	}
+	return "", 0, nil
+}
+
+func (p *Plex) CheckPlex(c *Config) (PlexSupportedAgents, error) {
+	if !p.IsPlexUserAllowed(c) {
+		return "", errors.Wrap(errors.New("unauthorized plex user"), p.Account.Title)
+	}
+
+	if !p.IsEventAllowed() {
+		return "", errors.Wrap(errors.New("plex event not supported"), string(p.Event))
+	}
+
+	if !p.IsAnimeLibrary(c) {
+		return "", errors.Wrap(errors.New("plex library not set as an anime library"), p.Metadata.LibrarySectionTitle)
+	}
+
+	if !p.IsMediaTypeAllowed() {
+		return "", errors.Wrap(errors.New("plex media type not supported"), string(p.Metadata.Type))
+	}
+
+	if allowed, agent := p.IsMetadataAgentAllowed(); allowed {
+		return agent, nil
+	}
+
+	return "", errors.New("metadata agent not supported")
+}
+
+func (p *Plex) GetSourceIDFromAgent(agent PlexSupportedAgents, c *Config) (PlexSupportedDBs, int, error) {
+	switch agent {
+	case HAMA, MALAgent:
+		return p.Metadata.GUID.HamaMALAgent(agent)
+	case PlexAgent:
+		return p.HandlePlexAgent(c)
+	}
+	return "", 0, nil
+}
+
 func (g *GUID) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &g.GUID); err == nil {
 		return nil
@@ -288,7 +410,7 @@ func (g *GUID) UnmarshalJSON(data []byte) error {
 	return errors.Errorf("guid: cannot unmarshal %q", data)
 }
 
-func (g *GUID) HamaMALAgent(agent PlexSupportedAgents) (string, int, error) {
+func (g *GUID) HamaMALAgent(agent PlexSupportedAgents) (PlexSupportedDBs, int, error) {
 	var agentRegExMap = map[PlexSupportedAgents]string{
 		HAMA:     `//(.* ?)-(\d+ ?)`,
 		MALAgent: `.(m.*)://(\d+ ?)`,
@@ -307,10 +429,10 @@ func (g *GUID) HamaMALAgent(agent PlexSupportedAgents) (string, int, error) {
 		return "", -1, errors.Wrap(err, "conversion of id failed")
 	}
 
-	return source, id, nil
+	return PlexSupportedDBs(source), id, nil
 }
 
-func (g *GUID) PlexAgent(mediaType PlexMediaType) (string, int, error) {
+func (g *GUID) PlexAgent(mediaType PlexMediaType) (PlexSupportedDBs, int, error) {
 	for _, gid := range g.GUIDS {
 		dbid := strings.Split(gid.ID, "://")
 		if (mediaType == PlexEpisode && dbid[0] == "tvdb") || (mediaType == PlexMovie && dbid[0] == "tmdb") {
@@ -319,7 +441,7 @@ func (g *GUID) PlexAgent(mediaType PlexMediaType) (string, int, error) {
 				return "", -1, errors.Wrap(err, "id conversion failed")
 			}
 
-			return dbid[0], id, nil
+			return PlexSupportedDBs(dbid[0]), id, nil
 		}
 	}
 

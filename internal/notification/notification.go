@@ -28,17 +28,17 @@ func NewAppNotification(url string, log *zerolog.Logger) *AppNotification {
 func NewNotificaitonPayload(a *domain.AnimeUpdate, err error) *domain.NotificationPayload {
 	if a != nil {
 		return &domain.NotificationPayload{
-			Event:          string(a.Plex.Event),
-			Title:          a.MyList.Title,
-			Url:            fmt.Sprintf("https://myanimelist.net/anime/%v", a.Malid),
-			Status:         string(a.Malresp.Status),
-			Score:          a.Malresp.Score,
-			StartDate:      a.Malresp.StartDate,
-			FinishDate:     a.Malresp.FinishDate,
-			TotalEps:       a.MyList.EpNum,
-			WatchedEps:     a.Malresp.NumEpisodesWatched,
-			TimesRewatched: a.Malresp.NumTimesRewatched,
-			ImageUrl:       a.MyList.Picture,
+			// Event:          string(a.Plex.Event),
+			// Title:          a.MyList.Title,
+			// Url:            fmt.Sprintf("https://myanimelist.net/anime/%v", a.Malid),
+			// Status:         string(a.Malresp.Status),
+			// Score:          a.Malresp.Score,
+			// StartDate:      a.Malresp.StartDate,
+			// FinishDate:     a.Malresp.FinishDate,
+			// TotalEps:       a.MyList.EpNum,
+			// WatchedEps:     a.Malresp.NumEpisodesWatched,
+			// TimesRewatched: a.Malresp.NumTimesRewatched,
+			// ImageUrl:       a.MyList.Picture,
 		}
 	} else {
 		return &domain.NotificationPayload{

@@ -16,7 +16,7 @@ type Config struct {
 	CustomMapTVDBPath string
 	CustomMapTMDB     bool
 	CustomMapTMDBPath string
-	TVDBMalMap        *AnimeTVDBMap
+	TVDBMalMap        *AnimeTVShows
 	TMDBMalMap        *AnimeMovies
 	DiscordWebHookURL string `koanf:"DiscordWebhookUrl"`
 	LogLevel          string `koanf:"LogLevel"`
@@ -34,4 +34,8 @@ func (cfg *Config) LocalMapsExist() {
 	if fileExists(cfg.CustomMapTVDBPath) {
 		cfg.CustomMapTVDB = true
 	}
+}
+
+func (cfg *Config) isPlexClient() bool {
+	return cfg.PlexToken != ""
 }

@@ -15,7 +15,7 @@ type Service interface {
 	Store(ctx context.Context, plex *domain.Plex) error
 	// FindAll(ctx context.Context) ([]*domain.Plex, error)
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
-	CheckPlex(plex *domain.Plex) bool
+	ProcessPlex(ctx context.Context, plex *domain.Plex) error
 	// ProcessPlexScrobbleEvent(plex *domain.Plex) error
 	// Delete(ctx context.Context, req *domain.DeletePlexRequest) error
 }
@@ -48,87 +48,81 @@ func (s *service) Store(ctx context.Context, plex *domain.Plex) error {
 	return s.repo.Store(ctx, plex)
 }
 
-func (s *service) NewPlexClient(cfg *domain.Config) *domain.PlexClient {
-	return &domain.PlexClient{
-		Url:   cfg.PlexUrl,
-		Token: cfg.PlexToken,
+func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
+	anime, err := s.extractSourceIdForAnime(ctx, plex)
+	if err != nil {
+		return err
 	}
+
+	event := plex.GetPlexEvent()
+	switch event {
+	case domain.PlexRateEvent:
+		animeMap, err := s.checkForAnimeinMap(ctx, anime)
+		if err == nil {
+			anime.MALId = animeMap.Malid
+
+		}
+
+
+	}
+	return nil
 }
 
-func (s *service) CheckPlex(plex *domain.Plex) bool {
-	if !isPlexUser(plex, s.config) {
-		s.log.Debug().Err(errors.Wrap(errors.New("unauthorized plex user"), plex.Account.Title)).Msg("")
-		return false
-	}
-
-	if !isEvent(plex) {
-		s.log.Debug().Err(errors.Wrap(errors.New("plex event not supported"), string(plex.Event))).Msg("")
-		return false
-	}
-
-	if !isAnimeLibrary(plex, s.config) {
-		s.log.Debug().Err(errors.Wrap(errors.New("plex library not set as an anime library"), plex.Metadata.LibrarySectionTitle)).Msg("")
-		return false
-	}
-
-	if !mediaType(plex) {
-		s.log.Debug().Err(errors.Wrap(errors.New("plex media type not supported"), string(plex.Metadata.Type))).Msg("")
-		return false
-	}
-
-	return true
-}
-
-func (s *service) ExtractSourceId(plex *domain.Plex) (string, int, error) {
-	var (
-		source string
-		id     int
-		err    error
-	)
-	// event := plex.GetPlexEvent()
-	// if event == domain.PlexScrobbleEvent {
-	// 	return nil
-	// }
-
-	agentAllowed, agent := isMetadataAgent(plex)
-	if !agentAllowed {
-		err = errors.Wrap(errors.New("metadata agent not supported"), string(agent))
+func (s *service) extractSourceIdForAnime(ctx context.Context, plex *domain.Plex) (*domain.AnimeUpdate, error) {
+	agent, err := plex.CheckPlex(s.config)
+	if err != nil {
 		s.log.Debug().Err(err).Msg("")
-		return "", 0, err
+		return nil, err
 	}
 
-	if agent == domain.HAMA || agent == domain.MALAgent {
-		source, id, err = plex.Metadata.GUID.HamaMALAgent(agent)
+	source, id, err := plex.GetSourceIDFromAgent(agent, s.config)
+	if err != nil {
+		return nil, err
+	}
+
+	if source == domain.AniDB && plex.Metadata.ParentIndex > 1 {
+		req := &domain.GetAnimeRequest{
+			IDtype: source,
+			Id: id,
+		}
+
+		a, err := s.animeService.GetByID(ctx, req)
 		if err != nil {
-			return "", 0, err
+			return nil, err
+		}
+
+		source = domain.TVDB
+		id = a.TVDBId
+	}
+
+	anime := plex.SetAnimeFields(source, id)
+	return &anime, nil
+}
+
+func (s *service) checkForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error) {
+	animeMap, err := s.mapService.NewAnimeMaps(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch anime.Plex.Metadata.Type {
+	case domain.PlexMovie:
+		inMap, animeMovie := animeMap.AnimeMovies.CheckMap(anime.SourceId)
+		if inMap {
+			return &domain.AnimeMapDetails{
+				Malid: animeMovie.MALID,
+				Start: 0,
+			}, nil
+		}
+	case domain.PlexEpisode:
+		inMap, animeTV := animeMap.AnimeTVShows.CheckMap(anime.SourceId, anime.SeasonNum, anime.EpisodeNum)
+		if inMap {
+			return &domain.AnimeMapDetails{
+				Malid: animeTV.Malid,
+				Start: animeTV.Start,
+			}, nil
 		}
 	}
 
-	if agent == domain.PlexAgent {
-		if !isPlexClient(s.config) {
-			err = errors.Wrap(errors.New("plex metadata agent cannot be used"), "Plex Token not set")
-			s.log.Debug().Err(err).Msg("")
-			return "", 0, err
-		}
-
-		guid := &domain.GUID{}
-		if plex.Metadata.Type == domain.PlexEpisode {
-			pc := s.NewPlexClient(s.config)
-			g, err := pc.GetShowID(plex.Metadata.GrandparentKey)
-			if err != nil {
-				s.log.Debug().Err(err).Msg("")
-				return "", 0, err
-			}
-
-			guid = g
-		}
-
-		source, id, err = guid.PlexAgent(plex.Metadata.Type)
-		if err != nil {
-			s.log.Debug().Err(err).Msg("")
-			return "", 0, err
-		}
-	}
-
-	return source, id, nil
+	return nil, errors.New("anime not found in map")
 }

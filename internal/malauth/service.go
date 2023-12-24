@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"log"
-	"net/http"
 
+	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -15,8 +15,7 @@ import (
 
 type Service interface {
 	Store(ctx context.Context, ma *domain.MalAuth) error
-	Get(ctx context.Context) (*domain.MalAuth, error)
-	GetMalAuthClient(ctx context.Context) (*http.Client, error)
+	GetMalClient(ctx context.Context) (*mal.Client, error)
 	NewMalAuthClient(ctx context.Context, clientId, clientSecret string) (*domain.MalAuthOpts, error)
 }
 
@@ -36,12 +35,12 @@ func (s *service) Store(ctx context.Context, ma *domain.MalAuth) error {
 	return s.repo.Store(ctx, ma)
 }
 
-func (s *service) Get(ctx context.Context) (*domain.MalAuth, error) {
+func (s *service) get(ctx context.Context) (*domain.MalAuth, error) {
 	return s.repo.Get(ctx)
 }
 
-func (s *service) GetMalAuthClient(ctx context.Context) (*http.Client, error) {
-	ma, err := s.Get(ctx)
+func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
+	ma, err := s.get(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +58,7 @@ func (s *service) GetMalAuthClient(ctx context.Context) (*http.Client, error) {
 		}
 	}
 
-	return ma.Config.Client(ctx, fresh_token), nil
+	return mal.NewClient(ma.Config.Client(ctx, fresh_token)), nil
 }
 
 func (s *service) NewMalAuthClient(ctx context.Context, clientId, clientSecret string) (*domain.MalAuthOpts, error) {
@@ -70,15 +69,15 @@ func (s *service) NewMalAuthClient(ctx context.Context, clientId, clientSecret s
 	}
 
 	codeChallenge := oauth2.SetAuthURLParam("code_challenge", challenge)
-	responseType :=  oauth2.SetAuthURLParam("response_type", "code")
+	responseType := oauth2.SetAuthURLParam("response_type", "code")
 	state := randomString(64)
 
 	authCodeUrl := ma.Config.AuthCodeURL(state, codeChallenge, responseType)
 
 	return &domain.MalAuthOpts{
-		MalAuth:       ma,
-		Verifier:      verifier,
-		State:         state,
+		MalAuth:     ma,
+		Verifier:    verifier,
+		State:       state,
 		AuthCodeUrl: authCodeUrl,
 	}, nil
 }

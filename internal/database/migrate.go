@@ -23,21 +23,18 @@ CREATE TABLE IF NOT EXISTS malauth
 
 CREATE TABLE anime_update
 (
-	mal_id 					INTEGER PRIMARY KEY,
-	title 					TEXT NOT NULL,
-	status 					TEXT NOT NULL,
-	score 					INTEGER,
-	num_episodes_watched 	INTEGER,
-	is_rewatching 			BOOLEAN,
-	updated_at 				TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	priority 				INTEGER,
-	num_times_rewatched 	INTEGER,
-	rewatch_value 			INTEGER,
-	tags 					TEXT []	DEFAULT '{}',
-	comments 				TEXT,
-	start_date 				TEXT,
-	finish_date 			TEXT,
-	mal_url					TEXT
+	id 				INTEGER PRIMARY KEY,
+	mal_id 			INTEGER NOT NULL,
+	source_db 		TEXT NOT NULL,
+	source_id 		INTEGER NOT NULL,
+	episode_num 	INTEGER,
+	season_num  	INTEGER,
+	time_stamp  	TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	list_details 	TEXT,
+	list_status  	TEXT,
+	plex_id      	INTEGER
+	    REFERENCES plex
+			ON DELETE SET NULL       
 );
 
 CREATE TABLE plex

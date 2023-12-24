@@ -19,14 +19,11 @@ func NewAnimeUpdateRepo(log zerolog.Logger, db *DB) domain.AnimeUpdateRepo {
 	}
 }
 
-func (r *AnimeUpdateRepo) Store(ctx context.Context, animeupdate *domain.AnimeUpdate) error {
+func (repo *AnimeUpdateRepo) Store(ctx context.Context, r *domain.AnimeUpdate) error {
+	
 	return nil
 }
 
-func (r *AnimeUpdateRepo) Delete(ctx context.Context, malid int) error {
-	return nil
-}
-
-func (r *AnimeUpdateRepo) GetAnimeUpdates(ctx context.Context) ([]domain.AnimeUpdate, error) {
-	return []domain.AnimeUpdate{}, nil
+func (repo *AnimeUpdateRepo) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error) {
+	return nil, nil
 }

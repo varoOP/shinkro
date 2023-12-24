@@ -22,8 +22,7 @@ var (
 
 type malauthService interface {
 	Store(ctx context.Context, ma *domain.MalAuth) error
-	Get(ctx context.Context) (*domain.MalAuth, error)
-	GetMalAuthClient(ctx context.Context) (*http.Client, error)
+	GetMalClient(ctx context.Context) (*mal.Client, error)
 	NewMalAuthClient(ctx context.Context, clientId, clientSecret string) (*domain.MalAuthOpts, error)
 }
 
@@ -106,12 +105,11 @@ func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isAuthenticated := false
-	client, err := h.service.GetMalAuthClient(r.Context())
+	c, err := h.service.GetMalClient(r.Context())
 	if err != nil {
 		return
 	}
 
-	c := mal.NewClient(client)
 	_, _, err = c.User.MyInfo(r.Context())
 	if err == nil {
 		isAuthenticated = true
@@ -138,8 +136,7 @@ func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
 
 func (h malauthHandler) malAuth(w http.ResponseWriter, r *http.Request) {
 
-	client, _ := h.service.GetMalAuthClient(r.Context())
-	c := mal.NewClient(client)
+	c, _ := h.service.GetMalClient(r.Context())
 	_, _, err := c.User.MyInfo(r.Context())
 	if err == nil {
 		w.Write([]byte("Authentication with myanimelist is successful."))

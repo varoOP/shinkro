@@ -2,65 +2,72 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/rs/zerolog"
-	// "github.com/varoOP/shinkro/internal/database"
-	// "github.com/varoOP/shinkro/internal/malauth"
 )
 
 type AnimeUpdateRepo interface {
 	Store(ctx context.Context, animeUpdate *AnimeUpdate) error
-	Delete(ctx context.Context, malid int) error
-	GetAnimeUpdates(ctx context.Context) ([]AnimeUpdate, error)
+	GetByID(ctx context.Context, req *GetAnimeUpdateRequest) (*AnimeUpdate, error)
 }
 
 type AnimeUpdate struct {
-	Client *mal.Client
-	// DB          *database.DB
-	Config      *Config
+	ID          int64
+	Client      *mal.Client
+	MALId       int
+	SourceDB    PlexSupportedDBs
+	SourceId    int
+	EpisodeNum  int
+	SeasonNum   int
+	Timestamp   time.Time
+	ListDetails ListDetails
+	ListStatus  mal.AnimeListStatus
+	PlexId      int64
 	Plex        *Plex
-	Anime       *AnimeMap
-	AnimeMovie  *AnimeMovie
-	TVDBMapping *AnimeTVDBMap
-	TMDBMapping *AnimeMovies
-	InTVDBMap   bool
-	InTMDBMap   bool
-	// Media       *database.Media
-	Malid   int
-	Start   int
-	Ep      int
-	MyList  *MyList
-	Malresp *mal.AnimeListStatus
-	Log     zerolog.Logger
-	Notify  *Notification
 }
 
-type MyList struct {
-	Status     mal.AnimeStatus
-	RewatchNum int
-	EpNum      int
-	WatchedNum int
-	Title      string
-	Picture    string
+type ListDetails struct {
+	Status          mal.AnimeStatus
+	RewatchNum      int
+	TotalEpisodeNum int
+	WatchedNum      int
+	Title           string
+	PictureURL      string
 }
 
 type Key string
 
 const (
 	PlexPayload Key = "plexPayload"
-	Agent       Key = "agent"
 )
 
-func NewAnimeUpdate(cfg *Config, log *zerolog.Logger, n *Notification) AnimeUpdate {
-	return AnimeUpdate{
-		Config: cfg,
-		Malid:  -1,
-		Start:  -1,
-		Log:    log.With().Str("action", "animeUpdate").Logger(),
-		Notify: n,
-	}
+type GetAnimeUpdateRequest  struct {
+	Id int
 }
+
+// func (ap *AnimeUpdate) SetAnimeIDFromDB(source PlexSupportedDBs, id int) {
+// 	switch source {
+// 	case MAL:
+// 		ap.MALId = id
+// 	case TVDB:
+// 		ap.TVDBId = id
+// 	case TMDB:
+// 		ap.TMDBId = id
+// 	case AniDB:
+// 		ap.AniDBId = id
+// 	}
+// }
+
+// func NewAnimeUpdate(cfg *Config, log *zerolog.Logger, n *Notification) AnimeUpdate {
+// 	return AnimeUpdate{
+// 		Config: cfg,
+// 		Malid:  -1,
+// 		Start:  -1,
+// 		Log:    log.With().Str("action", "animeUpdate").Logger(),
+// 		Notify: n,
+// 	}
+// }
 
 // func (a *AnimeUpdate) SendUpdate(ctx context.Context) error {
 // 	c, err := malauth.NewOauth2Client(ctx, a.DB)

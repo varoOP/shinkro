@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
@@ -17,6 +18,7 @@ import (
 type Service interface {
 	NewAnimeMaps(ctx context.Context) (*domain.AnimeMap, error)
 	CheckLocalMaps() (error, bool)
+	CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error)
 }
 
 type service struct {
@@ -45,7 +47,7 @@ func (s *service) NewAnimeMaps(ctx context.Context) (*domain.AnimeMap, error) {
 
 	return &domain.AnimeMap{
 		AnimeTVShows: s.config.TVDBMalMap,
-		AnimeMovies: s.config.TMDBMalMap,
+		AnimeMovies:  s.config.TMDBMalMap,
 	}, nil
 }
 
@@ -53,7 +55,7 @@ func (s *service) CheckLocalMaps() (error, bool) {
 	loadLocalMaps(s.config)
 	localMapLoaded := false
 	if s.config.CustomMapTVDB {
-		if err := validateYaml(string(domain.TVDBSchema), s.config.TVDBMalMap); err != nil {
+		if err := validateYaml(domain.TVDBSchema, s.config.TVDBMalMap); err != nil {
 			return err, false
 		}
 
@@ -61,7 +63,7 @@ func (s *service) CheckLocalMaps() (error, bool) {
 	}
 
 	if s.config.CustomMapTMDB {
-		if err := validateYaml(string(domain.TMDBSchema), s.config.TMDBMalMap); err != nil {
+		if err := validateYaml(domain.TMDBSchema, s.config.TMDBMalMap); err != nil {
 			return err, false
 		}
 
@@ -69,6 +71,35 @@ func (s *service) CheckLocalMaps() (error, bool) {
 	}
 
 	return nil, localMapLoaded
+}
+
+func (s *service) CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error) {
+	animeMap, err := s.NewAnimeMaps(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch anime.Plex.Metadata.Type {
+	case domain.PlexMovie:
+		inMap, animeMovie := animeMap.AnimeMovies.CheckMap(anime.SourceId)
+		if inMap {
+			return &domain.AnimeMapDetails{
+				Malid: animeMovie.MALID,
+				Start: 0,
+			}, nil
+		}
+	case domain.PlexEpisode:
+		inMap, animeTV := animeMap.AnimeTVShows.CheckMap(anime.SourceId, anime.SeasonNum, anime.EpisodeNum)
+		if inMap {
+			return &domain.AnimeMapDetails{
+				Malid:      animeTV.Malid,
+				Start:      animeTV.Start,
+				UseMapping: animeTV.UseMapping,
+			}, nil
+		}
+	}
+
+	return nil, errors.New("anime not found in map")
 }
 
 func loadCommunityMaps(ctx context.Context, cfg *domain.Config) error {
@@ -169,9 +200,9 @@ func readYamlFile(f *os.File, mapping interface{}) error {
 	return nil
 }
 
-func validateYaml(schema string, yaml any) error {
+func validateYaml(schema domain.CommunityMapUrls, yaml any) error {
 	compiler := jsonschema.NewCompiler()
-	sch, err := compiler.Compile(schema)
+	sch, err := compiler.Compile(string(schema))
 	if err != nil {
 		return err
 	}

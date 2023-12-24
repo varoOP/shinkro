@@ -29,7 +29,7 @@ CREATE TABLE anime_update
 	source_id 		INTEGER NOT NULL,
 	episode_num 	INTEGER,
 	season_num  	INTEGER,
-	time_stamp  	TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	time_stamp  	TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	list_details 	TEXT,
 	list_status  	TEXT,
 	plex_id      	INTEGER

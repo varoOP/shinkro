@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
+	"github.com/pkg/errors"
 )
 
 type AnimeUpdateRepo interface {
@@ -13,27 +14,26 @@ type AnimeUpdateRepo interface {
 }
 
 type AnimeUpdate struct {
-	ID          int64
-	Client      *mal.Client
-	MALId       int
-	SourceDB    PlexSupportedDBs
-	SourceId    int
-	EpisodeNum  int
-	SeasonNum   int
-	Timestamp   time.Time
-	ListDetails ListDetails
-	ListStatus  mal.AnimeListStatus
-	PlexId      int64
-	Plex        *Plex
+	ID          int64                `json:"id"`
+	MALId       int                  `json:"malid"`
+	SourceDB    PlexSupportedDBs     `json:"sourceDB"`
+	SourceId    int                  `json:"sourceID"`
+	EpisodeNum  int                  `json:"episodeNum"`
+	SeasonNum   int                  `json:"seasonNum"`
+	Timestamp   time.Time            `json:"timestamp"`
+	ListDetails ListDetails          `json:"listDetails"`
+	ListStatus  *mal.AnimeListStatus `json:"listStatus"`
+	PlexId      int64                `json:"plexID"`
+	Plex        *Plex                `json:"-"`
 }
 
 type ListDetails struct {
-	Status          mal.AnimeStatus
-	RewatchNum      int
-	TotalEpisodeNum int
-	WatchedNum      int
-	Title           string
-	PictureURL      string
+	Status          mal.AnimeStatus `json:"animeStatus"`
+	RewatchNum      int             `json:"rewatchNum"`
+	TotalEpisodeNum int             `json:"totalEpisodeNum"`
+	WatchedNum      int             `json:"watchedNum"`
+	Title           string          `json:"title"`
+	PictureURL      string          `json:"pictureUrl"`
 }
 
 type Key string
@@ -42,8 +42,128 @@ const (
 	PlexPayload Key = "plexPayload"
 )
 
-type GetAnimeUpdateRequest  struct {
+type GetAnimeUpdateRequest struct {
 	Id int
+}
+
+func (ap *AnimeUpdate) UpdateRating(ctx context.Context, client *mal.Client) error {
+	err := ap.checkAnimeList(client, ctx)
+	if err != nil {
+		return err
+	}
+
+	l, _, err := client.Anime.UpdateMyListStatus(ctx, ap.MALId, mal.Score(ap.Plex.Rating))
+	if err != nil {
+		return err
+	}
+
+	ap.ListStatus = l
+	return nil
+}
+
+func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client) (bool, error) {
+	if err := ap.checkAnimeList(client, ctx); err != nil {
+		return false, err
+	}
+
+	options, isComplete, err := ap.newOptions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if isComplete {
+		return false, nil
+	}
+
+	l, _, err := client.Anime.UpdateMyListStatus(ctx, ap.MALId, options...)
+	if err != nil {
+		return false, err
+	}
+
+	ap.ListStatus = l
+	return true, nil
+}
+
+func (ap *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListStatusOption, bool, error) {
+	if err := ap.validateEpisodeNum(); err != nil {
+		return nil, false, err
+	}
+
+	options, isComplete := ap.ListDetails.buildOptions(ap.EpisodeNum)
+	return options, isComplete, nil
+}
+
+func (ap *AnimeUpdate) checkAnimeList(client *mal.Client, ctx context.Context) error {
+	aa, _, err := client.Anime.Details(ctx, ap.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
+	if err != nil {
+		return err
+	}
+
+	picture := aa.MainPicture.Large
+	if picture == "" {
+		picture = aa.MainPicture.Medium
+	}
+
+	ap.ListDetails = ListDetails{
+		Status:          aa.MyListStatus.Status,
+		RewatchNum:      aa.MyListStatus.NumTimesRewatched,
+		TotalEpisodeNum: aa.NumEpisodes,
+		WatchedNum:      aa.MyListStatus.NumEpisodesWatched,
+		Title:           aa.Title,
+		PictureURL:      picture,
+	}
+
+	return nil
+}
+
+func (ap *AnimeUpdate) validateEpisodeNum() error {
+	if ap.EpisodeNum > ap.ListDetails.TotalEpisodeNum && ap.ListDetails.TotalEpisodeNum != 0 {
+		return errors.Errorf("number of episodes watched greater than total number of episodes: %v: Episode %v", ap.ListDetails.Title, ap.EpisodeNum)
+	}
+	return nil
+}
+
+func (ls *ListDetails) buildOptions(episodeNum int) ([]mal.UpdateMyAnimeListStatusOption, bool) {
+	var options []mal.UpdateMyAnimeListStatusOption
+	var isComplete = false
+
+	if ls.shouldIncrementRewatchNum(episodeNum) {
+		ls.RewatchNum++
+		options = append(options, mal.NumTimesRewatched(ls.RewatchNum))
+	}
+
+	if ls.isAnimeCompleted(episodeNum) {
+		ls.Status = mal.AnimeStatusCompleted
+		options = append(options, mal.FinishDate(time.Now().Local()))
+		isComplete = true
+	}
+
+	if ls.isFirstEpisode(episodeNum) {
+		options = append(options, mal.StartDate(time.Now().Local()))
+	}
+
+	if !isComplete && ls.isAnimeWatching(episodeNum) {
+		ls.Status = mal.AnimeStatusWatching
+	}
+
+	options = append(options, mal.NumEpisodesWatched(episodeNum), ls.Status)
+	return options, isComplete
+}
+
+func (ls *ListDetails) shouldIncrementRewatchNum(episodeNum int) bool {
+	return ls.Status == mal.AnimeStatusCompleted && ls.TotalEpisodeNum == episodeNum
+}
+
+func (ls *ListDetails) isAnimeCompleted(episodeNum int) bool {
+	return ls.TotalEpisodeNum == episodeNum
+}
+
+func (ls *ListDetails) isFirstEpisode(episodeNum int) bool {
+	return episodeNum == 1 && ls.WatchedNum == 0
+}
+
+func (ls *ListDetails) isAnimeWatching(episodeNum int) bool {
+	return (episodeNum < ls.TotalEpisodeNum || ls.TotalEpisodeNum == 0) && episodeNum >= 1
 }
 
 // func (ap *AnimeUpdate) SetAnimeIDFromDB(source PlexSupportedDBs, id int) {

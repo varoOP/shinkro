@@ -42,11 +42,13 @@ func (s *service) get(ctx context.Context) (*domain.MalAuth, error) {
 func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 	ma, err := s.get(ctx)
 	if err != nil {
+		s.log.Err(errors.Wrap(err, "failed to get credentials from database")).Msg("")
 		return nil, err
 	}
 
 	fresh_token, err := ma.Config.TokenSource(ctx, &ma.AccessToken).Token()
 	if err != nil {
+		s.log.Err(errors.Wrap(err, "failed to refresh access token")).Msg("")
 		return nil, err
 	}
 
@@ -54,6 +56,7 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 		ma.AccessToken = *fresh_token
 		err = s.Store(ctx, ma)
 		if err != nil {
+			s.log.Err(errors.Wrap(err, "failed to store credentials to database")).Msg("")
 			return nil, err
 		}
 	}

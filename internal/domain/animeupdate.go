@@ -61,36 +61,36 @@ func (ap *AnimeUpdate) UpdateRating(ctx context.Context, client *mal.Client) err
 	return nil
 }
 
-func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client) (bool, error) {
+func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client) error {
 	if err := ap.checkAnimeList(client, ctx); err != nil {
-		return false, err
+		return err
 	}
 
-	options, isComplete, err := ap.newOptions(ctx)
+	options, err := ap.newOptions(ctx)
 	if err != nil {
-		return false, err
-	}
-
-	if isComplete {
-		return false, nil
+		return err
 	}
 
 	l, _, err := client.Anime.UpdateMyListStatus(ctx, ap.MALId, options...)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	ap.ListStatus = l
-	return true, nil
+	return nil
 }
 
-func (ap *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListStatusOption, bool, error) {
+func (ap *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListStatusOption, error) {
 	if err := ap.validateEpisodeNum(); err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	options, isComplete := ap.ListDetails.buildOptions(ap.EpisodeNum)
-	return options, isComplete, nil
+	if isComplete {
+		return nil, errors.Errorf("%v is marked complete on MAL", ap.ListDetails.Title)
+	}
+
+	return options, nil
 }
 
 func (ap *AnimeUpdate) checkAnimeList(client *mal.Client, ctx context.Context) error {
@@ -124,9 +124,11 @@ func (ap *AnimeUpdate) validateEpisodeNum() error {
 }
 
 func (ls *ListDetails) buildOptions(episodeNum int) ([]mal.UpdateMyAnimeListStatusOption, bool) {
-	var options []mal.UpdateMyAnimeListStatusOption
-	var isComplete = false
+	if ls.Status == mal.AnimeStatusCompleted {
+		return nil, true
+	}
 
+	var options []mal.UpdateMyAnimeListStatusOption
 	if ls.shouldIncrementRewatchNum(episodeNum) {
 		ls.RewatchNum++
 		options = append(options, mal.NumTimesRewatched(ls.RewatchNum))
@@ -135,19 +137,18 @@ func (ls *ListDetails) buildOptions(episodeNum int) ([]mal.UpdateMyAnimeListStat
 	if ls.isAnimeCompleted(episodeNum) {
 		ls.Status = mal.AnimeStatusCompleted
 		options = append(options, mal.FinishDate(time.Now().Local()))
-		isComplete = true
 	}
 
 	if ls.isFirstEpisode(episodeNum) {
 		options = append(options, mal.StartDate(time.Now().Local()))
 	}
 
-	if !isComplete && ls.isAnimeWatching(episodeNum) {
+	if ls.isAnimeWatching(episodeNum) {
 		ls.Status = mal.AnimeStatusWatching
 	}
 
 	options = append(options, mal.NumEpisodesWatched(episodeNum), ls.Status)
-	return options, isComplete
+	return options, false
 }
 
 func (ls *ListDetails) shouldIncrementRewatchNum(episodeNum int) bool {

@@ -89,94 +89,6 @@ func (db *DB) Migrate() error {
 	return tx.Commit()
 }
 
-func (db *DB) UpdateAnime() {
-
-	db.log.Trace().Msg("Updating anime in database")
-	a, err := getAnime()
-	if err != nil {
-		db.log.Error().Err(err).Msg("Unable to update anime in database")
-		return
-	}
-
-	const addAnime = `INSERT OR REPLACE INTO anime (
-		mal_id,
-		title,
-		en_title,
-		anidb_id,
-		tvdb_id,
-		tmdb_id,
-		type,
-		releaseDate
-	) values (?, ?, ?, ?, ?, ?, ?, ?)`
-
-	tx, err := db.handler.Begin()
-	db.check(err)
-
-	defer tx.Rollback()
-
-	stmt, err := tx.Prepare(addAnime)
-	db.check(err)
-
-	defer stmt.Close()
-
-	for _, anime := range a {
-		_, err := stmt.Exec(anime.MalID, anime.MainTitle, anime.EnglishTitle, anime.AnidbID, anime.TvdbID, anime.TmdbID, anime.Type, anime.ReleaseDate)
-		db.check(err)
-	}
-
-	if err = tx.Commit(); err != nil {
-		db.check(err)
-	}
-
-	if _, err = db.handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
-		db.check(err)
-	}
-
-	db.log.Trace().Msg("Updated anime in database")
-}
-
-func (db *DB) UpdateMalAuth(m map[string]string) {
-	const addMalauth = `INSERT OR REPLACE INTO malauth (
-		id,
-		client_id,
-		client_secret,
-		access_token
-	) values (?, ?, ?, ?)`
-
-	stmt, err := db.handler.Prepare(addMalauth)
-	db.check(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec(1, m["client_id"], m["client_secret"], m["access_token"])
-	db.check(err)
-
-	if _, err = db.handler.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
-		db.check(err)
-	}
-}
-
-func (db *DB) GetMalCreds(ctx context.Context) (map[string]string, error) {
-	var (
-		client_id     string
-		client_secret string
-		access_token  string
-	)
-
-	sqlstmt := "SELECT client_id, client_secret, access_token from malauth;"
-
-	row := db.handler.QueryRowContext(ctx, sqlstmt)
-	err := row.Scan(&client_id, &client_secret, &access_token)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]string{
-		"client_id":     client_id,
-		"client_secret": client_secret,
-		"access_token":  access_token,
-	}, nil
-}
-
 func (db *DB) Close() error {
 	if _, err := db.handler.Exec(`PRAGMA optimize;`); err != nil {
 		return errors.Wrap(err, "query planner optimization")
@@ -184,12 +96,6 @@ func (db *DB) Close() error {
 
 	db.handler.Close()
 	return nil
-}
-
-func (db *DB) check(err error) {
-	if err != nil {
-		db.log.Fatal().Err(errors.WithStack(err)).Msg("Database operation failed")
-	}
 }
 
 func (db *DB) Ping() error {

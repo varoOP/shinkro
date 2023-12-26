@@ -1,5 +1,7 @@
 package domain
 
+import "os"
+
 type Config struct {
 	ConfigPath        string
 	Username          string   `koanf:"Username"`
@@ -38,4 +40,9 @@ func (cfg *Config) LocalMapsExist() {
 
 func (cfg *Config) isPlexClient() bool {
 	return cfg.PlexToken != ""
+}
+
+func fileExists(path string) bool {
+	_, err := os.Open(path)
+	return err == nil
 }

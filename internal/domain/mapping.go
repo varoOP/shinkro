@@ -1,14 +1,5 @@
 package domain
 
-type CommunityMapUrls string
-
-const (
-	CommunityMapTVDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
-	TVDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tvdb.json"
-	CommunityMapTMDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
-	TMDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
-)
-
 type AnimeMap struct {
 	AnimeTVShows *AnimeTVShows
 	AnimeMovies  *AnimeMovies
@@ -50,20 +41,14 @@ type AnimeMovie struct {
 	MALID     int    `yaml:"malid" json:"malid"`
 }
 
-// func NewAnimeMaps(cfg *Config) (*AnimeTVDBMap, *AnimeMovies, error) {
-// 	cfg.LocalMapsExist()
-// 	err := loadCommunityMaps(cfg)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
+type CommunityMapUrls string
 
-// 	err = loadLocalMaps(cfg)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-
-// 	return cfg.TVDBMalMap, cfg.TMDBMalMap, nil
-// }
+const (
+	CommunityMapTVDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
+	TVDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tvdb.json"
+	CommunityMapTMDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
+	TMDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
+)
 
 func (s *AnimeTVShows) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeTV) {
 	candidates := s.findMatchingAnime(tvdbid, tvdbseason)
@@ -72,6 +57,16 @@ func (s *AnimeTVShows) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeTV) {
 	} else if len(candidates) > 1 {
 		anime := s.findBestMatchingAnime(ep, candidates)
 		return true, &anime
+	}
+
+	return false, nil
+}
+
+func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
+	for _, animeMovie := range am.AnimeMovie {
+		if animeMovie.TMDBID == tmdbid {
+			return true, &animeMovie
+		}
 	}
 
 	return false, nil
@@ -127,135 +122,10 @@ func (s *AnimeTVShows) findBestMatchingAnime(ep int, candidates []AnimeTV) Anime
 	return anime
 }
 
-func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
-	for _, animeMovie := range am.AnimeMovie {
-		if animeMovie.TMDBID == tmdbid {
-			return true, &animeMovie
-		}
-	}
-
-	return false, nil
-}
-
 func (ad *AnimeMapDetails) CalculateEpNum(oldEpNum int) int {
 	if ad.UseMapping {
 		return ad.Start + oldEpNum - 1
 	}
-	
+
 	return oldEpNum - ad.Start + 1
 }
-
-// func loadCommunityMaps(cfg *Config) error {
-// 	if !cfg.CustomMapTVDB {
-// 		s := &AnimeTVDBMap{}
-// 		respTVDB, err := http.Get(string(CommunityMapTVDB))
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		err = readYamlHTTP(respTVDB, s)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		cfg.TVDBMalMap = s
-// 	}
-
-// 	if !cfg.CustomMapTMDB {
-// 		am := &AnimeMovies{}
-// 		respTMDB, err := http.Get(string(CommunityMapTMDB))
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		err = readYamlHTTP(respTMDB, am)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		cfg.TMDBMalMap = am
-// 	}
-
-// 	return nil
-// }
-
-// func loadLocalMaps(cfg *Config) error {
-// 	if cfg.CustomMapTVDB {
-// 		s := &AnimeTVDBMap{}
-// 		fTVDB, err := os.Open(cfg.CustomMapTVDBPath)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		err = readYamlFile(fTVDB, s)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		cfg.TVDBMalMap = s
-// 	}
-
-// 	if cfg.CustomMapTMDB {
-// 		am := &AnimeMovies{}
-// 		fTMDB, err := os.Open(cfg.CustomMapTMDBPath)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		err = readYamlFile(fTMDB, am)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		cfg.TMDBMalMap = am
-// 	}
-
-// 	return nil
-// }
-
-// func ChecklocalMaps(cfg *Config) (error, bool) {
-// 	loadLocalMaps(cfg)
-// 	localMapLoaded := false
-// 	if cfg.CustomMapTVDB {
-// 		if err := validateYaml(string(TVDBSchema), cfg.TVDBMalMap); err != nil {
-// 			return err, false
-// 		}
-
-// 		localMapLoaded = true
-// 	}
-
-// 	if cfg.CustomMapTMDB {
-// 		if err := validateYaml(string(TMDBSchema), cfg.TMDBMalMap); err != nil {
-// 			return err, false
-// 		}
-
-// 		localMapLoaded = true
-// 	}
-
-// 	return nil, localMapLoaded
-// }
-
-// func validateYaml(schema string, yaml any) error {
-// 	compiler := jsonschema.NewCompiler()
-// 	sch, err := compiler.Compile(schema)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	var v interface{}
-// 	b, err := json.Marshal(yaml)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = json.Unmarshal(b, &v)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if err := sch.Validate(v); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }

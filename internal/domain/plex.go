@@ -448,22 +448,6 @@ func (g *GUID) PlexAgent(mediaType PlexMediaType) (PlexSupportedDBs, int, error)
 	return "", -1, errors.New("no supported online database found")
 }
 
-// func GetShowID(p *PlexClient, key string) (*GUID, error) {
-// 	guid, err := p.GetShowID(key)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return guid, nil
-// }
-
-// func NewPlexClient(url string, token string) *PlexClient {
-// 	return &PlexClient{
-// 		Url:   url,
-// 		Token: token,
-// 	}
-// }
-
 func (p *PlexClient) GetShowID(key string) (*GUID, error) {
 	baseUrl, err := url.Parse(p.Url)
 	if err != nil {

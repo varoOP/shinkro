@@ -3,3 +3,4 @@
 dist/
 bin/
 test/
+node_modules

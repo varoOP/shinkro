@@ -40,9 +40,6 @@ func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest)
 	repo.log.Trace().Str("database", "anime.getByTVDBID").Msgf("query: '%s', args: '%v'", query, args)
 
 	row := repo.db.handler.QueryRowContext(ctx, query, args...)
-	if err != nil {
-		return nil, errors.Wrap(err, "error executing query")
-	}
 
 	if err := row.Err(); err != nil {
 		return nil, errors.Wrap(err, "error rows find anime")

@@ -60,9 +60,6 @@ func (repo *MalAuthRepo) Get(ctx context.Context) (*domain.MalAuth, error) {
 
 	repo.log.Trace().Str("database", "malauth.get").Msgf("query: '%s', args: '%v'", query, args)
 	row := repo.db.handler.QueryRowContext(ctx, query, args...)
-	if err != nil {
-		return nil, errors.Wrap(err, "error executing query")
-	}
 
 	if err := row.Err(); err != nil {
 		return nil, errors.Wrap(err, "error rows get malauth")

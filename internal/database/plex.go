@@ -68,9 +68,6 @@ func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*dom
 	repo.log.Trace().Str("database", "plex.get").Msgf("query: '%s', args: '%v'", query, args)
 
 	row := repo.db.handler.QueryRowContext(ctx, query, args...)
-	if err != nil {
-		return nil, errors.Wrap(err, "error executing query")
-	}
 
 	if err := row.Err(); err != nil {
 		return nil, errors.Wrap(err, "error rows find plex")

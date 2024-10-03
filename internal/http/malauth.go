@@ -119,10 +119,8 @@ func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
 	if len(segments) > 1 {
 		segments = segments[:len(segments)-1]
 	}
-	newPath := path.Join(segments...)
-	newURL := *r.URL
-	newURL.Path = newPath
 
+	newPath := path.Join(segments...)
 	data := authPageData{
 		IsAuthenticated: isAuthenticated,
 		RetryURL:        newPath,

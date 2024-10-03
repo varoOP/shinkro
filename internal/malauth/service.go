@@ -52,7 +52,7 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 		return nil, err
 	}
 
-	if err == nil && (fresh_token != &ma.AccessToken) {
+	if fresh_token.AccessToken != ma.AccessToken.AccessToken {
 		ma.AccessToken = *fresh_token
 		err = s.Store(ctx, ma)
 		if err != nil {

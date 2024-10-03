@@ -66,7 +66,7 @@ func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client
 		return err
 	}
 
-	options, err := ap.newOptions(ctx)
+	options, err := ap.newOptions()
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client
 	return nil
 }
 
-func (ap *AnimeUpdate) newOptions(ctx context.Context) ([]mal.UpdateMyAnimeListStatusOption, error) {
+func (ap *AnimeUpdate) newOptions() ([]mal.UpdateMyAnimeListStatusOption, error) {
 	if err := ap.validateEpisodeNum(); err != nil {
 		return nil, err
 	}

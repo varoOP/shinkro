@@ -1,7 +1,7 @@
 package database
 
 const schema = `
-CREATE TABLE IF NOT EXISTS anime 
+CREATE TABLE anime 
 (
 	mal_id 		INTEGER PRIMARY KEY,
 	title 		TEXT,
@@ -13,7 +13,25 @@ CREATE TABLE IF NOT EXISTS anime
 	releaseDate TEXT
 );
 
-CREATE TABLE IF NOT EXISTS malauth 
+CREATE TABLE users
+(
+    id         INTEGER PRIMARY KEY,
+    username   TEXT NOT NULL,
+    password   TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (username)
+);
+
+CREATE TABLE api_key
+(
+    name       TEXT,
+    key        TEXT PRIMARY KEY,
+    scopes     TEXT []   DEFAULT '{}' NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE malauth 
 (
 	id 				INTEGER PRIMARY KEY,
 	client_id 		TEXT,

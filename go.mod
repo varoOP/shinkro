@@ -1,11 +1,17 @@
 module github.com/varoOP/shinkro
 
-go 1.21
+go 1.23
+
+toolchain go1.23.2
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/go-chi/chi v1.5.4
+	github.com/alexedwards/argon2id v1.0.0
+	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/render v1.0.3
+	github.com/gorilla/sessions v1.4.0
 	github.com/knadh/koanf v1.5.0
+	github.com/lib/pq v1.10.9
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nstratos/go-myanimelist v0.9.5
 	github.com/pkg/errors v0.9.1
@@ -22,11 +28,13 @@ require (
 )
 
 require (
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
@@ -39,9 +47,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/xid v1.4.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect

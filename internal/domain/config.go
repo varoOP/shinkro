@@ -4,15 +4,12 @@ import "os"
 
 type Config struct {
 	ConfigPath        string
-	Username          string   `koanf:"Username"`
-	Password          string   `koanf:"Password"`
 	Host              string   `koanf:"Host"`
 	Port              int      `koanf:"Port"`
 	PlexUser          string   `koanf:"PlexUsername"`
 	PlexUrl           string   `koanf:"Url"`
 	PlexToken         string   `koanf:"Token"`
 	AnimeLibraries    []string `koanf:"AnimeLibraries"`
-	ApiKey            string   `koanf:"ApiKey"`
 	BaseUrl           string   `koanf:"BaseUrl"`
 	CustomMapTVDB     bool
 	CustomMapTVDBPath string

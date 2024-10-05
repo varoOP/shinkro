@@ -13,6 +13,8 @@ import (
 
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/animeupdate"
+	"github.com/varoOP/shinkro/internal/api"
+	"github.com/varoOP/shinkro/internal/auth"
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/http"
@@ -21,6 +23,7 @@ import (
 	"github.com/varoOP/shinkro/internal/mapping"
 	"github.com/varoOP/shinkro/internal/plex"
 	"github.com/varoOP/shinkro/internal/server"
+	"github.com/varoOP/shinkro/internal/user"
 
 	// "github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/notification"
@@ -30,7 +33,6 @@ const usage = `shinkro
 Sync your Anime watch status in Plex to myanimelist.net!
 Usage:
     shinkro --config <path to shinkro configuration directory> Run shinkro
-    shinkro genkey                                             Generate an API key
     shinkro version                                            Print version info
     shinkro help                                               Show this help message
 `
@@ -96,6 +98,8 @@ func main() {
 		var animeUpdateRepo = database.NewAnimeUpdateRepo(log, db)
 		var plexRepo = database.NewPlexRepo(log, db)
 		var malauthRepo = database.NewMalAuthRepo(log, db)
+		var userRepo = database.NewUserRepo(log, db)
+		var apiRepo = database.NewAPIRepo(log, db)
 
 		// c := cron.New(cron.WithLocation(time.UTC))
 		// c.AddFunc("0 1 * * MON", func() {
@@ -114,6 +118,9 @@ func main() {
 		var mapService = mapping.NewService(log, cfg)
 		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
 		var plexService = plex.NewService(log, cfg, plexRepo, animeService, mapService, malauthService, animeUpdateService)
+		var userService = user.NewService(userRepo)
+		var authService = auth.NewService(log, userService)
+		var apiService = api.NewService(log, apiRepo)
 
 		srv := server.NewServer(log, cfg, animeService, mapService)
 		if err := srv.Start(); err != nil {
@@ -133,6 +140,8 @@ func main() {
 				date,
 				plexService,
 				malauthService,
+				apiService,
+				authService,
 			)
 			errorChannel <- httpServer.Open()
 		}()
@@ -148,9 +157,6 @@ func main() {
 			}
 			os.Exit(0)
 		}
-
-	case "genkey":
-		fmt.Fprintln(os.Stdout, config.GenApikey())
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)

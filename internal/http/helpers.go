@@ -69,25 +69,25 @@ const InternalServerError string = "internal server error"
 // 	a.Notify.Anime <- *a
 // }
 
-func isAuthorized(apiKey string, in map[string][]string) bool {
-	if keys, ok := in["apiKey"]; ok {
-		for _, vv := range keys {
-			if vv == apiKey {
-				return true
-			}
-		}
-	}
+// func isAuthorized(apiKey string, in map[string][]string) bool {
+// 	if keys, ok := in["apiKey"]; ok {
+// 		for _, vv := range keys {
+// 			if vv == apiKey {
+// 				return true
+// 			}
+// 		}
+// 	}
 
-	if keys, ok := in["Shinkro-Api-Key"]; ok {
-		for _, vv := range keys {
-			if vv == apiKey {
-				return true
-			}
-		}
-	}
+// 	if keys, ok := in["Shinkro-Api-Key"]; ok {
+// 		for _, vv := range keys {
+// 			if vv == apiKey {
+// 				return true
+// 			}
+// 		}
+// 	}
 
-	return false
-}
+// 	return false
+// }
 
 func contentType(r *http.Request) domain.PlexPayloadSource {
 	contentType := r.Header.Get("Content-Type")

@@ -7,8 +7,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/database"
@@ -19,14 +20,17 @@ type Server struct {
 	log            zerolog.Logger
 	db             *database.DB
 	config         *domain.Config
+	cookieStore    *sessions.CookieStore
 	version        string
 	commit         string
 	date           string
 	plexService    plexService
 	malauthService malauthService
+	apiService     apikeyService
+	authService    authService
 }
 
-func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, version string, commit string, date string, plexSvc plexService, malauthSvc malauthService) Server {
+func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, version string, commit string, date string, plexSvc plexService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
 	return Server{
 		log:     log.With().Str("module", "http").Logger(),
 		config:  config,
@@ -37,6 +41,8 @@ func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, versi
 
 		plexService:    plexSvc,
 		malauthService: malauthSvc,
+		apiService:     apiSvc,
+		authService:    authSvc,
 	}
 }
 
@@ -77,13 +83,14 @@ func (s Server) Handler() http.Handler {
 
 	r.Route(baseUrl, func(r chi.Router) {
 		r.Route("/api", func(r chi.Router) {
-			r.Use(auth(s.config))
-			r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
-		})
+			r.Route("/auth", newAuthHandler(encoder, s.log, s, s.config, s.cookieStore, s.authService).Routes)
 
-		r.Route("/malauth", func(r chi.Router) {
-			r.Use(basicAuth(s.config.Username, s.config.Password))
-			r.Route("/", newmalauthHandler(encoder, s.malauthService).Routes)
+			r.Group(func(r chi.Router) {
+				r.Use(s.IsAuthenticated)
+				r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
+				r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes)
+				r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
+			})
 		})
 		// r.Use(basicAuth(s.config.Username, s.config.Password))
 		// r.With(checkMalAuth(s.db)).Get("/", malAuth(s.config))

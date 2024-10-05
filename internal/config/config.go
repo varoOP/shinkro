@@ -1,9 +1,7 @@
 package config
 
 import (
-	"crypto/rand"
 	"log"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,7 +53,6 @@ func (c *AppConfig) defaultConfig(dir string) {
 		PlexUrl:           "",
 		PlexToken:         "",
 		AnimeLibraries:    []string{},
-		ApiKey:            GenApikey(),
 		BaseUrl:           "/",
 		CustomMapTVDB:     false,
 		CustomMapTVDBPath: filepath.Join(dir, "tvdb-mal.yaml"),
@@ -73,7 +70,6 @@ func (c *AppConfig) defaultConfig(dir string) {
 func (c *AppConfig) createConfig(dir string) error {
 	var config = `###Example config.toml for shinkro
 ###[shinkro]
-### Username and Password is required for basic authentication.
 ###Discord webhook, and BaseUrl are optional.
 ###LogLevel can be set to any one of the following: "INFO", "ERROR", "DEBUG", "TRACE"
 ###LogxMaxSize is in MB.
@@ -84,11 +80,8 @@ func (c *AppConfig) createConfig(dir string) error {
 ###Url and Token are optional - only required if you have anime libraries that use the plex agents.
 
 [shinkro]
-Username = ""
-Password = ""
 Host = "127.0.0.1"
 Port = 7011
-ApiKey = "` + c.Config.ApiKey + `"
 #BaseUrl = "/shinkro"
 #DiscordWebhookUrl = ""
 LogLevel = "INFO"
@@ -122,17 +115,6 @@ AnimeLibraries = []
 }
 
 func (c *AppConfig) checkConfig(dir string) {
-	if c.Config.ApiKey == "" {
-		c.log.Fatal().Msgf("shinkro.ApiKey not set in %v/config.toml", dir)
-	}
-
-	if c.Config.Username == "" {
-		c.log.Fatal().Msgf("shinkro.Username not set in %v/config.toml", dir)
-	}
-
-	if c.Config.Password == "" {
-		c.log.Fatal().Msgf("shinkro.Password not set in %v/config.toml", dir)
-	}
 
 	if c.Config.PlexUser == "" {
 		c.log.Fatal().Msgf("plex.PlexUsername not set in %v/config.toml", dir)
@@ -176,17 +158,17 @@ func (c *AppConfig) parseConfig(dir string) error {
 	return nil
 }
 
-func GenApikey() string {
-	allowed := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
-	b := make([]rune, 32)
-	for i := range b {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(allowed))))
-		if err != nil {
-			log.Fatal(err)
-		}
+// func GenApikey() string {
+// 	allowed := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
+// 	b := make([]rune, 32)
+// 	for i := range b {
+// 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(allowed))))
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
 
-		b[i] = allowed[n.Int64()]
-	}
+// 		b[i] = allowed[n.Int64()]
+// 	}
 
-	return string(b)
-}
+// 	return string(b)
+// }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/varoOP/shinkro/internal/domain"
 	"golang.org/x/oauth2"

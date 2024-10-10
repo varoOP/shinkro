@@ -3,7 +3,6 @@ package http
 import (
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -113,14 +112,14 @@ func readRequest(r *http.Request) (string, error) {
 	return string(b), nil
 }
 
-func joinUrlPath(base, extra string) string {
-	u, err := url.JoinPath(base, extra)
-	if err != nil {
-		return extra
-	}
+// func joinUrlPath(base, extra string) string {
+// 	u, err := url.JoinPath(base, extra)
+// 	if err != nil {
+// 		return extra
+// 	}
 
-	return u
-}
+// 	return u
+// }
 
 func parsePayloadBySourceType(w http.ResponseWriter, r *http.Request, sourceType domain.PlexPayloadSource) (*domain.Plex, error) {
 	log := hlog.FromRequest(r)

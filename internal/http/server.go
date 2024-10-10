@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/web"
 )
 
 type Server struct {
@@ -98,8 +99,19 @@ func (s Server) Handler() http.Handler {
 		// r.Get("/callback", malAuthCallback(s.config, s.db, &s.log))
 		// r.Get("/status", malAuthStatus(s.config, s.db))
 
-		r.NotFound(notFound(s.config))
+		// r.NotFound(notFound(s.config))
 	})
 
+	// serve the web
+	web.RegisterHandler(r, s.version, s.config.BaseUrl)
 	return r
 }
+
+// func (s Server) index(w http.ResponseWriter, r *http.Request) {
+// 	p := web.IndexParams{
+// 		Title:   "Dashboard",
+// 		Version: s.version,
+// 		BaseUrl: s.config.BaseUrl,
+// 	}
+// 	web.Index(w, p)
+// }

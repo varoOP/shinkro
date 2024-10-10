@@ -1,11 +1,5 @@
 package http
 
-import (
-	"net/http"
-
-	"github.com/varoOP/shinkro/internal/domain"
-)
-
 type authPageData struct {
 	IsAuthenticated bool
 	ActionURL       string
@@ -137,9 +131,9 @@ type authPageData struct {
 // 	}
 // }
 
-func notFound(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		u := joinUrlPath(cfg.BaseUrl, "/malauth")
-		http.Redirect(w, r, u, http.StatusSeeOther)
-	}
-}
+// func notFound(cfg *domain.Config) func(w http.ResponseWriter, r *http.Request) {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		u := joinUrlPath(cfg.BaseUrl, "/malauth")
+// 		http.Redirect(w, r, u, http.StatusSeeOther)
+// 	}
+// }

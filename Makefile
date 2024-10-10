@@ -15,15 +15,19 @@ BINDIR = bin
 all: clean build
 
 deps:
+	pnpm --dir web install --frozen-lockfile
 	go mod download
 
 test:
-	go test ./...
+	go test $(go list ./... | grep -v test/integration)
 
-build: deps build/app
+build: deps build/web build/app
 
 build/app:
 	go build -ldflags $(GOFLAGS) -o bin/$(SERVICE) cmd/$(SERVICE)/main.go
+
+build/web:
+	pnpm --dir web run build
 
 build/docker:
 	docker build -t shinkro:dev -f Dockerfile . --build-arg GIT_TAG=$(GIT_TAG) --build-arg GIT_COMMIT=$(GIT_COMMIT)

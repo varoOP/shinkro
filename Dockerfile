@@ -1,5 +1,5 @@
 # build app
-FROM golang:1.21.3-alpine3.18 AS app-builder
+FROM golang:1.23-alpine3.20 AS app-builder
 
 ARG VERSION=dev
 ARG REVISION=dev
@@ -21,7 +21,7 @@ COPY . ./
 RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/shinkro cmd/shinkro/main.go
 
 # build runner
-FROM alpine:3.18
+FROM alpine:latest
 
 LABEL org.opencontainers.image.source="https://github.com/varoOP/shinkro"
 

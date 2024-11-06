@@ -1,5 +1,5 @@
 # build app
-FROM --platform=$BUILDPLATFORM golang:1.21.3-alpine3.18 AS app-builder
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine3.20 AS app-builder
 
 RUN apk add --no-cache git tzdata
 
@@ -20,7 +20,7 @@ RUN --mount=target=. \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o /out/bin/shinkro cmd/shinkro/main.go
 
 # build runner
-FROM alpine:3.18
+FROM alpine:latest
 
 LABEL org.opencontainers.image.source="https://github.com/varoOP/shinkro"
 

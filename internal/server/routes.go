@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/database"
@@ -33,7 +33,7 @@ func NewRouter(cfg *domain.Config, db *database.DB, n *domain.Notification, log 
 		r.Route("/api", func(r chi.Router) {
 			r.Use(auth(cfg))
 			r.Route("/plex", func(r chi.Router) {
-				r.Use(onlyAllowPost, middleware.AllowContentType("application/json", "multipart/form-data"),parsePlexPayload, checkPlexPayload(cfg))
+				r.Use(onlyAllowPost, middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload, checkPlexPayload(cfg))
 				r.Post("/", plexHandler(db, cfg, &log, n))
 			})
 		})

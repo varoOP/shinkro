@@ -1,13 +1,46 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#18181B" />
+    <meta name="description" content="shinkro" />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-iphone-60x60.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="60x60"
+      href="/apple-touch-icon-ipad-76x76.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="114x114"
+      href="/apple-touch-icon-iphone-retina-120x120.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="144x144"
+      href="/apple-touch-icon-ipad-retina-152x152.png"
+    />
+    <title>shinkro</title>
+    <base href="{{.BaseUrl}}" />
+    <script>
+      window.APP = {};
+      window.APP.baseUrl = "{{.BaseUrl}}";
+
+      const browserPrefers = !(
+        window.matchMedia !== undefined &&
+        window.matchMedia("(prefers-color-scheme: light)").matches
+      );
+      const { darkTheme = browserPrefers } =
+        JSON.parse(localStorage.getItem("settings")) || {};
+      document.documentElement.classList.toggle("dark", darkTheme);
+    </script>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+  <body class="bg-color">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root" class="pattern h-screen"></div>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

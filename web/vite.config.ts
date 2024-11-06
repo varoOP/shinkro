@@ -20,7 +20,11 @@ export default ({ mode }: ConfigEnv) => {
     base: "",
     plugins: [
       react(),
-      svgr(),
+      svgr({
+        svgrOptions: {
+          expandProps: "start",
+        },
+      }),
       VitePWA({
         injectRegister: null,
         selfDestroying: true,

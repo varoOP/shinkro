@@ -5,11 +5,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/sessions"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/database"
@@ -66,7 +68,10 @@ func (s Server) Open() error {
 
 func (s Server) Handler() http.Handler {
 	r := chi.NewRouter()
+
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
 	r.Use(hlog.NewHandler(s.log))
 	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		hlog.FromRequest(r).Debug().
@@ -75,35 +80,52 @@ func (s Server) Handler() http.Handler {
 			Msg("Request processed")
 	}))
 
-	baseUrl, err := url.JoinPath("/", s.config.BaseUrl)
+	baseUrll, err := url.JoinPath("/", s.config.BaseUrl)
 	if err != nil {
 		s.log.Error().Err(err).Msg("")
 	}
 
-	encoder := encoder{}
+	baseUrl := s.config.BaseUrl
+	if !strings.HasPrefix(baseUrl, "/") {
+		baseUrl = "/" + baseUrl
+	}
+	if baseUrl != "/" && !strings.HasSuffix(baseUrl, "/") {
+		baseUrl += "/"
+	}
 
-	r.Route(baseUrl, func(r chi.Router) {
-		r.Route("/api", func(r chi.Router) {
-			r.Route("/auth", newAuthHandler(encoder, s.log, s, s.config, s.cookieStore, s.authService).Routes)
-
-			r.Group(func(r chi.Router) {
-				r.Use(s.IsAuthenticated)
-				r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
-				r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes)
-				r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
-			})
-		})
-		// r.Use(basicAuth(s.config.Username, s.config.Password))
-		// r.With(checkMalAuth(s.db)).Get("/", malAuth(s.config))
-		// r.Post("/login", malAuthLogin())
-		// r.Get("/callback", malAuthCallback(s.config, s.db, &s.log))
-		// r.Get("/status", malAuthStatus(s.config, s.db))
-
-		// r.NotFound(notFound(s.config))
+	c := cors.New(cors.Options{
+		AllowCredentials:   true,
+		AllowedMethods:     []string{"HEAD", "OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowOriginFunc:    func(origin string) bool { return true },
+		OptionsPassthrough: true,
+		// Enable Debugging for testing, consider disabling in production
+		Debug: false,
 	})
 
-	// serve the web
-	web.RegisterHandler(r, s.version, s.config.BaseUrl)
+	r.Use(c.Handler)
+
+	encoder := encoder{}
+
+	apiRouter := chi.NewRouter()
+	apiRouter.Route("/auth", newAuthHandler(encoder, s.log, s, s.config, s.cookieStore, s.authService).Routes)
+
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(s.IsAuthenticated)
+		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
+		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes)
+		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
+	})
+
+	// Mount API routes under baseUrl + "api"
+	r.Mount(baseUrl+"api", apiRouter)
+
+	// Create a separate web router for the SPA and static files
+	webRouter := chi.NewRouter()
+	web.RegisterHandler(webRouter, s.version, baseUrl)
+
+	// Mount the web router under the baseUrl
+	r.Mount(baseUrll, webRouter)
+
 	return r
 }
 

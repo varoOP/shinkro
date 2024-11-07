@@ -28,6 +28,7 @@ type IndexParams struct {
 }
 
 var (
+	//go:embed all:dist
 	Dist embed.FS
 
 	DistDirFS = MustSubFS(Dist, "dist")
@@ -130,8 +131,8 @@ func RegisterHandler(c *chi.Mux, version, baseUrl string) {
 	// Serve static files without a prefix
 	assets, _ := fs.Sub(DistDirFS, "assets")
 	static, _ := fs.Sub(DistDirFS, "static")
-	StaticFS(c, "/assets", assets)
-	StaticFS(c, "/static", static)
+	StaticFS(c, baseUrl+"assets", assets)
+	StaticFS(c, baseUrl+"static", static)
 
 	p := IndexParams{
 		Title:   "Dashboard",
@@ -146,21 +147,31 @@ func RegisterHandler(c *chi.Mux, version, baseUrl string) {
 
 	// handle all other routes
 	c.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-		file := strings.TrimPrefix(r.RequestURI, "/")
+		file := strings.TrimPrefix(r.URL.Path, baseUrl)
 
-		// if valid web route then serve html
-		if validRoute(file) || file == "index.html" {
+		// Check if the file exists in DistDirFS
+		f, err := DistDirFS.Open(file)
+		if err == nil {
+			// File exists, serve it directly
+			f.Close()
+			fsFile(w, r, file, DistDirFS)
+			return
+		}
+
+		// Serve index.html for valid web routes (SPA)
+		if validRoute(file) || file == "" || file == "index.html" {
 			Index(w, p)
 			return
 		}
 
+		// Serve manifest if requested
 		if strings.Contains(file, "manifest.webmanifest") {
 			Manifest(w, p)
 			return
 		}
 
-		// if not valid web route then try and serve files
-		fsFile(w, r, file, DistDirFS)
+		// For all else, return 404 Not Found
+		http.NotFound(w, r)
 	})
 }
 

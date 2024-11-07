@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2021 - 2024, Ludvig Lundgren and the autobrr contributors.
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
 import { baseUrl, sseBaseUrl } from "@utils";
 import { GithubRelease } from "@app/types/Update";
 import { AuthContext } from "@utils/Context";
@@ -262,19 +257,6 @@ export const APIClient = {
     updateUser: (req: UserUpdate) =>
       appClient.Patch(`api/auth/user/${req.username_current}`, { body: req }),
   },
-  actions: {
-    create: (action: Action) =>
-      appClient.Post("api/actions", {
-        body: action,
-      }),
-    update: (action: Action) =>
-      appClient.Put(`api/actions/${action.id}`, {
-        body: action,
-      }),
-    delete: (id: number) => appClient.Delete(`api/actions/${id}`),
-    toggleEnable: (id: number) =>
-      appClient.Patch(`api/actions/${id}/toggleEnabled`),
-  },
   apikeys: {
     getAll: () => appClient.Get<APIKey[]>("api/keys"),
     create: (key: APIKey) =>
@@ -290,127 +272,7 @@ export const APIClient = {
         body: config,
       }),
   },
-  download_clients: {
-    getAll: () => appClient.Get<DownloadClient[]>("api/download_clients"),
-    create: (dc: DownloadClient) =>
-      appClient.Post("api/download_clients", {
-        body: dc,
-      }),
-    update: (dc: DownloadClient) =>
-      appClient.Put("api/download_clients", {
-        body: dc,
-      }),
-    delete: (id: number) => appClient.Delete(`api/download_clients/${id}`),
-    test: (dc: DownloadClient) =>
-      appClient.Post("api/download_clients/test", {
-        body: dc,
-      }),
-  },
-  filters: {
-    getAll: () => appClient.Get<Filter[]>("api/filters"),
-    find: (indexers: string[], sortOrder: string) =>
-      appClient.Get<Filter[]>("api/filters", {
-        queryString: {
-          sort: sortOrder,
-          indexer: indexers,
-        },
-      }),
-    getByID: (id: number) => appClient.Get<Filter>(`api/filters/${id}`),
-    create: (filter: Filter) =>
-      appClient.Post<Filter>("api/filters", {
-        body: filter,
-      }),
-    update: (filter: Filter) =>
-      appClient.Put<Filter>(`api/filters/${filter.id}`, {
-        body: filter,
-      }),
-    duplicate: (id: number) =>
-      appClient.Get<Filter>(`api/filters/${id}/duplicate`),
-    toggleEnable: (id: number, enabled: boolean) =>
-      appClient.Put(`api/filters/${id}/enabled`, {
-        body: { enabled },
-      }),
-    delete: (id: number) => appClient.Delete(`api/filters/${id}`),
-  },
-  feeds: {
-    find: () => appClient.Get<Feed[]>("api/feeds"),
-    create: (feed: FeedCreate) =>
-      appClient.Post("api/feeds", {
-        body: feed,
-      }),
-    toggleEnable: (id: number, enabled: boolean) =>
-      appClient.Patch(`api/feeds/${id}/enabled`, {
-        body: { enabled },
-      }),
-    update: (feed: Feed) =>
-      appClient.Put(`api/feeds/${feed.id}`, {
-        body: feed,
-      }),
-    forceRun: (id: number) => appClient.Post(`api/feeds/${id}/forcerun`),
-    delete: (id: number) => appClient.Delete(`api/feeds/${id}`),
-    deleteCache: (id: number) => appClient.Delete(`api/feeds/${id}/cache`),
-    test: (feed: Feed) =>
-      appClient.Post("api/feeds/test", {
-        body: feed,
-      }),
-  },
-  indexers: {
-    // returns indexer options for all currently present/enabled indexers
-    getOptions: () => appClient.Get<Indexer[]>("api/indexer/options"),
-    // returns indexer definitions for all currently present/enabled indexers
-    getAll: () => appClient.Get<IndexerDefinition[]>("api/indexer"),
-    // returns all possible indexer definitions
-    getSchema: () => appClient.Get<IndexerDefinition[]>("api/indexer/schema"),
-    create: (indexer: Indexer) =>
-      appClient.Post<Indexer>("api/indexer", {
-        body: indexer,
-      }),
-    update: (indexer: Indexer) =>
-      appClient.Put(`api/indexer/${indexer.id}`, {
-        body: indexer,
-      }),
-    delete: (id: number) => appClient.Delete(`api/indexer/${id}`),
-    testApi: (req: IndexerTestApiReq) =>
-      appClient.Post<IndexerTestApiReq>(`api/indexer/${req.id}/api/test`, {
-        body: req,
-      }),
-    toggleEnable: (id: number, enabled: boolean) =>
-      appClient.Patch(`api/indexer/${id}/enabled`, {
-        body: { enabled },
-      }),
-  },
-  irc: {
-    getNetworks: () => appClient.Get<IrcNetworkWithHealth[]>("api/irc"),
-    createNetwork: (network: IrcNetworkCreate) =>
-      appClient.Post("api/irc", {
-        body: network,
-      }),
-    updateNetwork: (network: IrcNetwork) =>
-      appClient.Put(`api/irc/network/${network.id}`, {
-        body: network,
-      }),
-    deleteNetwork: (id: number) => appClient.Delete(`api/irc/network/${id}`),
-    restartNetwork: (id: number) =>
-      appClient.Get(`api/irc/network/${id}/restart`),
-    sendCmd: (cmd: SendIrcCmdRequest) =>
-      appClient.Post(`api/irc/network/${cmd.network_id}/cmd`, {
-        body: cmd,
-      }),
-    reprocessAnnounce: (networkId: number, channel: string, msg: string) =>
-      appClient.Post(
-        `api/irc/network/${networkId}/channel/${channel}/announce/process`,
-        {
-          body: { msg: msg },
-        }
-      ),
-    events: (network: string) =>
-      new EventSource(
-        `${sseBaseUrl()}api/irc/events?stream=${encodeRFC3986URIComponent(
-          network
-        )}`,
-        { withCredentials: true }
-      ),
-  },
+
   logs: {
     files: () => appClient.Get<LogFileResponse>("api/logs/files"),
     getFile: (file: string) => appClient.Get(`api/logs/files/${file}`),
@@ -436,70 +298,6 @@ export const APIClient = {
       appClient.Post("api/notification/test", {
         body: notification,
       }),
-  },
-  proxy: {
-    list: () => appClient.Get<Proxy[]>("api/proxy"),
-    getByID: (id: number) => appClient.Get<Proxy>(`api/proxy/${id}`),
-    store: (proxy: ProxyCreate) =>
-      appClient.Post("api/proxy", {
-        body: proxy,
-      }),
-    update: (proxy: Proxy) =>
-      appClient.Put(`api/proxy/${proxy.id}`, {
-        body: proxy,
-      }),
-    delete: (id: number) => appClient.Delete(`api/proxy/${id}`),
-    test: (proxy: Proxy) =>
-      appClient.Post("api/proxy/test", {
-        body: proxy,
-      }),
-  },
-  release: {
-    find: (query?: string) =>
-      appClient.Get<ReleaseFindResponse>(`api/release${query}`),
-    findRecent: () => appClient.Get<ReleaseFindResponse>("api/release/recent"),
-    findQuery: (offset?: number, limit?: number, filters?: ReleaseFilter[]) => {
-      const params: Record<string, string[]> = {
-        indexer: [],
-        push_status: [],
-        q: [],
-      };
-
-      filters?.forEach((filter) => {
-        if (!filter.value) return;
-
-        if (filter.id == "indexer.identifier") {
-          params["indexer"].push(filter.value);
-        } else if (filter.id === "action_status") {
-          params["push_status"].push(filter.value); // push_status is the correct value here otherwise the releases table won't load when filtered by push status
-        } else if (filter.id === "push_status") {
-          params["push_status"].push(filter.value);
-        } else if (filter.id == "name") {
-          params["q"].push(filter.value);
-        }
-      });
-
-      return appClient.Get<ReleaseFindResponse>("api/release", {
-        queryString: {
-          offset,
-          limit,
-          ...params,
-        },
-      });
-    },
-    indexerOptions: () => appClient.Get<string[]>("api/release/indexers"),
-    stats: () => appClient.Get<ReleaseStats>("api/release/stats"),
-    delete: (params: DeleteParams) => {
-      return appClient.Delete("api/release", {
-        queryString: {
-          olderThan: params.olderThan,
-          indexer: params.indexers,
-          releaseStatus: params.releaseStatuses,
-        },
-      });
-    },
-    replayAction: (releaseId: number, actionId: number) =>
-      appClient.Post(`api/release/${releaseId}/actions/${actionId}/retry`),
   },
   updates: {
     check: () => appClient.Get("api/updates/check"),

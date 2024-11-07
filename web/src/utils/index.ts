@@ -1,13 +1,8 @@
-/*
- * Copyright (c) 2021 - 2024, Ludvig Lundgren and the autobrr contributors.
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
 import { formatDistanceToNowStrict, formatISO9075 } from "date-fns";
 
 // sleep for x ms
 export function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // get baseUrl sent from server rendered index template
@@ -17,7 +12,9 @@ export function baseUrl() {
     if (window.APP.baseUrl === "{{.BaseUrl}}") {
       baseUrl = "/";
     } else {
-      baseUrl = window.APP.baseUrl;
+      baseUrl = window.APP.baseUrl.endsWith("/")
+        ? window.APP.baseUrl
+        : `${window.APP.baseUrl}/`;
     }
   }
   return baseUrl;
@@ -39,8 +36,7 @@ export function routerBasePath() {
 
 // get sseBaseUrl for SSE
 export function sseBaseUrl() {
-  if (process.env.NODE_ENV === "development")
-    return "http://localhost:7011/";
+  if (process.env.NODE_ENV === "development") return "http://localhost:7012/";
 
   return `${window.location.origin}${baseUrl()}`;
 }
@@ -54,7 +50,7 @@ export type COL_WIDTHS = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 // simplify date
 export function simplifyDate(date?: string) {
-  if (typeof(date) === "string" && date !== "0001-01-01T00:00:00Z") {
+  if (typeof date === "string" && date !== "0001-01-01T00:00:00Z") {
     return formatISO9075(new Date(date));
   }
   return "n/a";
@@ -62,11 +58,8 @@ export function simplifyDate(date?: string) {
 
 // if empty date show as n/a
 export function IsEmptyDate(date?: string) {
-  if (typeof(date) === "string" && date !== "0001-01-01T00:00:00Z") {
-    return formatDistanceToNowStrict(
-      new Date(date),
-      { addSuffix: true }
-    );
+  if (typeof date === "string" && date !== "0001-01-01T00:00:00Z") {
+    return formatDistanceToNowStrict(new Date(date), { addSuffix: true });
   }
   return "n/a";
 }
@@ -82,25 +75,33 @@ export function slugify(str: string) {
 
 // WARNING: This is not a drop in replacement solution and
 // it might not work for some edge cases. Test your code!
-export const get = <T> (obj: T, path: string|Array<any>, defValue?: string) => {
+export const get = <T>(
+  obj: T,
+  path: string | Array<any>,
+  defValue?: string
+) => {
   // If path is not defined or it has false value
-  if (!path)
-    return undefined;
+  if (!path) return undefined;
   // Check if path is string or array. Regex : ensure that we do not have '.' and brackets.
   // Regex explained: https://regexr.com/58j0k
   const pathArray = Array.isArray(path) ? path : path.match(/([^[.\]])+/g);
   // Find value
-  const result = pathArray && pathArray.reduce(
-    (prevObj, key) => prevObj && prevObj[key],
-    obj
-  );
+  const result =
+    pathArray &&
+    pathArray.reduce((prevObj, key) => prevObj && prevObj[key], obj);
   // If found value is undefined return default value; otherwise return the value
   return result === undefined ? defValue : result;
 };
 
-const UNITS = ['byte', 'kilobyte', 'megabyte', 'gigabyte', 'terabyte', 'petabyte']
-const BYTES_PER_KB = 1000
-
+const UNITS = [
+  "byte",
+  "kilobyte",
+  "megabyte",
+  "gigabyte",
+  "terabyte",
+  "petabyte",
+];
+const BYTES_PER_KB = 1000;
 
 /**
  * Format bytes as human-readable text.
@@ -110,20 +111,20 @@ const BYTES_PER_KB = 1000
  * @return Formatted string.
  */
 export function humanFileSize(sizeBytes: number | bigint): string {
-  let size = Math.abs(Number(sizeBytes))
+  let size = Math.abs(Number(sizeBytes));
 
-  let u = 0
+  let u = 0;
   while (size >= BYTES_PER_KB && u < UNITS.length - 1) {
-    size /= BYTES_PER_KB
-    ++u
+    size /= BYTES_PER_KB;
+    ++u;
   }
 
   return new Intl.NumberFormat([], {
-    style: 'unit',
+    style: "unit",
     unit: UNITS[u],
-    unitDisplay: 'short',
+    unitDisplay: "short",
     maximumFractionDigits: 1,
-  }).format(size)
+  }).format(size);
 }
 
 // export const RandomLinuxIsos = (count: number) => {
@@ -155,36 +156,35 @@ export function humanFileSize(sizeBytes: number | bigint): string {
 
 export async function CopyTextToClipboard(text: string) {
   if ("clipboard" in navigator) {
-     // Safari requires clipboard operations to be directly triggered by a user interaction.
-     // Using setTimeout with a delay of 0 ensures the clipboard operation is deferred until
-     // after the current call stack has cleared, effectively placing it outside of the
-     // immediate execution context of the user interaction event. This workaround allows
-     // the clipboard operation to bypass Safari's security restrictions.
-     setTimeout(async () => {
-       try {
-         await navigator.clipboard.writeText(text);
-         console.log("Text copied to clipboard successfully.");
-       } catch (err) {
-         console.error("Copy to clipboard unsuccessful: ", err);
-       }
-     }, 0);
+    // Safari requires clipboard operations to be directly triggered by a user interaction.
+    // Using setTimeout with a delay of 0 ensures the clipboard operation is deferred until
+    // after the current call stack has cleared, effectively placing it outside of the
+    // immediate execution context of the user interaction event. This workaround allows
+    // the clipboard operation to bypass Safari's security restrictions.
+    setTimeout(async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        console.log("Text copied to clipboard successfully.");
+      } catch (err) {
+        console.error("Copy to clipboard unsuccessful: ", err);
+      }
+    }, 0);
   } else {
-     // fallback for browsers that do not support the Clipboard API
-     copyTextToClipboardFallback(text);
+    // fallback for browsers that do not support the Clipboard API
+    copyTextToClipboardFallback(text);
   }
- }
- 
- function copyTextToClipboardFallback(text: string) {
+}
+
+function copyTextToClipboardFallback(text: string) {
   const textarea = document.createElement("textarea");
   textarea.value = text;
   document.body.appendChild(textarea);
   textarea.select();
   try {
-     document.execCommand('copy');
-     console.log("Text copied to clipboard successfully.");
+    document.execCommand("copy");
+    console.log("Text copied to clipboard successfully.");
   } catch (err) {
-     console.error('Failed to copy text using fallback method: ', err);
+    console.error("Failed to copy text using fallback method: ", err);
   }
   document.body.removeChild(textarea);
- }
- 
+}

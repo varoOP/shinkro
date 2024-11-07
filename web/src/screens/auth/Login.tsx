@@ -98,10 +98,16 @@ export const Login = () => {
   return (
     <Container>
       <Image src={Logo} fit="contain" h={100} />
-      <Text ta="center" size="xl" c="dark" fw={700}>
+      <Text ta="center" size="xl" fw={700}>
         shinkro
       </Text>
-      <Paper shadow="md" radius="xl" withBorder p="xl">
+      <Paper
+        shadow="md"
+        radius="xl"
+        withBorder
+        p="xl"
+        style={{ width: 450, height: 300, margin: "0 auto" }}
+      >
         <Stack
           bg="var(--mantine-color-body)"
           align="strech"

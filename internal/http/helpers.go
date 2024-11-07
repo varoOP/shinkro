@@ -167,3 +167,18 @@ func handleTautulli(w http.ResponseWriter, r *http.Request) (*domain.Plex, error
 	log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 	return tautulli.ToPlex([]byte(ps))
 }
+
+func normalizeBaseUrl(baseUrl string) (string, string) {
+	// Special case: If baseUrl is exactly "/", return "/" for both
+	if baseUrl == "/" {
+		return "/", "/"
+	}
+
+	// Ensure baseUrl starts and ends with "/"
+	normalizedBaseUrl := "/" + strings.Trim(baseUrl, "/") + "/"
+
+	// Remove trailing "/" for webBase unless it's the root path "/"
+	webBase := strings.TrimSuffix(normalizedBaseUrl, "/")
+
+	return normalizedBaseUrl, webBase
+}

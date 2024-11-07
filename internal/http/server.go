@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -80,19 +78,7 @@ func (s Server) Handler() http.Handler {
 			Msg("Request processed")
 	}))
 
-	baseUrll, err := url.JoinPath("/", s.config.BaseUrl)
-	if err != nil {
-		s.log.Error().Err(err).Msg("")
-	}
-
-	baseUrl := s.config.BaseUrl
-	if !strings.HasPrefix(baseUrl, "/") {
-		baseUrl = "/" + baseUrl
-	}
-	if baseUrl != "/" && !strings.HasSuffix(baseUrl, "/") {
-		baseUrl += "/"
-	}
-
+	baseUrl, webBase := normalizeBaseUrl(s.config.BaseUrl)
 	c := cors.New(cors.Options{
 		AllowCredentials:   true,
 		AllowedMethods:     []string{"HEAD", "OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"},
@@ -124,7 +110,7 @@ func (s Server) Handler() http.Handler {
 	web.RegisterHandler(webRouter, s.version, baseUrl)
 
 	// Mount the web router under the baseUrl
-	r.Mount(baseUrll, webRouter)
+	r.Mount(webBase, webRouter)
 
 	return r
 }

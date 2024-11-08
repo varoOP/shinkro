@@ -17,16 +17,16 @@ import (
 const InternalServerError string = "internal server error"
 
 func isMetadataAgent(p *plex.PlexWebhook) (bool, string) {
-	if strings.Contains(p.Metadata.GrandparentGUID, "agents.hama") {
-		return true, "hama"
+	agents := map[string]string{
+		"agents.hama": "hama",
+		"myanimelist": "mal",
+		"plex://":     "plex",
 	}
 
-	if strings.Contains(p.Metadata.GrandparentGUID, "myanimelist") {
-		return true, "mal"
-	}
-
-	if strings.Contains(p.Metadata.GrandparentGUID, "plex://") {
-		return true, "plex"
+	for key, value := range agents {
+		if strings.Contains(p.Metadata.GUID.GUID, key) || strings.Contains(p.Metadata.GrandparentGUID, key) {
+			return true, value
+		}
 	}
 
 	return false, ""

@@ -32,9 +32,7 @@ func NewDB(dir string, log *zerolog.Logger) *DB {
 	}
 
 	if _, err = db.Handler.Exec(`PRAGMA journal_mode = wal;`); err != nil {
-		if err != nil {
 			db.log.Fatal().Err(err).Msg("unable to enable WAL mode")
-		}
 	}
 
 	return db

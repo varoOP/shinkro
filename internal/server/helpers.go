@@ -1,11 +1,12 @@
 package server
 
 import (
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -16,16 +17,16 @@ import (
 const InternalServerError string = "internal server error"
 
 func isMetadataAgent(p *plex.PlexWebhook) (bool, string) {
-	if strings.Contains(p.Metadata.GUID.GUID, "agents.hama") {
-		return true, "hama"
+	agents := map[string]string{
+		"agents.hama": "hama",
+		"myanimelist": "mal",
+		"plex://":     "plex",
 	}
 
-	if strings.Contains(p.Metadata.GUID.GUID, "myanimelist") {
-		return true, "mal"
-	}
-
-	if strings.Contains(p.Metadata.GUID.GUID, "plex://") {
-		return true, "plex"
+	for key, value := range agents {
+		if strings.Contains(p.Metadata.GUID.GUID, key) || strings.Contains(p.Metadata.GrandparentGUID, key) {
+			return true, value
+		}
 	}
 
 	return false, ""

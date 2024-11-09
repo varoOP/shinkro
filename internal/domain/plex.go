@@ -332,16 +332,16 @@ func (p *Plex) SetAnimeFields(source PlexSupportedDBs, id int) AnimeUpdate {
 }
 
 func (p *Plex) IsMetadataAgentAllowed() (bool, PlexSupportedAgents) {
-	if strings.Contains(p.Metadata.GUID.GUID, "agents.hama") {
-		return true, HAMA
+	agents := map[string]PlexSupportedAgents{
+		"agents.hama": HAMA,
+		"myanimelist": MALAgent,
+		"plex://":     PlexAgent,
 	}
 
-	if strings.Contains(p.Metadata.GUID.GUID, "myanimelist") {
-		return true, MALAgent
-	}
-
-	if strings.Contains(p.Metadata.GUID.GUID, "plex://") {
-		return true, PlexAgent
+	for key, value := range agents {
+		if strings.Contains(p.Metadata.GUID.GUID, key) || strings.Contains(p.Metadata.GrandparentGUID, key) {
+			return true, value
+		}
 	}
 
 	return false, ""

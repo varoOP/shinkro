@@ -3,7 +3,6 @@ package domain
 import "os"
 
 type Config struct {
-	ConfigPath        string
 	Host              string   `koanf:"Host"`
 	Port              int      `koanf:"Port"`
 	PlexUser          string   `koanf:"PlexUsername"`
@@ -14,6 +13,7 @@ type Config struct {
 	CustomMapTVDB     bool
 	CustomMapTVDBPath string
 	CustomMapTMDB     bool
+	SessionSecret     string `koanf:"SessionSecret"`
 	CustomMapTMDBPath string
 	TVDBMalMap        *AnimeTVShows
 	TMDBMalMap        *AnimeMovies

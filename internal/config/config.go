@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"html/template"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/varoOP/shinkro/internal/api"
 	"github.com/varoOP/shinkro/internal/domain"
 )
 
@@ -46,7 +49,6 @@ func NewConfig(dir string) *AppConfig {
 
 func (c *AppConfig) defaultConfig(dir string) {
 	c.Config = &domain.Config{
-		ConfigPath:        filepath.Join(dir, "config.toml"),
 		Host:              "127.0.0.1",
 		Port:              7011,
 		PlexUser:          "",
@@ -64,11 +66,11 @@ func (c *AppConfig) defaultConfig(dir string) {
 		LogLevel:          "INFO",
 		LogMaxSize:        50,
 		LogMaxBackups:     3,
+		SessionSecret:     api.GenerateSecureToken(16),
 	}
 }
 
-func (c *AppConfig) createConfig(dir string) error {
-	var config = `###Example config.toml for shinkro
+var configTemplate = `###Example config.toml for shinkro
 ###[shinkro]
 ###Discord webhook, and BaseUrl are optional.
 ###LogLevel can be set to any one of the following: "INFO", "ERROR", "DEBUG", "TRACE"
@@ -87,6 +89,7 @@ Port = 7011
 LogLevel = "INFO"
 LogMaxSize = 50
 LogMaxBackups = 3
+SessionSecret = "{{ .sessionSecret }}"
 
 [plex]
 PlexUsername = ""
@@ -95,20 +98,38 @@ AnimeLibraries = []
 #Token = "<Value of X-Plex-Token>"
 `
 
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		return err
-	}
+func (c *AppConfig) writeConfig(cfgPath string) error {
+	// check if config exists, if not create it
+	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(cfgPath)
+		if err != nil { // perm 0666
+			// handle failed create
+			log.Printf("error creating file: %q", err)
+			return err
+		}
+		defer f.Close()
 
-	f, err := os.Create(c.Config.ConfigPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+		// setup text template to inject variables into
+		tmpl, err := template.New("config").Parse(configTemplate)
+		if err != nil {
+			return errors.Wrap(err, "could not create config template")
+		}
 
-	_, err = f.WriteString(config)
-	if err != nil {
-		return err
+		tmplVars := map[string]string{
+			"sessionSecret": c.Config.SessionSecret,
+		}
+
+		var buffer bytes.Buffer
+		if err = tmpl.Execute(&buffer, &tmplVars); err != nil {
+			return errors.Wrap(err, "could not write torrent url template output")
+		}
+
+		if _, err = f.WriteString(buffer.String()); err != nil {
+			log.Printf("error writing contents to file: %v %q", cfgPath, err)
+			return err
+		}
+
+		return f.Sync()
 	}
 
 	return nil
@@ -130,17 +151,19 @@ func (c *AppConfig) checkConfig(dir string) {
 }
 
 func (c *AppConfig) parseConfig(dir string) error {
-	if _, err := os.Stat(c.Config.ConfigPath); err != nil {
-		err = c.createConfig(dir)
+	cfgPath := filepath.Join(dir, "config.toml")
+
+	if _, err := os.Stat(cfgPath); err != nil {
+		err = c.writeConfig(cfgPath)
 		if err != nil {
 			c.log.Fatal().Msg("unable to write shinkro configuration file")
 		}
 
-		c.log.Fatal().Err(errors.New("shinkro configuration file not found")).Msgf("No config.toml found, example config.toml created at %v. Edit and run shinkro again", c.Config.ConfigPath)
+		c.log.Fatal().Err(errors.New("shinkro configuration file not found")).Msgf("No config.toml found, example config.toml created at %v. Edit and run shinkro again", cfgPath)
 	}
 
 	k := koanf.New(".")
-	if err := k.Load(file.Provider(c.Config.ConfigPath), toml.Parser()); err != nil {
+	if err := k.Load(file.Provider(cfgPath), toml.Parser()); err != nil {
 		return err
 	}
 
@@ -157,18 +180,3 @@ func (c *AppConfig) parseConfig(dir string) error {
 	c.Config.LocalMapsExist()
 	return nil
 }
-
-// func GenApikey() string {
-// 	allowed := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
-// 	b := make([]rune, 32)
-// 	for i := range b {
-// 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(allowed))))
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-
-// 		b[i] = allowed[n.Int64()]
-// 	}
-
-// 	return string(b)
-// }

@@ -109,7 +109,7 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 
 func (h authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	// get session from context
-	session, ok := r.Context().Value("session").(*sessions.Session)
+	session, ok := r.Context().Value(sessionkey).(*sessions.Session)
 	if !ok {
 		h.encoder.StatusError(w, http.StatusInternalServerError, errors.New("could not get session from context"))
 		return

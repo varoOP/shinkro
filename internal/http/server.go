@@ -33,13 +33,13 @@ type Server struct {
 
 func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, version string, commit string, date string, plexSvc plexService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
 	return Server{
-		log:     log.With().Str("module", "http").Logger(),
-		config:  config,
-		db:      db,
-		version: version,
-		commit:  commit,
-		date:    date,
-
+		log:            log.With().Str("module", "http").Logger(),
+		config:         config,
+		db:             db,
+		version:        version,
+		commit:         commit,
+		date:           date,
+		cookieStore:    sessions.NewCookieStore([]byte(config.SessionSecret)),
 		plexService:    plexSvc,
 		malauthService: malauthSvc,
 		apiService:     apiSvc,

@@ -20,3 +20,9 @@
 
   border-right: 0;
 }
+
+.code {
+  @mixin light {
+    background-color: var(--mantine-color-gray-2);
+  }
+}

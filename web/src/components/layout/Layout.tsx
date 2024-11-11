@@ -62,7 +62,9 @@ export const Layout = () => {
           <Image src={Logo} height={60} />
           <Flex align="flex-end" gap="xs">
             <Title order={3}>shinkro</Title>
-            <Code fw={700}>v1.0.0</Code>
+            <Code fw={700} className={classes.code}>
+              v1.0.0
+            </Code>
           </Flex>
           <Menu
             shadow="md"

@@ -1,0 +1,22 @@
+.header {
+  border-bottom: 0;
+  @mixin light {
+    background: var(--mantine-color-gray-0);
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-7);
+  }
+}
+
+.navbar {
+  @mixin light {
+    background: var(--mantine-color-gray-1);
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-8);
+  }
+
+  border-right: 0;
+}

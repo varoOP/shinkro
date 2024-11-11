@@ -2,7 +2,7 @@ import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { AuthContext } from "@utils/Context";
 import { redirect } from "@tanstack/react-router";
 import { LoginRoute } from "@app/routes";
-import { showNotification } from "@mantine/notifications";
+import { displayNotification } from "@components/notifications";
 
 const MAX_RETRIES = 6;
 
@@ -21,10 +21,10 @@ export const queryClient = new QueryClient({
         });
         return;
       } else {
-        showNotification({
+        displayNotification({
           title: "Error",
           message: error?.message || "An error occurred",
-          color: "red", // Sets notification color to red for errors
+          type: error,
         });
       }
     },
@@ -56,10 +56,10 @@ export const queryClient = new QueryClient({
             ? (error as Error).message
             : `${error}`;
 
-        showNotification({
+        displayNotification({
           title: "Mutation Error",
           message: message,
-          color: "red",
+          type: "error",
         });
       },
     },

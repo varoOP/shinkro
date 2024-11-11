@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2021 - 2024, Ludvig Lundgren and the autobrr contributors.
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
 import {
   createRootRouteWithContext,
   createRoute,
@@ -15,12 +10,27 @@ import { z } from "zod";
 import { QueryClient } from "@tanstack/react-query";
 import { APIClient } from "@api/APIClient";
 import { Login, Onboarding } from "@screens/auth";
+import { Layout } from "@components/layout";
 import { NotFound } from "@components/alerts/NotFound";
-
+import { Dashboard } from "@screens/Dashboard";
 import { AuthContext, SettingsContext } from "@utils/Context";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "@api/QueryClient";
+
+const DashboardRoute = createRoute({
+  getParentRoute: () => AuthIndexRoute,
+  path: "/",
+  loader: () => {
+    // https://tanstack.com/router/v1/docs/guide/deferred-data-loading#deferred-data-loading-with-defer-and-await
+    // TODO load stats
+
+    // TODO load recent releases
+
+    return {};
+  },
+  component: Dashboard,
+});
 
 export const OnboardRoute = createRoute({
   getParentRoute: () => RootRoute,
@@ -97,7 +107,16 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Layout />
       <Outlet />
     </div>
   );
@@ -140,7 +159,14 @@ export const RootRoute = createRootRouteWithContext<{
   notFoundComponent: NotFound,
 });
 
-const routeTree = RootRoute.addChildren([LoginRoute, OnboardRoute]);
+const authenticatedTree = AuthRoute.addChildren([
+  AuthIndexRoute.addChildren([DashboardRoute]),
+]);
+const routeTree = RootRoute.addChildren([
+  LoginRoute,
+  OnboardRoute,
+  authenticatedTree,
+]);
 
 export const Router = createRouter({
   routeTree,

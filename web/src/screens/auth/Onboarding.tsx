@@ -9,7 +9,7 @@ import {
   TextInput,
   PasswordInput,
   Group,
-  Text,
+  Title,
   Container,
 } from "@mantine/core";
 
@@ -49,34 +49,25 @@ export const Onboarding = () => {
   return (
     <Container>
       <Image src={Logo} fit="contain" h={100} alt="Logo" />
-      <Text ta="center" size="xl" fw={700}>
+      <Title ta="center" order={2} >
         shinkro
-      </Text>
-      <Paper
-        shadow="md"
-        radius="xl"
-        withBorder
-        p="xl"
-        style={{ width: 450, margin: "0 auto" }}
-      >
+      </Title>
+      <Paper>
         <Stack align="stretch" justify="center" gap="sm">
           <form
             onSubmit={form.onSubmit((values) => mutation.mutate(values))}
             style={{ width: "100%" }}
           >
-            <TextInput
-              label="USERNAME"
-              placeholder="Your waifu's name works"
+            <TextInput mt="sm"
+              placeholder="USERNAME"
               {...form.getInputProps("username")}
             />
-            <PasswordInput
-              label="PASSWORD"
-              placeholder="Cite the deep magic!"
+            <PasswordInput mt="sm"
+              placeholder="PASSWORD"
               {...form.getInputProps("pass")}
             />
-            <PasswordInput
-              label="CONFIRM PASSWORD"
-              placeholder="2X Deep Magics"
+            <PasswordInput mt="sm"
+              placeholder="CONFIRM PASSWORD"
               {...form.getInputProps("confirmPass")}
             />
             <Group justify="center" mt="md">

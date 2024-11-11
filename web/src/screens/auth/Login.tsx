@@ -3,12 +3,12 @@ import { useMutation, useQueryErrorResetBoundary } from "@tanstack/react-query";
 import { useRouter, useSearch } from "@tanstack/react-router";
 
 import { APIClient } from "@api/APIClient";
-import { showNotification } from "@mantine/notifications";
+import { displayNotification } from "@components/notifications";
 import {
   PasswordInput,
   TextInput,
   Button,
-  Text,
+  Title,
   Stack,
   Paper,
   Tooltip,
@@ -59,10 +59,10 @@ export const Login = () => {
       router.invalidate();
     },
     onError: (error: any) => {
-      showNotification({
-        title: "Error",
+      displayNotification({
+        title: "Login Error",
         message: error.message || "An error occurred!",
-        color: "red",
+        type: "error",
       });
     },
   });
@@ -71,16 +71,18 @@ export const Login = () => {
 
   const [tooltipOpened, setTooltipOpened] = useState(false);
 
+  const commandText =
+    "shinkro --config=${HOME}/.config/shinkro change-password ${USER}";
+
   const handleCopyCommand = () => {
-    const commandText =
-      "shinkro --config=/home/username/.config/shinkro change-password $USERNAME";
     navigator.clipboard.writeText(commandText);
 
     // Show the tooltip and notification
     setTooltipOpened(true);
-    showNotification({
+    displayNotification({
       title: "Password Reset",
       message: "Command copied to clipboard",
+      type: "info",
     });
 
     // Hide the tooltip after a delay
@@ -98,16 +100,10 @@ export const Login = () => {
   return (
     <Container>
       <Image src={Logo} fit="contain" h={100} />
-      <Text ta="center" size="xl" fw={700}>
+      <Title order={2} ta="center">
         shinkro
-      </Text>
-      <Paper
-        shadow="md"
-        radius="xl"
-        withBorder
-        p="xl"
-        style={{ width: 450, height: 300, margin: "0 auto" }}
-      >
+      </Title>
+      <Paper>
         <Stack
           bg="var(--mantine-color-body)"
           align="strech"
@@ -115,16 +111,20 @@ export const Login = () => {
           gap="sm"
         >
           <form onSubmit={form.onSubmit(onSubmit)}>
-            <TextInput label="USERNAME" {...form.getInputProps("username")} />
+            <TextInput
+              {...form.getInputProps("username")}
+              placeholder="USERNAME"
+            />
             <PasswordInput
-              label="PASSWORD"
               {...form.getInputProps("password")}
+              placeholder="PASSWORD"
+              mt="sm"
             />
             <Button fullWidth type="submit" mt="sm">
               Login
             </Button>
             <Tooltip
-              label="Reset password using terminal command: shinkro --config=/home/username/.config/shinkro change-password $USERNAME"
+              label={`Reset password using terminal command: ${commandText}`}
               opened={tooltipOpened}
               position="bottom"
               arrowOffset={50}

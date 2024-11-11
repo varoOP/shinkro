@@ -1,19 +1,13 @@
 import type { StateWithValue } from "react-ridge-state";
 import { newRidgeState } from "react-ridge-state";
+import { useMantineColorScheme } from "@mantine/core";
 
 interface SettingsType {
   debug: boolean;
-  darkTheme: boolean;
   scrollOnNewLog: boolean;
   indentLogLines: boolean;
   hideWrappedText: boolean;
 }
-
-export type FilterListState = {
-  indexerFilter: string[];
-  sortOrder: string;
-  status: string;
-};
 
 interface AuthInfo {
   username: string;
@@ -23,21 +17,14 @@ interface AuthInfo {
 // Default values
 const AuthContextDefaults: AuthInfo = {
   username: "",
-  isLoggedIn: false
+  isLoggedIn: false,
 };
 
 const SettingsContextDefaults: SettingsType = {
   debug: false,
-  darkTheme: window.matchMedia('(prefers-color-scheme: dark)').matches,
   scrollOnNewLog: false,
   indentLogLines: false,
-  hideWrappedText: false
-};
-
-const FilterListContextDefaults: FilterListState = {
-  indexerFilter: [],
-  sortOrder: "",
-  status: ""
+  hideWrappedText: false,
 };
 
 // eslint-disable-next-line
@@ -53,7 +40,9 @@ function ContextMerger<T extends {}>(
     try {
       const json = JSON.parse(storage);
       if (json === null) {
-        console.warn(`JSON localStorage value for '${key}' context state is null`);
+        console.warn(
+          `JSON localStorage value for '${key}' context state is null`
+        );
       } else {
         values = { ...values, ...json };
       }
@@ -67,7 +56,6 @@ function ContextMerger<T extends {}>(
 
 const AuthKey = "shinkro_user_auth";
 const SettingsKey = "shinkro_settings";
-const FilterListKey = "shinkro_filter_list";
 
 export const InitializeGlobalContext = () => {
   ContextMerger<AuthInfo>(AuthKey, AuthContextDefaults, AuthContext);
@@ -75,11 +63,6 @@ export const InitializeGlobalContext = () => {
     SettingsKey,
     SettingsContextDefaults,
     SettingsContext
-  );
-  ContextMerger<FilterListState>(
-    FilterListKey,
-    FilterListContextDefaults,
-    FilterListContext
   );
 };
 
@@ -95,43 +78,41 @@ function DefaultSetter<T>(name: string, newState: T, prevState: T) {
   }
 }
 
-export const AuthContext = newRidgeState<AuthInfo>(
-  AuthContextDefaults,
-  {
-    onSet: (newState, prevState) => DefaultSetter(AuthKey, newState, prevState)
-  }
-);
+export const AuthContext = newRidgeState<AuthInfo>(AuthContextDefaults, {
+  onSet: (newState, prevState) => DefaultSetter(AuthKey, newState, prevState),
+});
 
 export const SettingsContext = newRidgeState<SettingsType>(
   SettingsContextDefaults,
   {
     onSet: (newState, prevState) => {
-      document.documentElement.classList.toggle("dark", newState.darkTheme);
       DefaultSetter(SettingsKey, newState, prevState);
-      updateMetaThemeColor(newState.darkTheme);
-    }
+    },
   }
 );
 
+export const useThemeToggle = () => {
+  const { colorScheme, setColorScheme, clearColorScheme } =
+    useMantineColorScheme();
+
+  const toggleTheme = () => {
+    setColorScheme(colorScheme === "dark" ? "light" : "dark");
+  };
+
+  return { colorScheme, setColorScheme, toggleTheme, clearColorScheme };
+};
 /**
  * Updates the meta theme color based on the current theme state.
  * Used by Safari to color the compact tab bar on both iOS and MacOS.
  */
-const updateMetaThemeColor = (darkTheme: boolean) => {
-  const color = darkTheme ? '#121315' : '#f4f4f5';
-  let metaThemeColor: HTMLMetaElement | null = document.querySelector('meta[name="theme-color"]');
-  if (!metaThemeColor) {
-    metaThemeColor = document.createElement('meta') as HTMLMetaElement;
-    metaThemeColor.name = "theme-color";
-    document.head.appendChild(metaThemeColor);
-  }
+// const updateMetaThemeColor = (darkTheme: boolean) => {
+//   const color = darkTheme ? '#121315' : '#f4f4f5';
+//   let metaThemeColor: HTMLMetaElement | null = document.querySelector('meta[name="theme-color"]');
+//   if (!metaThemeColor) {
+//     metaThemeColor = document.createElement('meta') as HTMLMetaElement;
+//     metaThemeColor.name = "theme-color";
+//     document.head.appendChild(metaThemeColor);
+//   }
 
-  metaThemeColor.content = color;
-};
-
-export const FilterListContext = newRidgeState<FilterListState>(
-  FilterListContextDefaults,
-  {
-    onSet: (newState, prevState) => DefaultSetter(FilterListKey, newState, prevState)
-  }
-);
+//   metaThemeColor.content = color;
+// };

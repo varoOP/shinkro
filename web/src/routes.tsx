@@ -13,6 +13,7 @@ import { Login, Onboarding } from "@screens/auth";
 import { Layout } from "@components/layout";
 import { NotFound } from "@components/alerts/NotFound";
 import { Dashboard } from "@screens/Dashboard";
+import { Settings } from "@screens/Settings";
 import { AuthContext, SettingsContext } from "@utils/Context";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -122,6 +123,13 @@ function AuthenticatedLayout() {
   );
 }
 
+export const SettingsRoute = createRoute({
+  getParentRoute: () => AuthIndexRoute,
+  path: "settings",
+  pendingMs: 3000,
+  component: Settings,
+});
+
 export const AuthIndexRoute = createRoute({
   getParentRoute: () => AuthRoute,
   component: AuthenticatedLayout,
@@ -160,7 +168,7 @@ export const RootRoute = createRootRouteWithContext<{
 });
 
 const authenticatedTree = AuthRoute.addChildren([
-  AuthIndexRoute.addChildren([DashboardRoute]),
+  AuthIndexRoute.addChildren([DashboardRoute, SettingsRoute]),
 ]);
 const routeTree = RootRoute.addChildren([
   LoginRoute,

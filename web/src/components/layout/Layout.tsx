@@ -7,7 +7,7 @@ import {
   Code,
   Image,
   ActionIcon,
-  Skeleton,
+  NavLink,
   Menu,
 } from "@mantine/core";
 import Logo from "@app/logo.svg";
@@ -18,10 +18,11 @@ import { GrHelpBook } from "react-icons/gr";
 import { BiLogOut } from "react-icons/bi";
 // import { SettingsContext } from "@utils/Context";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
+import { Outlet, useRouter, Link } from "@tanstack/react-router";
 import { APIClient } from "@api/APIClient";
 import { AuthContext, useThemeToggle } from "@utils/Context";
 import { ExternalLink } from "@components/ExternalLink";
+import { NAV_ROUTES } from "./navigation";
 import classes from "./Layout.module.css";
 
 export const Layout = () => {
@@ -133,14 +134,31 @@ export const Layout = () => {
       </AppShell.Header>
 
       <AppShell.Navbar p="md" className={classes.navbar}>
-        Navbar
-        {Array(15)
-          .fill(0)
-          .map((_, index) => (
-            <Skeleton key={index} h={28} mt="sm" animate={false} />
-          ))}
+        {NAV_ROUTES.map((item, itemIdx) => (
+          <Link
+            key={item.name + itemIdx}
+            to={item.path}
+            params={{}}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            {({ isActive }) => {
+              return (
+                <>
+                  <NavLink
+                    label={item.name}
+                    active={isActive}
+                    variant="light"
+                    color="blue"
+                  />
+                </>
+              );
+            }}
+          </Link>
+        ))}
       </AppShell.Navbar>
-      <AppShell.Main>Main content goes here</AppShell.Main>
+      <AppShell.Main>
+        <Outlet />
+      </AppShell.Main>
     </AppShell>
   );
 };

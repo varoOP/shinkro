@@ -5,7 +5,7 @@ import { MantineProvider } from "@mantine/core";
 import { theme } from "@app/theme";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
-import "@app/pattern.css";
+import "@app/main.css";
 import { App } from "./App";
 import { InitializeGlobalContext } from "./utils/Context";
 

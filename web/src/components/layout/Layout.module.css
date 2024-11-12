@@ -1,28 +1,28 @@
 .header {
   border-bottom: 0;
   @mixin light {
-    background: var(--mantine-color-gray-0);
+    background: #F0F0F3;
   }
 
   @mixin dark {
-    background: var(--mantine-color-dark-7);
+    background: #242526;
   }
 }
 
 .navbar {
   @mixin light {
-    background: var(--mantine-color-gray-1);
+    background: var(--mantine-color-white);
   }
 
   @mixin dark {
-    background: var(--mantine-color-dark-8);
+    background: var(--mantine-color-dark-9);
+    border-right: 0;
   }
 
-  border-right: 0;
 }
 
 .code {
   @mixin light {
-    background-color: var(--mantine-color-gray-2);
+    background-color: var(--mantine-color-gray-3);
   }
 }

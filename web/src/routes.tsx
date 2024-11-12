@@ -118,7 +118,6 @@ function AuthenticatedLayout() {
       }}
     >
       <Layout />
-      <Outlet />
     </div>
   );
 }

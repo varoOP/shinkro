@@ -5,3 +5,11 @@
 :root[data-mantine-color-scheme="dark"] {
   --mantine-color-body: #1B1B1D !important;
 }
+
+.full-height-center {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}

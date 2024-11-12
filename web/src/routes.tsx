@@ -108,15 +108,7 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <div className="full-height-center">
       <Layout />
     </div>
   );
@@ -139,15 +131,7 @@ export const AuthIndexRoute = createRoute({
 export const RootComponent = () => {
   const settings = SettingsContext.useValue();
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <div className="full-height-center">
       <Outlet />
       {settings.debug ? (
         <>

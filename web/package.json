@@ -1,13 +1,15 @@
 {
   "name": "web",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --color",
+    "lint:ci": "eslint src/ --ext .js,.jsx,.ts,.tsx --format=@microsoft/eslint-formatter-sarif --fix > ../results.sarif || true",
+    "preview": "vite preview",
+    "lint:watch": "pnpm run lint -- --watch"
   },
   "dependencies": {
     "@mantine/core": "^7.13.4",

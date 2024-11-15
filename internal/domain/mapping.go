@@ -1,5 +1,31 @@
 package domain
 
+import (
+	"context"
+	"io"
+	"net/http"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
+type MappingRepo interface {
+	Store(ctx context.Context, m *MapSettings) error
+	Get(ctx context.Context) (*MapSettings, error)
+}
+
+type Mapping struct {
+	MapSettings MapSettings
+	AnimeMap    AnimeMap
+}
+
+type MapSettings struct {
+	TVDBEnabled       bool   `json:"tvdb_enabled"`
+	TMDBEnabled       bool   `json:"tmdb_enabled"`
+	CustomMapTVDBPath string `json:"tvdb_path"`
+	CustomMapTMDBPath string `json:"tmdb_path"`
+}
+
 type AnimeMap struct {
 	AnimeTVShows *AnimeTVShows
 	AnimeMovies  *AnimeMovies
@@ -45,9 +71,7 @@ type CommunityMapUrls string
 
 const (
 	CommunityMapTVDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
-	TVDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tvdb.json"
 	CommunityMapTMDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
-	TMDBSchema       CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
 )
 
 func (s *AnimeTVShows) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeTV) {
@@ -128,4 +152,118 @@ func (ad *AnimeMapDetails) CalculateEpNum(oldEpNum int) int {
 	}
 
 	return oldEpNum - ad.Start + 1
+}
+
+func NewMapSettings(tvdb, tmdb bool, tvdbPath, tmdbPath string) *MapSettings {
+	return &MapSettings{
+		TVDBEnabled:       tvdb,
+		TMDBEnabled:       tmdb,
+		CustomMapTVDBPath: tvdbPath,
+		CustomMapTMDBPath: tmdbPath,
+	}
+}
+
+func (ms *MapSettings) LocalMapsExist() (bool, bool) {
+	tvdb, tmdb := false, false
+
+	if fileExists(ms.CustomMapTVDBPath) {
+		tvdb = true
+	}
+
+	if fileExists(ms.CustomMapTMDBPath) {
+		tmdb = true
+	}
+
+	return tvdb, tmdb
+}
+
+func (m *Mapping) LoadCommunityMaps(ctx context.Context, tvdb, tmdb bool) error {
+	if !tvdb {
+		respTVDB, err := GetWithContext(ctx, string(CommunityMapTVDB))
+		if err != nil {
+			return err
+		}
+
+		err = readYamlHTTP(respTVDB, m.AnimeMap.AnimeTVShows)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !tmdb {
+		respTMDB, err := GetWithContext(ctx, string(CommunityMapTMDB))
+		if err != nil {
+			return err
+		}
+
+		err = readYamlHTTP(respTMDB, m.AnimeMap.AnimeMovies)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Mapping) LoadLocalMaps(tvdb, tmdb bool) error {
+	if tvdb {
+		fTVDB, err := os.Open(m.MapSettings.CustomMapTVDBPath)
+		if err != nil {
+			return err
+		}
+
+		err = readYamlFile(fTVDB, m.AnimeMap.AnimeTVShows)
+		if err != nil {
+			return err
+		}
+	}
+
+	if tmdb {
+		fTMDB, err := os.Open(m.MapSettings.CustomMapTMDBPath)
+		if err != nil {
+			return err
+		}
+
+		err = readYamlFile(fTMDB, m.AnimeMap.AnimeMovies)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Open(path)
+	return err == nil
+}
+
+func readYamlHTTP(resp *http.Response, mapping interface{}) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	err = yaml.Unmarshal(body, mapping)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readYamlFile(f *os.File, mapping interface{}) error {
+	defer f.Close()
+	body, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(body, mapping)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

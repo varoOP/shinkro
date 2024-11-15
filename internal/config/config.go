@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/knadh/koanf"
@@ -43,59 +42,32 @@ func NewConfig(dir string) *AppConfig {
 		c.log.Fatal().Err(err).Msg("unable to parse config.toml")
 	}
 
-	c.checkConfig(dir)
 	return c
 }
 
 func (c *AppConfig) defaultConfig(dir string) {
 	c.Config = &domain.Config{
-		Host:              "127.0.0.1",
-		Port:              7011,
-		PlexUser:          "",
-		PlexUrl:           "",
-		PlexToken:         "",
-		AnimeLibraries:    []string{},
-		BaseUrl:           "/",
-		CustomMapTVDB:     false,
-		CustomMapTVDBPath: filepath.Join(dir, "tvdb-mal.yaml"),
-		CustomMapTMDB:     false,
-		CustomMapTMDBPath: filepath.Join(dir, "tmdb-mal.yaml"),
-		TMDBMalMap:        nil,
-		TVDBMalMap:        nil,
-		DiscordWebHookURL: "",
-		LogLevel:          "INFO",
-		LogMaxSize:        50,
-		LogMaxBackups:     3,
-		SessionSecret:     api.GenerateSecureToken(16),
+		Host:          "127.0.0.1",
+		Port:          7011,
+		BaseUrl:       "/",
+		LogLevel:      "INFO",
+		LogMaxSize:    50,
+		LogMaxBackups: 3,
+		SessionSecret: api.GenerateSecureToken(16),
 	}
 }
 
 var configTemplate = `###Example config.toml for shinkro
-###[shinkro]
-###Discord webhook, and BaseUrl are optional.
 ###LogLevel can be set to any one of the following: "INFO", "ERROR", "DEBUG", "TRACE"
 ###LogxMaxSize is in MB.
-###[plex]
-###PlexUser and AnimeLibraries must be set to the correct values. 
-###AnimeLibraries is a list of your plex library names that contain anime - the ones shinkro will use to update your MAL account.
-###Example: AnimeLibraries = ["Anime", "Anime Movies"]
-###Url and Token are optional - only required if you have anime libraries that use the plex agents.
 
-[shinkro]
 Host = "127.0.0.1"
 Port = 7011
 #BaseUrl = "/shinkro"
-#DiscordWebhookUrl = ""
 LogLevel = "INFO"
 LogMaxSize = 50
 LogMaxBackups = 3
 SessionSecret = "{{ .sessionSecret }}"
-
-[plex]
-PlexUsername = ""
-AnimeLibraries = []
-#Url = "http://127.0.0.1:32400"
-#Token = "<Value of X-Plex-Token>"
 `
 
 func (c *AppConfig) writeConfig(cfgPath string) error {
@@ -135,21 +107,6 @@ func (c *AppConfig) writeConfig(cfgPath string) error {
 	return nil
 }
 
-func (c *AppConfig) checkConfig(dir string) {
-
-	if c.Config.PlexUser == "" {
-		c.log.Fatal().Msgf("plex.PlexUsername not set in %v/config.toml", dir)
-	}
-
-	if len(c.Config.AnimeLibraries) < 1 {
-		c.log.Fatal().Msgf("plex.AnimeLibraries not set in %v/config.toml", dir)
-	}
-
-	for i, v := range c.Config.AnimeLibraries {
-		c.Config.AnimeLibraries[i] = strings.TrimSpace(v)
-	}
-}
-
 func (c *AppConfig) parseConfig(dir string) error {
 	cfgPath := filepath.Join(dir, "config.toml")
 
@@ -177,6 +134,6 @@ func (c *AppConfig) parseConfig(dir string) error {
 		return err
 	}
 
-	c.Config.LocalMapsExist()
+	// c.Config.LocalMapsExist()
 	return nil
 }

@@ -2,79 +2,59 @@ package mapping
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/santhosh-tekuri/jsonschema/v5"
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 	"github.com/varoOP/shinkro/internal/domain"
-	"gopkg.in/yaml.v3"
 )
 
 type Service interface {
-	NewAnimeMaps(ctx context.Context) (*domain.AnimeMap, error)
-	CheckLocalMaps() (error, bool)
+	NewMap(ctx context.Context) (*domain.AnimeMap, error)
 	CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error)
 }
 
 type service struct {
-	log    zerolog.Logger
-	config *domain.Config
+	log  zerolog.Logger
+	repo domain.MappingRepo
 }
 
-func NewService(log zerolog.Logger, config *domain.Config) Service {
+func NewService(log zerolog.Logger, repo domain.MappingRepo) Service {
 	return &service{
-		log:    log,
-		config: config,
+		log:  log,
+		repo: repo,
 	}
 }
 
-func (s *service) NewAnimeMaps(ctx context.Context) (*domain.AnimeMap, error) {
-	s.config.LocalMapsExist()
-	err := loadCommunityMaps(ctx, s.config)
+func (s *service) NewMap(ctx context.Context) (*domain.AnimeMap, error) {
+	mapping := &domain.Mapping{}
+
+	mapSettings, err := s.repo.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = loadLocalMaps(s.config)
-	if err != nil {
-		return nil, err
-	}
+	localTVDB, localTMDB := mapSettings.LocalMapsExist()
 
-	return &domain.AnimeMap{
-		AnimeTVShows: s.config.TVDBMalMap,
-		AnimeMovies:  s.config.TMDBMalMap,
-	}, nil
-}
-
-func (s *service) CheckLocalMaps() (error, bool) {
-	loadLocalMaps(s.config)
-	localMapLoaded := false
-	if s.config.CustomMapTVDB {
-		if err := validateYaml(domain.TVDBSchema, s.config.TVDBMalMap); err != nil {
-			return err, false
+	if localTVDB || localTMDB {
+		err = mapping.LoadLocalMaps(localTVDB, localTMDB)
+		if err != nil {
+			return nil, err
 		}
-
-		localMapLoaded = true
 	}
 
-	if s.config.CustomMapTMDB {
-		if err := validateYaml(domain.TMDBSchema, s.config.TMDBMalMap); err != nil {
-			return err, false
+	if !localTVDB || !localTMDB {
+		err = mapping.LoadCommunityMaps(ctx, localTVDB, localTMDB)
+		if err != nil {
+			return nil, err
 		}
-
-		localMapLoaded = true
 	}
 
-	return nil, localMapLoaded
+	return &mapping.AnimeMap, nil
 }
 
 func (s *service) CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error) {
-	animeMap, err := s.NewAnimeMaps(ctx)
+	animeMap, err := s.NewMap(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -100,127 +80,4 @@ func (s *service) CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpd
 	}
 
 	return nil, errors.New("anime not found in map")
-}
-
-func loadCommunityMaps(ctx context.Context, cfg *domain.Config) error {
-	if !cfg.CustomMapTVDB {
-		s := &domain.AnimeTVShows{}
-		respTVDB, err := domain.GetWithContext(ctx, string(domain.CommunityMapTVDB))
-		if err != nil {
-			return err
-		}
-
-		err = readYamlHTTP(respTVDB, s)
-		if err != nil {
-			return err
-		}
-
-		cfg.TVDBMalMap = s
-	}
-
-	if !cfg.CustomMapTMDB {
-		am := &domain.AnimeMovies{}
-		respTMDB, err := domain.GetWithContext(ctx, string(domain.CommunityMapTMDB))
-		if err != nil {
-			return err
-		}
-
-		err = readYamlHTTP(respTMDB, am)
-		if err != nil {
-			return err
-		}
-
-		cfg.TMDBMalMap = am
-	}
-
-	return nil
-}
-
-func loadLocalMaps(cfg *domain.Config) error {
-	if cfg.CustomMapTVDB {
-		s := &domain.AnimeTVShows{}
-		fTVDB, err := os.Open(cfg.CustomMapTVDBPath)
-		if err != nil {
-			return err
-		}
-
-		err = readYamlFile(fTVDB, s)
-		if err != nil {
-			return err
-		}
-
-		cfg.TVDBMalMap = s
-	}
-
-	if cfg.CustomMapTMDB {
-		am := &domain.AnimeMovies{}
-		fTMDB, err := os.Open(cfg.CustomMapTMDBPath)
-		if err != nil {
-			return err
-		}
-
-		err = readYamlFile(fTMDB, am)
-		if err != nil {
-			return err
-		}
-
-		cfg.TMDBMalMap = am
-	}
-
-	return nil
-}
-
-func readYamlHTTP(resp *http.Response, mapping interface{}) error {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	err = yaml.Unmarshal(body, mapping)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func readYamlFile(f *os.File, mapping interface{}) error {
-	defer f.Close()
-	body, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(body, mapping)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateYaml(schema domain.CommunityMapUrls, yaml any) error {
-	compiler := jsonschema.NewCompiler()
-	sch, err := compiler.Compile(string(schema))
-	if err != nil {
-		return err
-	}
-
-	var v interface{}
-	b, err := json.Marshal(yaml)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(b, &v)
-	if err != nil {
-		return err
-	}
-
-	if err := sch.Validate(v); err != nil {
-		return err
-	}
-
-	return nil
 }

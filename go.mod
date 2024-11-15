@@ -7,6 +7,7 @@ toolchain go1.23.2
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/alexedwards/argon2id v1.0.0
+	github.com/dcarbone/zadapters/zstdlog v1.0.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-chi/render v1.0.3
 	github.com/gorilla/sessions v1.4.0

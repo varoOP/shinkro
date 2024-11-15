@@ -18,32 +18,34 @@ import (
 )
 
 type Server struct {
-	log            zerolog.Logger
-	db             *database.DB
-	config         *domain.Config
-	cookieStore    *sessions.CookieStore
-	version        string
-	commit         string
-	date           string
-	plexService    plexService
-	malauthService malauthService
-	apiService     apikeyService
-	authService    authService
+	log                 zerolog.Logger
+	db                  *database.DB
+	config              *domain.Config
+	cookieStore         *sessions.CookieStore
+	version             string
+	commit              string
+	date                string
+	plexService         plexService
+	plexsettingsService plexsettingsService
+	malauthService      malauthService
+	apiService          apikeyService
+	authService         authService
 }
 
-func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, version string, commit string, date string, plexSvc plexService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
+func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
 	return Server{
-		log:            log.With().Str("module", "http").Logger(),
-		config:         config,
-		db:             db,
-		version:        version,
-		commit:         commit,
-		date:           date,
-		cookieStore:    sessions.NewCookieStore([]byte(config.SessionSecret)),
-		plexService:    plexSvc,
-		malauthService: malauthSvc,
-		apiService:     apiSvc,
-		authService:    authSvc,
+		log:                 log.With().Str("module", "http").Logger(),
+		config:              config,
+		db:                  db,
+		version:             version,
+		commit:              commit,
+		date:                date,
+		cookieStore:         sessions.NewCookieStore([]byte(config.SessionSecret)),
+		plexService:         plexSvc,
+		plexsettingsService: plexsettingsSvc,
+		malauthService:      malauthSvc,
+		apiService:          apiSvc,
+		authService:         authSvc,
 	}
 }
 
@@ -98,6 +100,7 @@ func (s Server) Handler() http.Handler {
 	apiRouter.Group(func(r chi.Router) {
 		r.Use(s.IsAuthenticated)
 		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
+		r.Route("/plexsettings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)
 		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes)
 		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
 	})

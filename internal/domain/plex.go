@@ -3,12 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -175,13 +170,6 @@ type Metadata struct {
 	} `json:"Role"`
 }
 
-type PlexClient struct {
-	Url    string
-	Token  string
-	Client http.Client
-	Resp   PlexResponse
-}
-
 type PlexResponse struct {
 	MediaContainer struct {
 		Size                int        `json:"size"`
@@ -202,14 +190,6 @@ type GUID struct {
 	}
 
 	GUID string
-}
-
-type GetPlexRequest struct {
-	Id int
-}
-
-type DeletePlexRequest struct {
-	OlderThan int
 }
 
 type PlexPayloadSource string
@@ -233,6 +213,14 @@ const (
 	PlexMovie   PlexMediaType = "movie"
 )
 
+type GetPlexRequest struct {
+	Id int
+}
+
+type DeletePlexRequest struct {
+	OlderThan int
+}
+
 type PlexSupportedAgents string
 
 const (
@@ -249,13 +237,6 @@ const (
 	AniDB PlexSupportedDBs = "anidb"
 	MAL   PlexSupportedDBs = "myanimelist"
 )
-
-func NewPlexClient(c *Config) *PlexClient {
-	return &PlexClient{
-		Url:   c.PlexUrl,
-		Token: c.PlexToken,
-	}
-}
 
 func NewPlexWebhook(payload []byte) (*Plex, error) {
 	p := &Plex{}
@@ -295,13 +276,17 @@ func (p *Plex) IsEventAllowed() bool {
 	return p.Event == PlexRateEvent || p.Event == PlexScrobbleEvent
 }
 
-func (p *Plex) IsPlexUserAllowed(c *Config) bool {
-	return p.Account.Title == c.PlexUser
+func (p *Plex) IsPlexUserAllowed(ps *PlexSettings) bool {
+	return p.Account.Title == ps.PlexUser
 }
 
-func (p *Plex) IsAnimeLibrary(c *Config) bool {
-	l := strings.Join(c.AnimeLibraries, ",")
-	return strings.Contains(l, p.Metadata.LibrarySectionTitle)
+func (p *Plex) IsAnimeLibrary(ps *PlexSettings) bool {
+	for _, library := range ps.AnimeLibraries {
+		if library == p.Metadata.LibrarySectionTitle {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Plex) IsMediaTypeAllowed() bool {
@@ -347,24 +332,8 @@ func (p *Plex) IsMetadataAgentAllowed() (bool, PlexSupportedAgents) {
 	return false, ""
 }
 
-func (p *Plex) HandlePlexAgent(c *Config) (PlexSupportedDBs, int, error) {
-	if !c.isPlexClient() {
-		err := errors.New("plex metadata agent cannot be used: Plex Token not set")
-		return "", 0, err
-	}
-	if p.Metadata.Type == PlexEpisode {
-		pc := NewPlexClient(c)
-		guid, err := pc.GetShowID(p.Metadata.GrandparentKey)
-		if err != nil {
-			return "", 0, err
-		}
-		return guid.PlexAgent(p.Metadata.Type)
-	}
-	return "", 0, nil
-}
-
-func (p *Plex) CheckPlex(c *Config) (PlexSupportedAgents, error) {
-	if !p.IsPlexUserAllowed(c) {
+func (p *Plex) CheckPlex(ps *PlexSettings) (PlexSupportedAgents, error) {
+	if !p.IsPlexUserAllowed(ps) {
 		return "", errors.Wrap(errors.New("unauthorized plex user"), p.Account.Title)
 	}
 
@@ -372,7 +341,7 @@ func (p *Plex) CheckPlex(c *Config) (PlexSupportedAgents, error) {
 		return "", errors.Wrap(errors.New("plex event not supported"), string(p.Event))
 	}
 
-	if !p.IsAnimeLibrary(c) {
+	if !p.IsAnimeLibrary(ps) {
 		return "", errors.Wrap(errors.New("plex library not set as an anime library"), p.Metadata.LibrarySectionTitle)
 	}
 
@@ -385,16 +354,6 @@ func (p *Plex) CheckPlex(c *Config) (PlexSupportedAgents, error) {
 	}
 
 	return "", errors.New("metadata agent not supported")
-}
-
-func (p *Plex) GetSourceIDFromAgent(agent PlexSupportedAgents, c *Config) (PlexSupportedDBs, int, error) {
-	switch agent {
-	case HAMA, MALAgent:
-		return p.Metadata.GUID.HamaMALAgent(agent)
-	case PlexAgent:
-		return p.HandlePlexAgent(c)
-	}
-	return "", 0, nil
 }
 
 func (g *GUID) UnmarshalJSON(data []byte) error {
@@ -446,48 +405,4 @@ func (g *GUID) PlexAgent(mediaType PlexMediaType) (PlexSupportedDBs, int, error)
 	}
 
 	return "", -1, errors.New("no supported online database found")
-}
-
-func (p *PlexClient) GetShowID(key string) (*GUID, error) {
-	baseUrl, err := url.Parse(p.Url)
-	if err != nil {
-		return nil, errors.Wrap(err, "plex url invalid")
-	}
-
-	baseUrl = baseUrl.JoinPath(key)
-	params := url.Values{}
-	params.Add("X-Plex-Token", p.Token)
-	baseUrl.RawQuery = params.Encode()
-	req, err := http.NewRequest(http.MethodGet, baseUrl.String(), nil)
-	if err != nil {
-		return nil, errors.Errorf("%v, request=%v", err, *req)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Add("ContainerStart", "X-Plex-Container-Start=0")
-	req.Header.Add("ContainerSize", "Plex-Container-Size=100")
-	req.Header.Set("User-Agent", fmt.Sprintf("shinkro/%v (%v;%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH))
-
-	resp, err := p.Client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "network error")
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Errorf("%v, response status: %v, response body: %v", err, resp.StatusCode, string(body))
-	}
-
-	defer resp.Body.Close()
-	err = json.Unmarshal(body, &p.Resp)
-	if err != nil {
-		return nil, errors.Errorf("%v, response status: %v, response body: %v", err, resp.StatusCode, string(body))
-	}
-
-	if len(p.Resp.MediaContainer.Metadata) == 1 {
-		return &p.Resp.MediaContainer.Metadata[0].GUID, nil
-	}
-
-	return nil, errors.Errorf("something went wrong in getting guid from plex:%v, response status: %v, response body: %v", err, resp.StatusCode, string(body))
 }

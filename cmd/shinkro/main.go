@@ -22,11 +22,9 @@ import (
 	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/mapping"
 	"github.com/varoOP/shinkro/internal/plex"
+	"github.com/varoOP/shinkro/internal/plexsettings"
 	"github.com/varoOP/shinkro/internal/server"
 	"github.com/varoOP/shinkro/internal/user"
-
-	// "github.com/varoOP/shinkro/internal/malauth"
-	"github.com/varoOP/shinkro/internal/notification"
 )
 
 const usage = `shinkro
@@ -97,9 +95,11 @@ func main() {
 		var animeRepo = database.NewAnimeRepo(log, db)
 		var animeUpdateRepo = database.NewAnimeUpdateRepo(log, db)
 		var plexRepo = database.NewPlexRepo(log, db)
+		var plexSettingsRepo = database.NewPlexSettingsRepo(log, db)
 		var malauthRepo = database.NewMalAuthRepo(log, db)
 		var userRepo = database.NewUserRepo(log, db)
 		var apiRepo = database.NewAPIRepo(log, db)
+		var mappingRepo = database.NewMappingRepo(log, db)
 
 		// c := cron.New(cron.WithLocation(time.UTC))
 		// c.AddFunc("0 1 * * MON", func() {
@@ -108,21 +108,20 @@ func main() {
 		// })
 		// c.Start()
 
-		n := notification.NewAppNotification(cfg.DiscordWebHookURL, &log)
-		go n.ListenforNotification()
 		// s := server.NewServer(cfg, n.Notification, db, log)
 		// go s.Start()
 
 		var animeService = anime.NewService(log, animeRepo)
 		var malauthService = malauth.NewService(log, malauthRepo)
-		var mapService = mapping.NewService(log, cfg)
+		var mapService = mapping.NewService(log, mappingRepo)
 		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
-		var plexService = plex.NewService(log, cfg, plexRepo, animeService, mapService, malauthService, animeUpdateService)
+		var plexSettingsService = plexsettings.NewService(log, plexSettingsRepo)
+		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService)
 		var userService = user.NewService(userRepo)
 		var authService = auth.NewService(log, userService)
 		var apiService = api.NewService(log, apiRepo)
 
-		srv := server.NewServer(log, cfg, animeService, mapService)
+		srv := server.NewServer(log, cfg, animeService)
 		if err := srv.Start(); err != nil {
 			log.Fatal().Stack().Err(err).Msg("could not start server")
 			return
@@ -139,6 +138,7 @@ func main() {
 				commit,
 				date,
 				plexService,
+				plexSettingsService,
 				malauthService,
 				apiService,
 				authService,

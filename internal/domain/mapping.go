@@ -179,7 +179,12 @@ func (ms *MapSettings) LocalMapsExist() (bool, bool) {
 
 func (m *Mapping) LoadCommunityMaps(ctx context.Context, tvdb, tmdb bool) error {
 	if !tvdb {
-		respTVDB, err := GetWithContext(ctx, string(CommunityMapTVDB))
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(CommunityMapTVDB), nil)
+		if err != nil {
+			return err
+		}
+
+		respTVDB, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -191,7 +196,12 @@ func (m *Mapping) LoadCommunityMaps(ctx context.Context, tvdb, tmdb bool) error 
 	}
 
 	if !tmdb {
-		respTMDB, err := GetWithContext(ctx, string(CommunityMapTMDB))
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(CommunityMapTMDB), nil)
+		if err != nil {
+			return err
+		}
+
+		respTMDB, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return err
 		}

@@ -58,7 +58,7 @@ export const Login = () => {
       });
       router.invalidate();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       displayNotification({
         title: "Login Error",
         message: error.message || "An error occurred!",

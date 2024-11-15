@@ -8,7 +8,7 @@ const MAX_RETRIES = 6;
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (error: any, query) => {
+    onError: (error, query) => {
       console.error(`Caught error for query '${query.queryKey}': `, error);
 
       if (error.message === "Cookie expired or invalid.") {
@@ -24,17 +24,17 @@ export const queryClient = new QueryClient({
         displayNotification({
           title: "Error",
           message: error?.message || "An error occurred",
-          type: error,
+          type: "error",
         });
       }
     },
   }),
   defaultOptions: {
     queries: {
-      throwOnError: (error: any) => {
+      throwOnError: (error) => {
         return error.message !== "Cookie expired or invalid.";
       },
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error) => {
         if (error.message === "Cookie expired or invalid.") {
           return false;
         }
@@ -44,7 +44,7 @@ export const queryClient = new QueryClient({
       },
     },
     mutations: {
-      onError: (error: any) => {
+      onError: (error) => {
         console.log("mutation error: ", error);
 
         if (error instanceof Response) {

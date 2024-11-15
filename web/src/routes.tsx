@@ -41,7 +41,7 @@ export const OnboardRoute = createRoute({
     // and redirect if needed
     try {
       await APIClient.auth.canOnboard();
-    } catch (e) {
+    } catch {
       console.error("onboarding not available, redirect to login");
 
       throw redirect({

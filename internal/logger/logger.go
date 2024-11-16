@@ -12,25 +12,36 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func NewLogger(path string, c *domain.Config) zerolog.Logger {
-	logPath := filepath.Join(path, "shinkro.log")
-	lumberlog := &lumberjack.Logger{
-		Filename:   logPath,
-		MaxSize:    c.LogMaxSize,
-		MaxBackups: c.LogMaxBackups,
+func NewLogger(c *domain.Config) zerolog.Logger {
+
+	var mw io.Writer
+	var defaultWriter io.Writer = os.Stderr
+
+	if c.Version == "dev" {
+		defaultWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	}
 
+	if c.LogPath != "" {
+
+		logPath := filepath.Join(c.ConfigPath, c.LogPath)
+		lumberlog := &lumberjack.Logger{
+			Filename:   logPath,
+			MaxSize:    c.LogMaxSize,
+			MaxBackups: c.LogMaxBackups,
+		}
+
+		mw = io.MultiWriter(
+			defaultWriter,
+			lumberlog,
+		)
+
+	} else {
+
+		mw = defaultWriter
+	}
+
+	zerolog.TimeFieldFormat = time.RFC3339
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	mw := io.MultiWriter(
-		zerolog.ConsoleWriter{
-			TimeFormat: time.DateTime,
-			Out:        os.Stdout,
-		},
-		zerolog.ConsoleWriter{
-			TimeFormat: time.DateTime,
-			Out:        lumberlog,
-		},
-	)
 
 	log := zerolog.New(mw).With().Timestamp().Logger()
 	switch c.LogLevel {

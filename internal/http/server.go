@@ -12,15 +12,15 @@ import (
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
+	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
-	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/web"
 )
 
 type Server struct {
 	log                 zerolog.Logger
 	db                  *database.DB
-	config              *domain.Config
+	config              *config.AppConfig
 	cookieStore         *sessions.CookieStore
 	version             string
 	commit              string
@@ -32,7 +32,7 @@ type Server struct {
 	authService         authService
 }
 
-func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
+func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
 	return Server{
 		log:                 log.With().Str("module", "http").Logger(),
 		config:              config,
@@ -40,7 +40,7 @@ func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, versi
 		version:             version,
 		commit:              commit,
 		date:                date,
-		cookieStore:         sessions.NewCookieStore([]byte(config.SessionSecret)),
+		cookieStore:         sessions.NewCookieStore([]byte(config.Config.SessionSecret)),
 		plexService:         plexSvc,
 		plexsettingsService: plexsettingsSvc,
 		malauthService:      malauthSvc,
@@ -50,7 +50,7 @@ func NewServer(log zerolog.Logger, config *domain.Config, db *database.DB, versi
 }
 
 func (s Server) Open() error {
-	addr := fmt.Sprintf("%v:%v", s.config.Host, s.config.Port)
+	addr := fmt.Sprintf("%v:%v", s.config.Config.Host, s.config.Config.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (s Server) Handler() http.Handler {
 			Msg("Request processed")
 	}))
 
-	baseUrl, webBase := normalizeBaseUrl(s.config.BaseUrl)
+	baseUrl, webBase := normalizeBaseUrl(s.config.Config.BaseUrl)
 	c := cors.New(cors.Options{
 		AllowCredentials:   true,
 		AllowedMethods:     []string{"HEAD", "OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"},
@@ -95,10 +95,11 @@ func (s Server) Handler() http.Handler {
 	encoder := encoder{}
 
 	apiRouter := chi.NewRouter()
-	apiRouter.Route("/auth", newAuthHandler(encoder, s.log, s, s.config, s.cookieStore, s.authService).Routes)
+	apiRouter.Route("/auth", newAuthHandler(encoder, s.log, s, s.config.Config, s.cookieStore, s.authService).Routes)
 
 	apiRouter.Group(func(r chi.Router) {
 		r.Use(s.IsAuthenticated)
+		r.Route("/config", newConfigHandler(encoder, s, s.config).Routes)
 		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
 		r.Route("/plexsettings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)
 		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes)

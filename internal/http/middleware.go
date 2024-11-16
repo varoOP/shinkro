@@ -52,7 +52,7 @@ func (s Server) IsAuthenticated(next http.Handler) http.Handler {
 
 				// MaxAge<0 means delete cookie immediately
 				session.Options.MaxAge = -1
-				session.Options.Path = s.config.BaseUrl
+				session.Options.Path = s.config.Config.BaseUrl
 
 				if err := session.Save(r, w); err != nil {
 					s.log.Error().Err(err).Msgf("could not store session: %s", r.RemoteAddr)

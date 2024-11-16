@@ -67,16 +67,17 @@ func main() {
 
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
-		cfg := config.NewConfig(configPath).Config
-		log := logger.NewLogger(configPath, cfg)
+		cfg := config.NewConfig(configPath, version)
+		log := logger.NewLogger(cfg.Config)
+		go cfg.DynamicReload(log)
 		db := database.NewDB(configPath, &log)
 
 		log.Info().Msg("Starting shinkro")
 		log.Info().Msgf("Version: %s", version)
 		log.Info().Msgf("Commit: %s", commit)
 		log.Info().Msgf("Build date: %s", date)
-		log.Info().Msgf("Base URL: %s", cfg.BaseUrl)
-		log.Info().Msgf("Log-level: %s", cfg.LogLevel)
+		log.Info().Msgf("Base URL: %s", cfg.Config.BaseUrl)
+		log.Info().Msgf("Log-level: %s", cfg.Config.LogLevel)
 
 		// err, mapLoaded := domain.ChecklocalMaps(cfg)
 		// if err != nil {
@@ -121,7 +122,7 @@ func main() {
 		var authService = auth.NewService(log, userService)
 		var apiService = api.NewService(log, apiRepo)
 
-		srv := server.NewServer(log, cfg, animeService)
+		srv := server.NewServer(log, cfg.Config, animeService)
 		if err := srv.Start(); err != nil {
 			log.Fatal().Stack().Err(err).Msg("could not start server")
 			return

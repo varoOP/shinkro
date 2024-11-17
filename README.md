@@ -5,7 +5,7 @@
 
 <p align="center">An application to sync Plex watch status to myanimelist.</p>
 
-<p align="center"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/varoOP/shinkro?style=for-the-badge">&nbsp;<img alt="GitHub all releases" src="https://img.shields.io/badge/DOWNLOADS-1K%2B-green?style=for-the-badge">&nbsp;<img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/varoOP/shinkro/release.yml?style=for-the-badge"></p>
+<p align="center"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/varoOP/shinkro?style=for-the-badge&color=blue"> <img alt="GitHub all releases" src="https://img.shields.io/badge/DOWNLOADS-1K%2B-green?style=for-the-badge">&nbsp;<img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/varoOP/shinkro/release.yml?style=for-the-badge"></p>
 
 ## Documentation
 

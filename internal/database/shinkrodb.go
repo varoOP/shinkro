@@ -20,7 +20,7 @@ type Anime struct {
 }
 
 func getAnime() ([]Anime, error) {
-	resp, err := http.Get("https://github.com/varoOP/shinkrodb/raw/main/for-shinkro.json")
+	resp, err := http.Get("https://github.com/varoOP/shinkro-mapping/raw/main/shinkrodb/for-shinkro.json")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get response from shinkrodb")
 	}

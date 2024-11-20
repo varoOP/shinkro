@@ -134,7 +134,7 @@ export default ({ mode }: ConfigEnv) => {
       },
       proxy: {
         "/api": {
-          target: "http://127.0.0.1:7012/",
+          target: "http://127.0.0.1:7011/",
           changeOrigin: true,
           secure: false,
         },

@@ -106,7 +106,7 @@ func (m *Media) GetMalID(ctx context.Context, db *DB) (int, error) {
 }
 
 func (m *Media) ConvertToTVDB(ctx context.Context, db *DB) {
-	if m.IdSource == "anidb" && m.Season > 1 {
+	if m.IdSource == "anidb" {
 		var tvdbid int
 		sqlstmt := "SELECT tvdb_id from anime where anidb_id=?;"
 		row := db.Handler.QueryRowContext(ctx, sqlstmt, m.Id)

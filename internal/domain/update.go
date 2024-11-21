@@ -307,6 +307,7 @@ func (a *AnimeUpdate) getStartID(ctx context.Context) error {
 
 func (a *AnimeUpdate) getMapping(ctx context.Context) error {
 	var err error
+	a.Media.ConvertToTVDB(ctx, a.DB)
 	a.TVDBMapping, a.TMDBMapping, err = NewAnimeMaps(a.Config)
 	if err != nil {
 		return errors.Wrap(errors.New("unable to load custom mapping"), "check custom mapping against schema")
@@ -340,6 +341,5 @@ func (a *AnimeUpdate) parseMedia(ctx context.Context) error {
 		return err
 	}
 
-	a.Media.ConvertToTVDB(ctx, a.DB)
 	return nil
 }

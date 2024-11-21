@@ -128,7 +128,7 @@ export default ({ mode }: ConfigEnv) => {
       ],
     },
     server: {
-      port: 3001,
+      port: 3000,
       hmr: {
         overlay: true,
       },

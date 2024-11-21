@@ -6,3 +6,7 @@ ci.Dockerfile
 docker-compose.yml
 README.md
 bin
+test
+config.toml.template
+Makefile
+LICENSE.md

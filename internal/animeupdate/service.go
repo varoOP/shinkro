@@ -44,79 +44,106 @@ func (s *service) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest
 }
 
 func (s *service) UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error {
-    switch event {
-    case domain.PlexRateEvent:
-        return s.handleRateEvent(ctx, anime)
-    case domain.PlexScrobbleEvent:
-        return s.handleScrobbleEvent(ctx, anime)
-    }
-    return nil
+	switch event {
+	case domain.PlexRateEvent:
+		return s.handleRateEvent(ctx, anime)
+	case domain.PlexScrobbleEvent:
+		return s.handleScrobbleEvent(ctx, anime)
+	}
+	return nil
 }
 
 func (s *service) handleRateEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-    if anime.SourceDB == domain.MAL {
-        anime.MALId = anime.SourceId
-        return s.updateAndStore(ctx, anime, anime.UpdateRating)
-    }
+	if anime.SourceDB == domain.MAL {
+		anime.MALId = anime.SourceId
+		return s.updateAndStore(ctx, anime, anime.UpdateRating)
+	}
 
-    animeMap, err := s.mapService.CheckForAnimeinMap(ctx, anime)
-    if err == nil {
-        anime.MALId = animeMap.Malid
-        return s.updateAndStore(ctx, anime, anime.UpdateRating)
-    }
+	convertedAnime := s.convertAniDBToTVDB(ctx, anime)
+	animeMap, err := s.mapService.CheckForAnimeinMap(ctx, convertedAnime)
+	if err == nil {
+		anime.MALId = animeMap.Malid
+		return s.updateAndStore(ctx, anime, anime.UpdateRating)
+	}
 
-    if anime.SeasonNum == 1 {
-        return s.updateFromDBAndStore(ctx, anime, anime.UpdateRating)
-    }
+	if anime.SeasonNum == 1 {
+		return s.updateFromDBAndStore(ctx, anime, anime.UpdateRating)
+	}
 
-    return err
+	return err
 }
 
 func (s *service) handleScrobbleEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-    if anime.SourceDB == domain.MAL {
-        anime.MALId = anime.SourceId
-        return s.updateAndStore(ctx, anime, anime.UpdateWatchStatus)
-    }
+	if anime.SourceDB == domain.MAL {
+		anime.MALId = anime.SourceId
+		return s.updateAndStore(ctx, anime, anime.UpdateWatchStatus)
+	}
 
-    animeMap, err := s.mapService.CheckForAnimeinMap(ctx, anime)
-    if err == nil {
-        anime.MALId = animeMap.Malid
-        anime.EpisodeNum = animeMap.CalculateEpNum(anime.EpisodeNum)
-        return s.updateAndStore(ctx, anime, anime.UpdateWatchStatus)
-    }
+	convertedAnime := s.convertAniDBToTVDB(ctx, anime)
+	animeMap, err := s.mapService.CheckForAnimeinMap(ctx, convertedAnime)
+	if err == nil {
+		anime.MALId = animeMap.Malid
+		anime.EpisodeNum = animeMap.CalculateEpNum(anime.EpisodeNum)
+		return s.updateAndStore(ctx, anime, anime.UpdateWatchStatus)
+	}
 
-    if anime.SeasonNum == 1 {
-        return s.updateFromDBAndStore(ctx, anime, anime.UpdateWatchStatus)
-    }
+	if anime.SeasonNum == 1 {
+		return s.updateFromDBAndStore(ctx, anime, anime.UpdateWatchStatus)
+	}
 
-    return err
+	return err
 }
 
 func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error) error {
-    client, err := s.malauthService.GetMalClient(ctx)
-    if err != nil {
-        return err
-    }
+	client, err := s.malauthService.GetMalClient(ctx)
+	if err != nil {
+		return err
+	}
 
-    if err := updateFunc(ctx, client); err != nil {
-        return err
-    }
+	if err := updateFunc(ctx, client); err != nil {
+		return err
+	}
 
-    return s.Store(ctx, anime)
+	return s.Store(ctx, anime)
 }
 
 func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error) error {
-    req := &domain.GetAnimeRequest{
-        IDtype: anime.SourceDB,
-        Id:     anime.SourceId,
-    }
+	req := &domain.GetAnimeRequest{
+		IDtype: anime.SourceDB,
+		Id:     anime.SourceId,
+	}
 
-    animeFromDB, err := s.animeService.GetByID(ctx, req)
-    if err != nil {
-        return err
-    }
+	animeFromDB, err := s.animeService.GetByID(ctx, req)
+	if err != nil {
+		return err
+	}
 
-    anime.MALId = animeFromDB.MALId
-    return s.updateAndStore(ctx, anime, updateFunc)
+	anime.MALId = animeFromDB.MALId
+	return s.updateAndStore(ctx, anime, updateFunc)
 }
 
+func (s *service) convertAniDBToTVDB(ctx context.Context, anime *domain.AnimeUpdate) *domain.AnimeUpdate {
+	if anime.SourceDB != domain.AniDB {
+		return anime
+	}
+
+	req := &domain.GetAnimeRequest{
+		IDtype: anime.SourceDB,
+		Id:     anime.SourceId,
+	}
+
+	aa, err := s.animeService.GetByID(ctx, req)
+	if err != nil {
+		return anime
+	}
+
+	newAnime := *anime
+	if aa.TVDBId > 0 {
+		newAnime.SourceDB = domain.TVDB
+		newAnime.SourceId = aa.TVDBId
+	} else {
+		return anime
+	}
+
+	return &newAnime
+}

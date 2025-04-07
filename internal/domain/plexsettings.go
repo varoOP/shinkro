@@ -5,6 +5,7 @@ import "context"
 type PlexSettingsRepo interface {
 	Store(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
 	Get(ctx context.Context) (*PlexSettings, error)
+	Delete(ctx context.Context) error
 }
 
 type PlexSettings struct {
@@ -15,11 +16,12 @@ type PlexSettings struct {
 	AnimeLibraries    []string `json:"anime_libs"`
 	PlexUser          string   `json:"plex_user"`
 	PlexClientEnabled bool     `json:"plex_client_enabled"`
-	Token             string   `json:"token"`
+	Token             []byte   `json:"token"`
+	TokenIV           []byte   `json:"-"`
 	ClientID          string   `json:"client_id"`
 }
 
-func NewPlexSettings(host, plexUser, token, clientID string, port int, animeLibs []string, pce, tls, tlsSkip bool) *PlexSettings {
+func NewPlexSettings(host, plexUser, clientID string, token, tokenIV []byte, port int, animeLibs []string, pce, tls, tlsSkip bool) *PlexSettings {
 	return &PlexSettings{
 		Host:              host,
 		Port:              port,
@@ -29,6 +31,7 @@ func NewPlexSettings(host, plexUser, token, clientID string, port int, animeLibs
 		PlexUser:          plexUser,
 		PlexClientEnabled: pce,
 		Token:             token,
+		TokenIV:           tokenIV,
 		ClientID:          clientID,
 	}
 }

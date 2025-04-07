@@ -116,7 +116,7 @@ func main() {
 		var malauthService = malauth.NewService(log, malauthRepo)
 		var mapService = mapping.NewService(log, mappingRepo)
 		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
-		var plexSettingsService = plexsettings.NewService(log, plexSettingsRepo)
+		var plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
 		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService)
 		var userService = user.NewService(userRepo)
 		var authService = auth.NewService(log, userService)

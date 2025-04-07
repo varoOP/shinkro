@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"github.com/lib/pq"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
@@ -26,8 +27,8 @@ func (repo *PlexSettingsRepo) Store(ctx context.Context, ps domain.PlexSettings)
 
 	queryBuilder := repo.db.squirrel.
 		Replace("plex_settings").
-		Columns("id", "host", "port", "tls", "tls_skip_verify", "token", "username", "anime_libraries", "plex_client_enabled", "client_id").
-		Values(0, ps.Host, ps.Port, ps.TLS, ps.TLSSkip, ps.Token, ps.PlexUser, ps.AnimeLibraries, ps.PlexClientEnabled, ps.ClientID).
+		Columns("id", "host", "port", "tls", "tls_skip_verify", "token", "token_iv", "username", "anime_libraries", "plex_client_enabled", "client_id").
+		Values(1, ps.Host, ps.Port, ps.TLS, ps.TLSSkip, ps.Token, ps.TokenIV, ps.PlexUser, pq.Array(ps.AnimeLibraries), ps.PlexClientEnabled, ps.ClientID).
 		RunWith(repo.db.handler)
 
 	_, err := queryBuilder.Exec()
@@ -41,9 +42,9 @@ func (repo *PlexSettingsRepo) Store(ctx context.Context, ps domain.PlexSettings)
 
 func (repo *PlexSettingsRepo) Get(ctx context.Context) (*domain.PlexSettings, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("ps.host", "ps.port", "ps.tls", "ps.tls_skip_verify", "ps.token", "ps.username", "ps.anime_libraries", "ps.plex_client_enabled", "client_id").
+		Select("ps.host", "ps.port", "ps.tls", "ps.tls_skip_verify", "ps.token", "ps.token_iv", "ps.username", "ps.anime_libraries", "ps.plex_client_enabled", "client_id").
 		From("plex_settings ps").
-		Where(sq.Eq{"ps.id": 0}).
+		Where(sq.Eq{"ps.id": 1}).
 		RunWith(repo.db.handler)
 
 	query, args, err := queryBuilder.ToSql()
@@ -55,22 +56,41 @@ func (repo *PlexSettingsRepo) Get(ctx context.Context) (*domain.PlexSettings, er
 	row := repo.db.handler.QueryRowContext(ctx, query, args...)
 
 	if err := row.Err(); err != nil {
-		return nil, errors.Wrap(err, "error rows get malauth")
+		return nil, errors.Wrap(err, "error rows get plex settings")
 	}
 
-	var host, token, username, clientID string
+	var host, username, clientID string
+	var token, tokenIV []byte
 	var port int
 	var tls, tls_skip_verify, plex_client_enabled bool
 	var anime_libraries []string
 
-	if err := row.Scan(&host, &port, &tls, &tls_skip_verify, &token, &username, &anime_libraries, &plex_client_enabled, &clientID); err != nil {
+	if err := row.Scan(&host, &port, &tls, &tls_skip_verify, &token, &tokenIV, &username, pq.Array(&anime_libraries), &plex_client_enabled, &clientID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
 		return nil, errors.Wrap(err, "error scanning row")
 	}
 
-	ps := domain.NewPlexSettings(host, username, token, clientID, port, anime_libraries, plex_client_enabled, tls, tls_skip_verify)
+	ps := domain.NewPlexSettings(host, username, clientID, token, tokenIV, port, anime_libraries, plex_client_enabled, tls, tls_skip_verify)
 
 	return ps, nil
+}
+
+func (repo *PlexSettingsRepo) Delete(ctx context.Context) error {
+	queryBuilder := repo.db.squirrel.Delete("plex_settings").Where(sq.Eq{"id": 1})
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return errors.Wrap(err, "error building query")
+	}
+
+	_, err = repo.db.handler.ExecContext(ctx, query, args...)
+	if err != nil {
+		return errors.Wrap(err, "error executing query")
+	}
+
+	repo.log.Debug().Msg("successfully deleted plex settings")
+
+	return nil
 }

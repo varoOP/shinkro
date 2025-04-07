@@ -181,6 +181,85 @@ type GUID struct {
 	GUID string
 }
 
+type ServerResponse struct {
+	Servers []Server
+}
+
+type Connection struct {
+	Protocol string `json:"protocol"`
+	Address  string `json:"address"`
+	Port     int    `json:"port"`
+	URI      string `json:"uri"`
+	Local    bool   `json:"local"`
+	Relay    bool   `json:"relay"`
+	IPv6     bool   `json:"IPv6"`
+}
+
+type Server struct {
+	Name                   string       `json:"name"`
+	Product                string       `json:"product"`
+	ProductVersion         string       `json:"productVersion"`
+	Platform               *string      `json:"platform"`
+	PlatformVersion        *string      `json:"platformVersion"`
+	Device                 *string      `json:"device"`
+	ClientIdentifier       string       `json:"clientIdentifier"`
+	CreatedAt              time.Time    `json:"createdAt"`
+	LastSeenAt             time.Time    `json:"lastSeenAt"`
+	Provides               string       `json:"provides"`
+	OwnerID                *int         `json:"ownerId"`
+	SourceTitle            *string      `json:"sourceTitle"`
+	PublicAddress          string       `json:"publicAddress"`
+	AccessToken            string       `json:"accessToken"`
+	Owned                  bool         `json:"owned"`
+	Home                   bool         `json:"home"`
+	Synced                 bool         `json:"synced"`
+	Relay                  bool         `json:"relay"`
+	Presence               bool         `json:"presence"`
+	HTTPSRequired          bool         `json:"httpsRequired"`
+	PublicAddressMatches   bool         `json:"publicAddressMatches"`
+	DNSRebindingProtection bool         `json:"dnsRebindingProtection"`
+	NATLoopbackSupported   bool         `json:"natLoopbackSupported"`
+	Connections            []Connection `json:"connections"`
+}
+
+type LibraryResponse struct {
+	MediaContainer struct {
+		Size      int         `json:"size"`
+		AllowSync bool        `json:"allowSync"`
+		Title1    string      `json:"title1"`
+		Directory []Directory `json:"Directory"`
+	} `json:"MediaContainer"`
+}
+
+type Directory struct {
+	AllowSync        bool       `json:"allowSync"`
+	Art              string     `json:"art"`
+	Composite        string     `json:"composite"`
+	Filters          bool       `json:"filters"`
+	Refreshing       bool       `json:"refreshing"`
+	Thumb            string     `json:"thumb"`
+	Key              string     `json:"key"`
+	Type             string     `json:"type"`
+	Title            string     `json:"title"`
+	Agent            string     `json:"agent"`
+	Scanner          string     `json:"scanner"`
+	Language         string     `json:"language"`
+	UUID             string     `json:"uuid"`
+	UpdatedAt        int64      `json:"updatedAt"`
+	CreatedAt        int64      `json:"createdAt"`
+	ScannedAt        int64      `json:"scannedAt"`
+	Content          bool       `json:"content"`
+	Directory        bool       `json:"directory"`
+	ContentChangedAt int64      `json:"contentChangedAt"`
+	Hidden           int        `json:"hidden"`
+	Location         []Location `json:"Location"`
+}
+
+type Location struct {
+	ID   int    `json:"id"`
+	Path string `json:"path"`
+}
+
 func (g *GUID) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &g.GUID); err == nil {
 		return nil

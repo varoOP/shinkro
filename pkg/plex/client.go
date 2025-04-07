@@ -31,6 +31,8 @@ type tokenTransport struct {
 }
 
 func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Plex-Token", t.token)
 	req.Header.Set("X-Plex-Product", "shinkro")
 	req.Header.Set("X-Plex-Client-Identifier", t.clientID)
@@ -39,7 +41,7 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func NewClient(config Config) *Client {
 	httpClient := &http.Client{
-		Timeout:   time.Second * 60,
+		Timeout:   time.Second * 5,
 		Transport: sharedhttp.Transport,
 	}
 

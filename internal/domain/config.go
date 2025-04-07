@@ -7,6 +7,7 @@ type Config struct {
 	Port            int    `koanf:"Port"`
 	BaseUrl         string `koanf:"BaseUrl"`
 	SessionSecret   string `koanf:"SessionSecret"`
+	EncryptionKey   string `koanf:"EncryptionKey"`
 	LogLevel        string `koanf:"LogLevel"`
 	LogPath         string `koanf:"LogPath"`
 	LogMaxSize      int    `koanf:"LogMaxSize"`

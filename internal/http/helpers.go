@@ -1,6 +1,11 @@
 package http
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -181,4 +186,40 @@ func normalizeBaseUrl(baseUrl string) (string, string) {
 	webBase := strings.TrimSuffix(normalizedBaseUrl, "/")
 
 	return normalizedBaseUrl, webBase
+}
+
+func generateClientId() string {
+	const prefix = "shinkro-"
+	const byteLength = 8
+
+	randomBytes := make([]byte, byteLength)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return fmt.Sprintf("%s%x", prefix, randomBytes)
+	}
+
+	return fmt.Sprintf("%s%s", prefix, hex.EncodeToString(randomBytes))
+}
+
+func generateRandomIV() ([]byte, error) {
+	iv := make([]byte, 12) // 12 bytes for AES-GCM standard
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return nil, err
+	}
+	return iv, nil
+}
+
+func encryptToken(plaintext string, key []byte, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, iv, []byte(plaintext), nil)
+	return ciphertext, nil
 }

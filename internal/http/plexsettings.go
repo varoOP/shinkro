@@ -3,7 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/varoOP/shinkro/pkg/plex"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -12,6 +17,9 @@ import (
 type plexsettingsService interface {
 	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
 	Get(ctx context.Context) (*domain.PlexSettings, error)
+	Delete(ctx context.Context) error
+	GetClient(ctx context.Context) (*plex.Client, error)
+	GetEncryptionKey() ([]byte, error)
 }
 
 type plexsettingsHandler struct {
@@ -28,40 +36,296 @@ func newPlexsettingsHandler(encoder encoder, service plexsettingsService) *plexs
 
 func (h plexsettingsHandler) Routes(r chi.Router) {
 	r.Get("/", h.getPlexSettings)
-	r.Post("/", h.postPlexSettings)
+	r.Put("/", h.putPlexSettings)
+	r.Delete("/", h.deletePlexSettings)
+	r.Get("/test", h.testPlexSettings)
+	r.Post("/oauth", h.startOAuth)
+	r.Get("/oauth", h.pollOAuth)
+	r.Get("/servers", h.getServers)
+	r.Get("/libraries", h.getLibraries)
 }
 
 func (h plexsettingsHandler) getPlexSettings(w http.ResponseWriter, r *http.Request) {
 	ps, err := h.service.Get(r.Context())
 	if err != nil {
-		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
-			"code":    "INTERNAL_SERVER_ERROR",
-			"message": err.Error(),
-		})
+		h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{})
+		return
+	}
+	h.encoder.StatusResponse(w, http.StatusOK, ps)
+}
+
+func (h plexsettingsHandler) deletePlexSettings(w http.ResponseWriter, r *http.Request) {
+	err := h.service.Delete(r.Context())
+	if err != nil {
+		h.encoder.Error(w, err)
 		return
 	}
 
-	ret := struct {
-		Data *domain.PlexSettings `json:"data"`
-	}{
-		Data: ps,
-	}
-
-	h.encoder.StatusResponse(w, http.StatusOK, ret)
+	h.encoder.NoContent(w)
 }
 
-func (h plexsettingsHandler) postPlexSettings(w http.ResponseWriter, r *http.Request) {
+func (h plexsettingsHandler) putPlexSettings(w http.ResponseWriter, r *http.Request) {
 	var data domain.PlexSettings
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	ps, err := h.service.Store(r.Context(), data)
+	ps, err := h.service.Get(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusNoContent, map[string]interface{}{
+			"code":    "PLEX_SETTINGS_TOKEN_NOT_FOUND",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	data.TokenIV = ps.TokenIV
+	data.Token = ps.Token
+
+	ps, err = h.service.Store(r.Context(), data)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	h.encoder.StatusResponse(w, http.StatusCreated, ps)
+	h.encoder.StatusResponse(w, http.StatusOK, ps)
+}
+
+func (h plexsettingsHandler) testPlexSettings(w http.ResponseWriter, r *http.Request) {
+	pc, err := h.service.GetClient(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "PLEX_CLIENT_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = pc.Test(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "PLEX_CONNECTION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+	h.encoder.NoContent(w)
+}
+
+func (h plexsettingsHandler) startOAuth(w http.ResponseWriter, r *http.Request) {
+	clientID := generateClientId()
+
+	data := url.Values{
+		"strong":                   {"true"},
+		"X-Plex-Product":           {"shinkro"},
+		"X-Plex-Client-Identifier": {clientID},
+	}
+
+	req, err := http.NewRequestWithContext(r.Context(), "POST", "https://plex.tv/api/v2/pins", strings.NewReader(data.Encode()))
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]string{
+			"message": "Failed to initiate OAuth: " + err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	var pinResp struct {
+		ID        int    `json:"id"`
+		Code      string `json:"code"`
+		ExpiresIn int    `json:"expires_in"`
+		ClientID  string `json:"client_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&pinResp); err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	authURL := fmt.Sprintf(
+		"https://app.plex.tv/auth#?clientID=%s&code=%s&context%%5Bdevice%%5D%%5Bproduct%%5D=%s",
+		url.QueryEscape(clientID),
+		url.QueryEscape(pinResp.Code),
+		url.QueryEscape("shinkro"),
+	)
+
+	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
+		"pin_id":    pinResp.ID,
+		"code":      pinResp.Code,
+		"client_id": clientID,
+		"auth_url":  authURL,
+	})
+}
+
+func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
+	pinID := r.URL.Query().Get("pin_id")
+	clientID := r.URL.Query().Get("client_id")
+	code := r.URL.Query().Get("code")
+
+	if pinID == "" || clientID == "" || code == "" {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
+			"message": "Missing pin_id, client_id, or code",
+		})
+		return
+	}
+
+	data := strings.NewReader(fmt.Sprintf(`code=%s&X-Plex-Client-Identifier=%s`, code, clientID))
+	req, err := http.NewRequestWithContext(r.Context(), "GET", fmt.Sprintf("https://plex.tv/api/v2/pins/%v", pinID), data)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadGateway, map[string]string{
+			"message": "Polling failed: " + err.Error(),
+		})
+		return
+	}
+
+	type pollResp struct {
+		AuthToken *string `json:"authToken"`
+	}
+
+	var tokenresp pollResp
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	if err := json.Unmarshal(body, &tokenresp); err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	if tokenresp.AuthToken == nil {
+		h.encoder.StatusResponse(w, http.StatusAccepted, map[string]string{
+			"message": "waiting for auth",
+		})
+		return
+	}
+
+	encryptionKey, err := h.service.GetEncryptionKey()
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	iv, err := generateRandomIV()
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	encryptedToken, err := encryptToken(*tokenresp.AuthToken, encryptionKey, iv)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	var plexDetails struct {
+		PlexUser string `json:"username"`
+	}
+
+	req, err = http.NewRequestWithContext(r.Context(), "GET", "https://plex.tv/api/v2/user", nil)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Plex-Token", *tokenresp.AuthToken)
+
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadGateway, map[string]string{
+			"message": "Failed to get user details: " + err.Error(),
+		})
+		return
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	err = json.Unmarshal(b, &plexDetails)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	var p = domain.PlexSettings{
+		ClientID: clientID,
+		PlexUser: plexDetails.PlexUser,
+		Token:    encryptedToken,
+		TokenIV:  iv,
+	}
+
+	_, err = h.service.Store(r.Context(), p)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
+		"token":     encryptedToken,
+		"plex_user": plexDetails.PlexUser,
+		"client_id": clientID,
+	})
+}
+
+func (h plexsettingsHandler) getServers(w http.ResponseWriter, r *http.Request) {
+	pc, err := h.service.GetClient(r.Context())
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	servers, err := pc.GetServerList(r.Context())
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, servers)
+}
+
+func (h plexsettingsHandler) getLibraries(w http.ResponseWriter, r *http.Request) {
+	plexUrl := r.URL.Query().Get("plexUrl")
+	if plexUrl == "" {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
+			"message": "Missing plex_url",
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context())
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	libraries, err := pc.GetLibraries(r.Context(), plexUrl)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, libraries)
 }

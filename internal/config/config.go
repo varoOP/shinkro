@@ -53,6 +53,7 @@ func (c *AppConfig) defaultConfig() {
 		LogMaxSize:      50,
 		LogMaxBackups:   3,
 		SessionSecret:   api.GenerateSecureToken(16),
+		EncryptionKey:   api.GenerateSecureToken(32),
 		CheckForUpdates: true,
 	}
 }
@@ -68,6 +69,8 @@ Port = 7011
 #BaseUrl = "/shinkro"
 
 SessionSecret = "{{ .sessionSecret }}"
+
+EncryptionKey = "{{ .encryptionKey }}"
 
 LogLevel = "INFO"
 
@@ -149,6 +152,7 @@ func (c *AppConfig) writeConfig(configPath string, configFile string) error {
 		tmplVars := map[string]string{
 			"host":          host,
 			"sessionSecret": c.Config.SessionSecret,
+			"encryptionKey": c.Config.EncryptionKey,
 		}
 
 		var buffer bytes.Buffer
@@ -231,6 +235,10 @@ func (c *AppConfig) parseEnv() {
 
 	if v := os.Getenv(prefix + "SESSION_SECRET"); v != "" {
 		c.Config.SessionSecret = v
+	}
+
+	if v := os.Getenv(prefix + "ENCRYPTION_KEY"); v != "" {
+		c.Config.EncryptionKey = v
 	}
 
 	if v := os.Getenv(prefix + "CHECK_FOR_UPDATES"); v != "" {

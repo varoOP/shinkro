@@ -1,4 +1,4 @@
-import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title,} from "@mantine/core";
+import {ActionIcon, AppShell, Code, Container, Flex, Group, Image, Menu, NavLink, rem, Title,} from "@mantine/core";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
 import {MdDarkMode, MdLightMode} from "react-icons/md";
@@ -151,15 +151,9 @@ export const Layout = () => {
                 ))}
             </AppShell.Navbar>
             <AppShell.Main>
-                <Flex
-                    h="80vh"
-                    w="70vw"
-                    justify="center"
-                    align="center"
-                    direction="column"
-                >
+                <Container style={{minWidth: "1280px", minHeight: "720px"}}>
                     <Outlet/>
-                </Flex>
+                </Container>
             </AppShell.Main>
         </AppShell>
     );

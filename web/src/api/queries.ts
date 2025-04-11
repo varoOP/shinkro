@@ -1,6 +1,6 @@
 import {queryOptions} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient";
-import {ApiKeys, NotificationKeys, SettingsKeys} from "@api/query_keys";
+import {ApiKeys, NotificationKeys, SettingsKeys, PlexSettingsKeys, MalAuthKeys} from "@api/query_keys";
 
 export const ConfigQueryOptions = (enabled: boolean = true) =>
     queryOptions({
@@ -13,12 +13,22 @@ export const ConfigQueryOptions = (enabled: boolean = true) =>
 
 export const PlexSettingsQueryOptions = (enabled: boolean = true) =>
     queryOptions({
-        queryKey: SettingsKeys.plex(),
+        queryKey: PlexSettingsKeys.config(),
         queryFn: () => APIClient.plex.getSettings(),
         enabled: enabled,
         retry: false,
         refetchOnWindowFocus: false,
     });
+
+export const MalQueryOptions = (enabled: boolean = true) => {
+    return queryOptions({
+        queryKey: MalAuthKeys.config(),
+        queryFn: () => APIClient.malauth.getOpts(),
+        enabled: enabled,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+}
 
 export const UpdatesQueryOptions = (enabled: boolean) =>
     queryOptions({

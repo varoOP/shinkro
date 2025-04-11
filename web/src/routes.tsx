@@ -18,6 +18,7 @@ import {AuthContext, SettingsContext} from "@utils/Context";
 import {TanStackRouterDevtools} from "@tanstack/router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {queryClient} from "@api/QueryClient";
+import {MalAuthCallback} from "@screens/MalAuthCallback.tsx";
 
 const DashboardRoute = createRoute({
     getParentRoute: () => AuthIndexRoute,
@@ -114,9 +115,40 @@ function AuthenticatedLayout() {
     );
 }
 
+function AuthenticatedMal() {
+    const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
+    if (!isLoggedIn) {
+        const redirect =
+            location.pathname.length > 1
+                ? {redirect: location.pathname}
+                : undefined;
+        return <Navigate to="/login" search={redirect}/>;
+    }
+
+    return (
+        <div className="full-height-center">
+            <MalAuthCallback/>
+        </div>
+    );
+}
+
+export const MalAuthRoute = createRoute({
+    getParentRoute: () => AuthRoute,
+    component: AuthenticatedMal,
+    path: "malauth",
+    pendingMs: 3000,
+});
+
 export const SettingsRoute = createRoute({
     getParentRoute: () => AuthIndexRoute,
-    path: "settings",
+    path: "settings", // /settings
+    pendingMs: 3000,
+    component: Settings,
+});
+
+export const SettingsActiveRoute = createRoute({
+    getParentRoute: () => AuthIndexRoute,
+    path: "settings/$activeTab", // /settings/plex, /settings/mal, etc.
     pendingMs: 3000,
     component: Settings,
 });
@@ -157,11 +189,12 @@ export const RootRoute = createRootRouteWithContext<{
 });
 
 const authenticatedTree = AuthRoute.addChildren([
-    AuthIndexRoute.addChildren([DashboardRoute, SettingsRoute]),
+    AuthIndexRoute.addChildren([DashboardRoute, SettingsRoute, SettingsActiveRoute]),
 ]);
 const routeTree = RootRoute.addChildren([
     LoginRoute,
     OnboardRoute,
+    MalAuthRoute,
     authenticatedTree,
 ]);
 

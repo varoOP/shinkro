@@ -2,28 +2,19 @@ package http
 
 import (
 	"context"
-	"net/http"
-	"net/url"
-	"path"
-	"strings"
-	"text/template"
-
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/varoOP/shinkro/internal/domain"
 	"golang.org/x/oauth2"
-)
-
-var (
-	verifier    string
-	state       string
-	oauthConfig oauth2.Config
+	"net/http"
 )
 
 type malauthService interface {
 	Store(ctx context.Context, ma *domain.MalAuth) error
+	StoreMalAuthOpts(ctx context.Context, mo *domain.MalAuthOpts) error
+	GetMalAuthOpts(ctx context.Context) (*domain.MalAuthOpts, error)
 	GetMalClient(ctx context.Context) (*mal.Client, error)
-	NewMalAuthClient(ctx context.Context, clientId, clientSecret string) (*domain.MalAuthOpts, error)
 }
 
 type malauthHandler struct {
@@ -39,128 +30,84 @@ func newmalauthHandler(encoder encoder, service malauthService) *malauthHandler 
 }
 
 func (h malauthHandler) Routes(r chi.Router) {
-	r.Get("/", h.malAuth)
-	r.Post("/login", h.login)
-	r.Get("/status", h.status)
-	r.Get("/callback", h.callback)
+	r.Get("/test", h.test)
+	r.Post("/opts", h.storeMalauthOpts)
+	r.Get("/opts", h.getMalauthOpts)
+	r.Post("/callback", h.callback)
 }
 
-func (h malauthHandler) login(w http.ResponseWriter, r *http.Request) {
-	clientID := r.FormValue("clientID")
-	clientSecret := r.FormValue("clientSecret")
-	maopts, err := h.service.NewMalAuthClient(r.Context(), clientID, clientSecret)
+func (h malauthHandler) storeMalauthOpts(w http.ResponseWriter, r *http.Request) {
+	malauthopts := &domain.MalAuthOpts{}
+	err := json.NewDecoder(r.Body).Decode(malauthopts)
 	if err != nil {
-		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
-			"code":    "INTERNAL_SERVER_ERROR",
-			"message": err.Error(),
-		})
+		h.encoder.Error(w, err)
 		return
 	}
 
-	verifier = maopts.Verifier
-	state = maopts.State
-	oauthConfig = maopts.MalAuth.Config
+	err = h.service.StoreMalAuthOpts(r.Context(), malauthopts)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
 
-	http.Redirect(w, r, maopts.AuthCodeUrl, http.StatusSeeOther)
+	h.encoder.StatusResponseMessage(w, http.StatusOK, "malauth opts stored")
+}
+
+func (h malauthHandler) getMalauthOpts(w http.ResponseWriter, r *http.Request) {
+	malauthopts, err := h.service.GetMalAuthOpts(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{})
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, malauthopts)
 }
 
 func (h malauthHandler) callback(w http.ResponseWriter, r *http.Request) {
-	baseURL := url.URL{
-		Scheme: r.URL.Scheme,
-		Host:   r.Host,
-	}
-
-	newURL := baseURL.ResolveReference(&url.URL{Path: "/malauth/status"})
-
-	code := r.URL.Query().Get("code")
-	newState := r.URL.Query().Get("state")
-
-	if code == "" || newState == "" || newState != state {
-		http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
+	malauthopts, err := h.service.GetMalAuthOpts(r.Context())
+	if err != nil {
+		h.encoder.Error(w, err)
 		return
 	}
 
+	err = json.NewDecoder(r.Body).Decode(&malauthopts)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
+	malauth := domain.NewMalAuth(malauthopts.ClientID, malauthopts.ClientSecret)
 	grantType := oauth2.SetAuthURLParam("grant_type", "authorization_code")
-	codeVerify := oauth2.SetAuthURLParam("code_verifier", verifier)
-	token, err := oauthConfig.Exchange(r.Context(), code, grantType, codeVerify)
+	codeVerify := oauth2.SetAuthURLParam("code_verifier", malauthopts.Verifier)
+	token, err := malauth.Config.Exchange(r.Context(), malauthopts.Code, grantType, codeVerify)
 	if err != nil {
-		http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
+		h.encoder.Error(w, err)
 		return
 	}
 
-	h.service.Store(r.Context(), &domain.MalAuth{
-		Id:          1,
-		Config:      oauthConfig,
-		AccessToken: *token,
-	})
+	malauth.AccessToken = *token
+	err = h.service.Store(r.Context(), malauth)
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
 
-	http.Redirect(w, r, newURL.String(), http.StatusSeeOther)
+	h.encoder.StatusResponseMessage(w, http.StatusOK, "mal auth success")
 }
 
-func (h malauthHandler) status(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.New("malauthstatus").Parse(malauth_statustpl)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
-		return
-	}
+func (h malauthHandler) test(w http.ResponseWriter, r *http.Request) {
 
-	isAuthenticated := false
 	c, err := h.service.GetMalClient(r.Context())
 	if err != nil {
+		h.encoder.Error(w, err)
 		return
 	}
-
 	_, _, err = c.User.MyInfo(r.Context())
-	if err == nil {
-		isAuthenticated = true
-	}
-
-	segments := strings.Split(r.URL.Path, "/")
-	if len(segments) > 1 {
-		segments = segments[:len(segments)-1]
-	}
-
-	newPath := path.Join(segments...)
-	data := authPageData{
-		IsAuthenticated: isAuthenticated,
-		RetryURL:        newPath,
-	}
-
-	err = tmpl.Execute(w, data)
 	if err != nil {
-		http.Error(w, "Error rendering template", http.StatusInternalServerError)
-	}
-}
-
-func (h malauthHandler) malAuth(w http.ResponseWriter, r *http.Request) {
-
-	c, err := h.service.GetMalClient(r.Context())
-	if err == nil {
-		_, _, err := c.User.MyInfo(r.Context())
-		if err == nil {
-			w.Write([]byte("Authentication with myanimelist is successful."))
-			return
-		}
-	}
-
-	baseURL := url.URL{
-		Scheme: r.URL.Scheme,
-		Host:   r.Host,
-	}
-
-	newURL := baseURL.ResolveReference(&url.URL{Path: "/malauth/login"})
-	data := authPageData{
-		ActionURL: newURL.String(),
-	}
-
-	tmpl, err := template.New("malauth").Parse(malauthtpl)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
+		h.encoder.Error(w, err)
 		return
 	}
 
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, "Error rendering template", http.StatusInternalServerError)
-	}
+	h.encoder.StatusResponseMessage(w, http.StatusOK, "mal auth test success")
+
 }

@@ -9,6 +9,8 @@ import (
 type MalAuthRepo interface {
 	Store(ctx context.Context, ma *MalAuth) error
 	Get(ctx context.Context) (*MalAuth, error)
+	StoreMalAuthOpts(ctx context.Context, mo *MalAuthOpts) error
+	GetMalAuthOpts(ctx context.Context) (*MalAuthOpts, error)
 }
 
 type MalAuth struct {
@@ -18,10 +20,11 @@ type MalAuth struct {
 }
 
 type MalAuthOpts struct {
-	MalAuth     *MalAuth
-	Verifier    string
-	State       string
-	AuthCodeUrl string
+	ClientID     string `json:"clientID"`
+	ClientSecret string `json:"clientSecret"`
+	Verifier     string `json:"verifier"`
+	State        string `json:"state"`
+	Code         string `json:"code"`
 }
 
 type MalAuthURLs string
@@ -41,5 +44,15 @@ func NewMalAuth(clientID, clientSecret string) *MalAuth {
 				AuthStyle: oauth2.AuthStyleInParams,
 			},
 		},
+	}
+}
+
+func NewMalAuthOpts(clientID, clientSecret, verifier, state, code string) *MalAuthOpts {
+	return &MalAuthOpts{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Verifier:     verifier,
+		State:        state,
+		Code:         code,
 	}
 }

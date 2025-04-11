@@ -3,8 +3,17 @@ export const SettingsKeys = {
     updates: () => [...SettingsKeys.all, "updates"] as const,
     config: () => [...SettingsKeys.all, "config"] as const,
     lists: () => [...SettingsKeys.all, "list"] as const,
-    plex: () => [...SettingsKeys.all, "plex"] as const,
 };
+
+export const PlexSettingsKeys = {
+    all: ["plex_settings"] as const,
+    config: () => [...PlexSettingsKeys.all, "config"] as const,
+}
+
+export const MalAuthKeys = {
+    all: ["mal_auth"] as const,
+    config: () => [...MalAuthKeys.all, "config"] as const,
+}
 
 export const ApiKeys = {
     all: ["api_keys"] as const,

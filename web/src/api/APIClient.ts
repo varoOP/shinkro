@@ -1,12 +1,13 @@
 import {baseUrl, sseBaseUrl} from "@utils";
 import {GithubRelease} from "@app/types/Update";
 import {
-    PlexSettings,
+    PlexConfig,
     PlexOAuthPollResponse,
     PlexOAuthStartResponse,
     PlexLibraryResponse, PlexServerResponse
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
+import {MalAuthOpts} from "@app/types/MalAuth";
 
 type RequestBody = BodyInit | object | Record<string, unknown> | null;
 type Primitive = string | number | boolean | symbol | undefined;
@@ -280,18 +281,23 @@ export const APIClient = {
     },
     plex: {
         getSettings: () =>
-            appClient.Get<PlexSettings>("api/plex/settings"),
+            appClient.Get<PlexConfig>("api/plex/settings"),
 
-        updateSettings: (settings: PlexSettings) =>
+        updateSettings: (config: PlexConfig) =>
             appClient.Put("api/plex/settings", {
-                body: settings,
+                body: config,
             }),
 
         delete: () =>
             appClient.Delete("api/plex/settings"),
 
-        ping: () =>
-            appClient.Get("api/plex/settings/test"),
+        test: (config: PlexConfig) =>
+            appClient.Post("api/plex/settings/test", {
+                body: config,
+            }),
+
+        testToken: () =>
+            appClient.Get("api/plex/settings/testToken"),
 
         startOAuth: () =>
             appClient.Post<PlexOAuthStartResponse>("api/plex/settings/oauth"),
@@ -305,13 +311,36 @@ export const APIClient = {
                 },
             }),
 
-        servers: () =>
-            appClient.Get<PlexServerResponse>("api/plex/settings/servers"),
-
-        libraries: (plexUrl: string) =>
-            appClient.Get<PlexLibraryResponse>("api/plex/settings/libraries", {
-                queryString: {plexUrl},
+        servers: (config: PlexConfig) =>
+            appClient.Post<PlexServerResponse>("api/plex/settings/servers", {
+                body: config,
             }),
+
+        libraries: (config: PlexConfig) =>
+            appClient.Post<PlexLibraryResponse>("api/plex/settings/libraries", {
+                body: config,
+            }),
+    },
+
+    malauth: {
+        callback: (data: MalAuthOpts) =>
+            appClient.Post("api/malauth/callback", {
+                body: data,
+            }),
+
+
+        getOpts: () =>
+            appClient.Get<MalAuthOpts>("api/malauth/opts"),
+
+
+        storeOpts: (data: MalAuthOpts) =>
+            appClient.Post("api/malauth/opts", {
+                body: data,
+            }),
+
+        test: () =>
+            appClient.Get("api/malauth/test"),
+
     },
 
     logs: {

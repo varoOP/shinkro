@@ -18,7 +18,7 @@ type plexsettingsService interface {
 	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
 	Get(ctx context.Context) (*domain.PlexSettings, error)
 	Delete(ctx context.Context) error
-	GetClient(ctx context.Context) (*plex.Client, error)
+	GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error)
 	GetEncryptionKey() ([]byte, error)
 }
 
@@ -38,11 +38,12 @@ func (h plexsettingsHandler) Routes(r chi.Router) {
 	r.Get("/", h.getPlexSettings)
 	r.Put("/", h.putPlexSettings)
 	r.Delete("/", h.deletePlexSettings)
-	r.Get("/test", h.testPlexSettings)
+	r.Get("/testToken", h.testToken)
+	r.Post("/test", h.test)
 	r.Post("/oauth", h.startOAuth)
 	r.Get("/oauth", h.pollOAuth)
-	r.Get("/servers", h.getServers)
-	r.Get("/libraries", h.getLibraries)
+	r.Post("/servers", h.getServers)
+	r.Post("/libraries", h.getLibraries)
 }
 
 func (h plexsettingsHandler) getPlexSettings(w http.ResponseWriter, r *http.Request) {
@@ -92,8 +93,17 @@ func (h plexsettingsHandler) putPlexSettings(w http.ResponseWriter, r *http.Requ
 	h.encoder.StatusResponse(w, http.StatusOK, ps)
 }
 
-func (h plexsettingsHandler) testPlexSettings(w http.ResponseWriter, r *http.Request) {
-	pc, err := h.service.GetClient(r.Context())
+func (h plexsettingsHandler) test(w http.ResponseWriter, r *http.Request) {
+	var ps domain.PlexSettings
+	if err := json.NewDecoder(r.Body).Decode(&ps); err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "PLEX_SETTINGS_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context(), &ps)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "PLEX_CLIENT_ERROR",
@@ -102,7 +112,7 @@ func (h plexsettingsHandler) testPlexSettings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	err = pc.Test(r.Context())
+	err = pc.TestConnection(r.Context())
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "PLEX_CONNECTION_ERROR",
@@ -110,7 +120,39 @@ func (h plexsettingsHandler) testPlexSettings(w http.ResponseWriter, r *http.Req
 		})
 		return
 	}
-	h.encoder.NoContent(w)
+
+	h.encoder.StatusResponseMessage(w, http.StatusOK, "Plex connection successful")
+}
+
+func (h plexsettingsHandler) testToken(w http.ResponseWriter, r *http.Request) {
+	ps, err := h.service.Get(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "PLEX_TOKEN_NOT_FOUND",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context(), ps)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "PLEX_CLIENT_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = pc.TestToken(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "PLEX_TOKEN_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	h.encoder.StatusResponseMessage(w, http.StatusOK, "Plex token is valid")
 }
 
 func (h plexsettingsHandler) startOAuth(w http.ResponseWriter, r *http.Request) {
@@ -291,7 +333,16 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h plexsettingsHandler) getServers(w http.ResponseWriter, r *http.Request) {
-	pc, err := h.service.GetClient(r.Context())
+	var ps domain.PlexSettings
+	if err := json.NewDecoder(r.Body).Decode(&ps); err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
+			"code":    "PLEX_SETTINGS_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context(), &ps)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -307,23 +358,30 @@ func (h plexsettingsHandler) getServers(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h plexsettingsHandler) getLibraries(w http.ResponseWriter, r *http.Request) {
-	plexUrl := r.URL.Query().Get("plexUrl")
-	if plexUrl == "" {
+	var ps domain.PlexSettings
+	if err := json.NewDecoder(r.Body).Decode(&ps); err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
-			"message": "Missing plex_url",
+			"code":    "PLEX_SETTINGS_ERROR",
+			"message": err.Error(),
 		})
 		return
 	}
 
-	pc, err := h.service.GetClient(r.Context())
+	pc, err := h.service.GetClient(r.Context(), &ps)
 	if err != nil {
-		h.encoder.Error(w, err)
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
+			"code":    "PLEX_CLIENT_ERROR",
+			"message": err.Error(),
+		})
 		return
 	}
 
-	libraries, err := pc.GetLibraries(r.Context(), plexUrl)
+	libraries, err := pc.GetLibraries(r.Context())
 	if err != nil {
-		h.encoder.Error(w, err)
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
+			"code":    "PLEX_LIBRARIES_ERROR",
+			"message": err.Error(),
+		})
 		return
 	}
 

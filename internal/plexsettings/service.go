@@ -18,7 +18,7 @@ type Service interface {
 	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
 	Get(ctx context.Context) (*domain.PlexSettings, error)
 	Delete(ctx context.Context) error
-	GetClient(ctx context.Context) (*plex.Client, error)
+	GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error)
 	GetEncryptionKey() ([]byte, error)
 	HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.PlexSupportedDBs, int, error)
 }
@@ -32,7 +32,7 @@ type service struct {
 func NewService(config *domain.Config, log zerolog.Logger, repo domain.PlexSettingsRepo) Service {
 	return &service{
 		config: config,
-		log:    log,
+		log:    log.With().Str("module", "plexsettings").Logger(),
 		repo:   repo,
 	}
 }
@@ -49,10 +49,15 @@ func (s *service) Delete(ctx context.Context) error {
 	return s.repo.Delete(ctx)
 }
 
-func (s *service) GetClient(ctx context.Context) (*plex.Client, error) {
-	ps, err := s.repo.Get(ctx)
-	if err != nil {
-		return nil, err
+func (s *service) GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error) {
+	if len(ps.TokenIV) == 0 {
+		tempPs, err := s.repo.Get(ctx)
+		if err != nil {
+			s.log.Error().Err(err).Msg("error getting plex settings")
+			return nil, err
+		}
+		ps.Token = tempPs.Token
+		ps.TokenIV = tempPs.TokenIV
 	}
 
 	scheme := "http"
@@ -60,15 +65,8 @@ func (s *service) GetClient(ctx context.Context) (*plex.Client, error) {
 		scheme = "https"
 	}
 
-	if ps.Host == "" {
-		ps.Host = "localhost"
-	}
-
-	if ps.Port == 0 {
-		ps.Port = 32400
-	}
-
 	if len(ps.Token) == 0 || len(ps.TokenIV) == 0 {
+		s.log.Debug().Interface("plexsettings", ps).Msg("token or tokenIV is empty")
 		return nil, errors.New("token or tokenIV is empty")
 	}
 
@@ -95,7 +93,12 @@ func (s *service) GetClient(ctx context.Context) (*plex.Client, error) {
 
 func (s *service) HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.PlexSupportedDBs, int, error) {
 	if p.Metadata.Type == domain.PlexEpisode {
-		pc, err := s.GetClient(ctx)
+		ps, err := s.repo.Get(ctx)
+		if err != nil {
+			return "", 0, err
+		}
+
+		pc, err := s.GetClient(ctx, ps)
 		if err != nil {
 			return "", 0, err
 		}

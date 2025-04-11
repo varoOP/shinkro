@@ -330,8 +330,6 @@ export const PlexSettings = ({
     };
 
     const {error} = form.getInputProps("port", {type: "input"});
-
-
     return (
         <Modal opened={opened} onClose={onClose} title="Plex Settings">
             <form onSubmit={form.onSubmit(handleFormSubmit)}>

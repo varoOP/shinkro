@@ -21,6 +21,7 @@ import {PlexSettingsQueryOptions} from "@api/queries";
 import {PlexSettingsKeys} from "@api/query_keys";
 import {displayNotification} from "@components/notifications";
 import {PlexSettings} from "@forms/settings/PlexSettings";
+import {ConfirmDeleteButton} from "@components/alerts/ConfirmDeleteButton.tsx";
 
 export const Plex = () => {
     const queryClient = useQueryClient();
@@ -148,7 +149,10 @@ export const Plex = () => {
                                     </Table>
                                 )}
                                 <Group mt="sm" justify={"flex-end"}>
-                                    <Button onClick={() => deleteMutation.mutate()} color="red">Delete</Button>
+                                    <ConfirmDeleteButton
+                                        onConfirm={() => deleteMutation.mutate()}
+                                    >
+                                    </ConfirmDeleteButton>
                                     <Button onClick={open}>Edit Settings</Button>
                                 </Group>
                             </>
@@ -156,7 +160,6 @@ export const Plex = () => {
                     </>
                 )}
             </Stack>
-
             <PlexSettings
                 opened={opened}
                 onClose={close}

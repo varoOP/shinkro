@@ -1,0 +1,59 @@
+import {Alert, Button, Group, Modal} from "@mantine/core";
+import {HiExclamationTriangle} from "react-icons/hi2";
+import {useDisclosure} from "@mantine/hooks";
+
+interface ConfirmDeleteButtonProps {
+    onConfirm: () => void;
+    title?: string;
+    message?: string;
+    confirmText?: string;
+    cancelText?: string;
+    loading?: boolean;
+}
+
+export const ConfirmDeleteButton = ({
+                                        onConfirm,
+                                        title = "Confirm Deletion",
+                                        message = "This action cannot be undone. Are you sure you want to delete? It will erase your Plex Media Server connection settings.",
+                                        confirmText = "DELETE",
+                                        cancelText = "CANCEL",
+                                        loading = false,
+                                    }: ConfirmDeleteButtonProps) => {
+    const [opened, {open, close}] = useDisclosure(false);
+
+    return (
+        <>
+            <Modal opened={opened} onClose={close} title={title} centered size="sm">
+                <Alert
+                    icon={<HiExclamationTriangle size="1.5rem"/>}
+                    title="Warning"
+                    color="red"
+                    variant="light"
+                    mb="md"
+                >
+                    {message}
+                </Alert>
+
+                <Group justify="flex-end" mt="md">
+                    <Button variant="default" onClick={close}>
+                        {cancelText}
+                    </Button>
+                    <Button
+                        color="red"
+                        loading={loading}
+                        onClick={() => {
+                            onConfirm();
+                            close();
+                        }}
+                    >
+                        {confirmText}
+                    </Button>
+                </Group>
+            </Modal>
+
+            <Button color="red" onClick={open}>
+                {confirmText}
+            </Button>
+        </>
+    );
+};

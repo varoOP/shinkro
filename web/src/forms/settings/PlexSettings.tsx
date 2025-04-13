@@ -7,7 +7,6 @@ import {
     Group,
     MultiSelect,
     Select,
-    PasswordInput,
 } from "@mantine/core";
 import {TfiReload} from "react-icons/tfi";
 import {useForm} from "@mantine/form";
@@ -40,7 +39,6 @@ export const PlexSettings = ({
             port: 0,
             tls: false,
             tls_skip: false,
-            token: "",
             plex_user: "",
             anime_libs: [],
             plex_client_enabled: true,
@@ -50,7 +48,6 @@ export const PlexSettings = ({
         validate: {
             host: (v: string) => (v ? null : "Host is required"),
             port: (v: number) => (v ? null : "Port is required"),
-            token: (v: string) => (v ? null : "Token is required"),
             plex_user: (v: string) => (v ? null : "Username is required"),
             anime_libs: (v: string[]) =>
                 v.length === 0 ? "At least one anime library is required" : null,
@@ -202,7 +199,7 @@ export const PlexSettings = ({
     }, [selectedServer]);
 
     const loadServers = async () => {
-        if (!form.getValues().token || !form.getValues().client_id) {
+        if (!form.getValues().client_id) {
             displayNotification({
                 title: "Missing Credentials",
                 message: "Please authenticate with Plex first.",
@@ -318,7 +315,6 @@ export const PlexSettings = ({
         const settings: PlexConfig = {
             host: values.host,
             port: values.port,
-            token: "", // token is managed via OAuth
             client_id: values.client_id,
             tls: values.tls,
             tls_skip: values.tls_skip,
@@ -329,7 +325,15 @@ export const PlexSettings = ({
         onSubmit(settings);
     };
 
-    const {error} = form.getInputProps("port", {type: "input"});
+    const handHostChange = (value: string | null) => {
+        form.setFieldValue("host", value || "");
+        const conn = selectedServer?.connections.find(conn => conn.address === value);
+        form.setFieldValue("port", conn?.port || 0);
+        form.setFieldValue("tls", conn?.protocol === "https");
+    }
+
+    const portInput = form.getInputProps("port", {type: "input"});
+    const hostInput = form.getInputProps("host", {type: "input"});
     return (
         <Modal opened={opened} onClose={onClose} title="Plex Settings">
             <form onSubmit={form.onSubmit(handleFormSubmit)}>
@@ -339,7 +343,7 @@ export const PlexSettings = ({
                     </Button>
                     <Group align="flex-end" justify="flex-start">
                         <Select style={{flex: 1}}
-                                label="Select Plex Server"
+                                label="Plex Server"
                                 placeholder="Load servers after authenticating"
                                 data={servers?.Servers.map((server) => ({
                                     value: server.clientIdentifier,
@@ -365,7 +369,8 @@ export const PlexSettings = ({
                         }
                         value={form.getValues().host}
                         disabled={!selectedServer || loadingServers}
-                        {...form.getInputProps("host", {type: "input"})}
+                        error={hostInput.error}
+                        onChange={handHostChange}
                     />
                     <Select
                         label="Port"
@@ -380,7 +385,7 @@ export const PlexSettings = ({
                             form.setFieldValue("port", value ? parseInt(value) : 0);
                         }}
                         disabled={!selectedServer || loadingServers}
-                        error={error}
+                        error={portInput.error}
                     />
                     <Group align="flex-end" justify="flex-start">
                         <Switch
@@ -394,7 +399,7 @@ export const PlexSettings = ({
                     </Group>
                     <Group align="flex-end">
                         <MultiSelect style={{flex: 1}}
-                                     label="Select Anime Libraries"
+                                     label="Anime Libraries"
                                      placeholder="Pick Anime Libraries"
                                      data={libraryOptions}
                                      value={form.getValues().anime_libs}
@@ -419,12 +424,6 @@ export const PlexSettings = ({
                         placeholder="To generate client ID, authenticate with Plex"
                         disabled
                         {...form.getInputProps("client_id")}
-                    />
-                    <PasswordInput
-                        label="Token"
-                        placeholder="To get token, authenticate with Plex"
-                        disabled
-                        {...form.getInputProps("token")}
                     />
                     <Switch
                         label="Enable Plex Client"

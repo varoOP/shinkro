@@ -102,7 +102,7 @@ func (s Server) Handler() http.Handler {
 		r.Route("/config", newConfigHandler(encoder, s, s.config).Routes)
 		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
 		r.Route("/plex/settings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)
-		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService).Routes)
+		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService, s.cookieStore).Routes)
 		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
 	})
 

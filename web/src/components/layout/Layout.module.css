@@ -1,28 +1,36 @@
 .header {
-  border-bottom: 0;
-  @mixin light {
-    background: #F0F0F3;
-  }
+    border-bottom: 0;
+    @mixin light {
+        background: #F0F0F3;
+    }
 
-  @mixin dark {
-    background: #242526;
-  }
+    @mixin dark {
+        background: #242526;
+    }
 }
 
 .navbar {
-  @mixin light {
-    background: var(--mantine-color-white);
-  }
+    @mixin light {
+        background: var(--mantine-color-white);
+    }
 
-  @mixin dark {
-    background: var(--mantine-color-dark-9);
-    border-right: 0;
-  }
+    @mixin dark {
+        background: var(--mantine-color-dark-9);
+        border-right: 0;
+    }
 
 }
 
 .code {
-  @mixin light {
-    background-color: var(--mantine-color-gray-3);
-  }
+    @mixin light {
+        background-color: var(--mantine-color-gray-3);
+    }
+}
+
+.variableCenter {
+    width: 100%;
+    min-width: 280px;
+    max-width: 1440px;
+    padding: 1rem;
+    margin: 0 auto;
 }

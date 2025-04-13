@@ -109,33 +109,33 @@ function AuthenticatedLayout() {
     }
 
     return (
-        <div className="full-height-center">
+        <div>
             <Layout/>
         </div>
     );
 }
 
-function AuthenticatedMal() {
-    const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
-    if (!isLoggedIn) {
-        const redirect =
-            location.pathname.length > 1
-                ? {redirect: location.pathname}
-                : undefined;
-        return <Navigate to="/login" search={redirect}/>;
-    }
-
-    return (
-        <div className="full-height-center">
-            <MalAuthCallback/>
-        </div>
-    );
-}
+// function AuthenticatedMal() {
+//     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
+//     if (!isLoggedIn) {
+//         const redirect =
+//             location.pathname.length > 1
+//                 ? {redirect: location.pathname}
+//                 : undefined;
+//         return <Navigate to="/login" search={redirect}/>;
+//     }
+//
+//     return (
+//         <div className="full-height-center">
+//             <MalAuthCallback/>
+//         </div>
+//     );
+// }
 
 export const MalAuthRoute = createRoute({
     getParentRoute: () => AuthRoute,
-    component: AuthenticatedMal,
-    path: "malauth",
+    component: MalAuthCallback,
+    path: "malauth/callback",
     pendingMs: 3000,
 });
 
@@ -169,7 +169,7 @@ export const AuthIndexRoute = createRoute({
 export const RootComponent = () => {
     const settings = SettingsContext.useValue();
     return (
-        <div className="full-height-center">
+        <div className="full-height">
             <Outlet/>
             {settings.debug ? (
                 <>

@@ -4,6 +4,7 @@ import "context"
 
 type PlexSettingsRepo interface {
 	Store(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
+	Update(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
 	Get(ctx context.Context) (*PlexSettings, error)
 	Delete(ctx context.Context) error
 }
@@ -16,7 +17,7 @@ type PlexSettings struct {
 	AnimeLibraries    []string `json:"anime_libs"`
 	PlexUser          string   `json:"plex_user"`
 	PlexClientEnabled bool     `json:"plex_client_enabled"`
-	Token             []byte   `json:"token"`
+	Token             []byte   `json:"-"`
 	TokenIV           []byte   `json:"-"`
 	ClientID          string   `json:"client_id"`
 }

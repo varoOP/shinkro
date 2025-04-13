@@ -23,7 +23,7 @@ export const PlexSettingsQueryOptions = (enabled: boolean = true) =>
 export const MalQueryOptions = (enabled: boolean = true) => {
     return queryOptions({
         queryKey: MalAuthKeys.config(),
-        queryFn: () => APIClient.malauth.getOpts(),
+        queryFn: () => APIClient.malauth.get(),
         enabled: enabled,
         retry: false,
         refetchOnWindowFocus: false,

@@ -2,9 +2,6 @@ package plexsettings
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -17,9 +14,9 @@ import (
 type Service interface {
 	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
 	Get(ctx context.Context) (*domain.PlexSettings, error)
+	Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
 	Delete(ctx context.Context) error
 	GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error)
-	GetEncryptionKey() ([]byte, error)
 	HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.PlexSupportedDBs, int, error)
 }
 
@@ -38,7 +35,18 @@ func NewService(config *domain.Config, log zerolog.Logger, repo domain.PlexSetti
 }
 
 func (s *service) Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+	eToken, err := s.config.Encrypt(ps.Token, ps.TokenIV)
+	if err != nil {
+		s.log.Error().Err(err).Msg("error encrypting token")
+		return nil, err
+	}
+
+	ps.Token = eToken
 	return s.repo.Store(ctx, ps)
+}
+
+func (s *service) Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+	return s.repo.Update(ctx, ps)
 }
 
 func (s *service) Get(ctx context.Context) (*domain.PlexSettings, error) {
@@ -58,6 +66,7 @@ func (s *service) GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex
 		}
 		ps.Token = tempPs.Token
 		ps.TokenIV = tempPs.TokenIV
+		s.log.Trace().Msg("loaded token and tokenIV from database")
 	}
 
 	scheme := "http"
@@ -66,23 +75,17 @@ func (s *service) GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex
 	}
 
 	if len(ps.Token) == 0 || len(ps.TokenIV) == 0 {
-		s.log.Debug().Interface("plexsettings", ps).Msg("token or tokenIV is empty")
 		return nil, errors.New("token or tokenIV is empty")
 	}
 
-	key, err := s.GetEncryptionKey()
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := decryptToken(ps.Token, key, ps.TokenIV)
+	token, err := s.config.Decrypt(ps.Token, ps.TokenIV)
 	if err != nil {
 		return nil, err
 	}
 
 	c := plex.NewClient(plex.Config{
 		Url:           fmt.Sprintf("%s://%s:%d", scheme, ps.Host, ps.Port),
-		Token:         token,
+		Token:         string(token),
 		ClientID:      ps.ClientID,
 		TLSSkipVerify: ps.TLSSkip,
 		Log:           zstdlog.NewStdLoggerWithLevel(s.log.With().Str("client", "plex").Logger(), zerolog.TraceLevel),
@@ -116,42 +119,4 @@ func (s *service) HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.P
 		return id.PlexAgent(p.Metadata.Type)
 	}
 	return "", 0, nil
-}
-
-func (s *service) GetEncryptionKey() ([]byte, error) {
-	key, err := LoadKeyFromHex(s.config.EncryptionKey)
-	if err != nil {
-		return nil, err
-	}
-	return key, nil
-}
-
-func decryptToken(ciphertext []byte, key []byte, iv []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	plaintext, err := gcm.Open(nil, iv, ciphertext, nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext), nil
-}
-
-func LoadKeyFromHex(hexKey string) ([]byte, error) {
-	key, err := hex.DecodeString(hexKey)
-	if err != nil {
-		return nil, errors.New("invalid hex encryption key")
-	}
-	if len(key) != 32 {
-		return nil, errors.New("encryption key must be 32 bytes")
-	}
-	return key, nil
 }

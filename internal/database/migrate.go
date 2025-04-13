@@ -38,7 +38,8 @@ CREATE TABLE malauth
 	id 					INTEGER PRIMARY KEY,
 	client_id 			TEXT,
 	client_secret 		TEXT,
-	access_token 		TEXT,
+	access_token 		BLOB,
+	token_iv 			BLOB,
 	created_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -96,13 +97,12 @@ CREATE TABLE plex_settings
 
 CREATE TABLE mapping_settings
 (
-	id						INTEGER PRIMARY KEY,
+	id						        INTEGER PRIMARY KEY,
 	tvdb_enabled			BOOLEAN,
-	tmdb_enabled			BOOLEAN,
+	tmdb_enabled		BOOLEAN,
 	tvdb_path				TEXT,
 	tmdb_path				TEXT,
-	created_at TIMESTAMP 	DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP 	DEFAULT CURRENT_TIMESTAMP
+	time_stamp             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `
 

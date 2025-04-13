@@ -7,7 +7,7 @@ import {
     PlexLibraryResponse, PlexServerResponse
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
-import {MalAuthOpts} from "@app/types/MalAuth";
+import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
 
 type RequestBody = BodyInit | object | Record<string, unknown> | null;
 type Primitive = string | number | boolean | symbol | undefined;
@@ -323,24 +323,30 @@ export const APIClient = {
     },
 
     malauth: {
-        callback: (data: MalAuthOpts) =>
-            appClient.Post("api/malauth/callback", {
-                body: data,
+        start: (clientID: string, clientSecret: string) =>
+            appClient.Post<StartAuthResponse>("api/malauth", {
+                queryString: {
+                    clientID,
+                    clientSecret,
+                }
             }),
 
+        get: () =>
+            appClient.Get<MalAuth>("api/malauth"),
 
-        getOpts: () =>
-            appClient.Get<MalAuthOpts>("api/malauth/opts"),
+        delete: () =>
+            appClient.Delete("api/malauth"),
 
-
-        storeOpts: (data: MalAuthOpts) =>
-            appClient.Post("api/malauth/opts", {
-                body: data,
+        callback: (code: string, state: string) =>
+            appClient.Post("api/malauth/callback", {
+                queryString: {
+                    code,
+                    state,
+                },
             }),
 
         test: () =>
             appClient.Get("api/malauth/test"),
-
     },
 
     logs: {

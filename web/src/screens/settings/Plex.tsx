@@ -28,10 +28,8 @@ export const Plex = () => {
     const [isReachable, setIsReachable] = useState<boolean | null>(null);
     const [opened, {open, close}] = useDisclosure(false);
     const {data: settings, isLoading} = useQuery(PlexSettingsQueryOptions());
-
-    // Check if settings is empty (i.e. no rows in DB)
     const isEmptySettings = !settings || Object.keys(settings).length === 0;
-    // Ping Plex only if settings exist (non-empty)
+
     useEffect(() => {
         if (!isEmptySettings) {
             APIClient.plex
@@ -102,7 +100,7 @@ export const Plex = () => {
         <Paper withBorder={true} p="md" shadow="xl">
             <Stack justify="center">
                 <Title order={1} mt="md">
-                    Plex Settings
+                    Plex Media Server
                 </Title>
                 <Text>
                     Manage the connection to your Plex Media Server here.
@@ -122,7 +120,7 @@ export const Plex = () => {
                                     <Text size={"md"} fw={600}>Plex Setup Not Found</Text>
                                 </Group>
                                 <Group justify={"center"}>
-                                    <Button onClick={open}>Setup Plex</Button>
+                                    <Button onClick={open}>SETUP PLEX</Button>
                                 </Group>
                             </>
                         ) : (
@@ -151,9 +149,9 @@ export const Plex = () => {
                                 <Group mt="sm" justify={"flex-end"}>
                                     <ConfirmDeleteButton
                                         onConfirm={() => deleteMutation.mutate()}
-                                    >
-                                    </ConfirmDeleteButton>
-                                    <Button onClick={open}>Edit Settings</Button>
+                                        message={"All your Plex Media Server settings will be deleted."}
+                                    />
+                                    <Button variant={"outline"} onClick={open}>EDIT SETTINGS</Button>
                                 </Group>
                             </>
                         )}

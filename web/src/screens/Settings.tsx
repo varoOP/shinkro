@@ -25,34 +25,36 @@ export const Settings = () => {
     const currentTab = isValidTab ? activeTab : "application";
 
     return (
-        <Paper mt="md">
-            <Tabs
-                value={currentTab}
-                onChange={(value) => {
-                    if (value === "application" || !value) {
-                        navigate({to: "/settings", replace: true});
-                    } else {
-                        navigate({to: "/settings/$activeTab", params: {activeTab: value}});
-                    }
-                }}
-                variant="pills"
-                radius="sm"
-            >
-                <Tabs.List justify="space-between" grow>
-                    {tabsList.map((tab) => (
-                        <Tabs.Tab key={tab.value} value={tab.value} leftSection={tab.icon}>
-                            {tab.label}
-                        </Tabs.Tab>
-                    ))}
-                </Tabs.List>
+        <div>
+            <Paper mt="md">
+                <Tabs
+                    value={currentTab}
+                    onChange={(value) => {
+                        if (value === "application" || !value) {
+                            navigate({to: "/settings", replace: true});
+                        } else {
+                            navigate({to: "/settings/$activeTab", params: {activeTab: value}});
+                        }
+                    }}
+                    variant="pills"
+                    radius="sm"
+                >
+                    <Tabs.List justify="space-between" grow>
+                        {tabsList.map((tab) => (
+                            <Tabs.Tab key={tab.value} value={tab.value} leftSection={tab.icon}>
+                                {tab.label}
+                            </Tabs.Tab>
+                        ))}
+                    </Tabs.List>
 
-                <Divider size="md" mt="xs"/>
-                {tabsList.map((tab) => (
-                    <Tabs.Panel key={tab.value} value={tab.value} mt="xs">
-                        {tab.component}
-                    </Tabs.Panel>
-                ))}
-            </Tabs>
-        </Paper>
+                    <Divider size="md" mt="xs"/>
+                    {tabsList.map((tab) => (
+                        <Tabs.Panel key={tab.value} value={tab.value} mt="xs">
+                            {tab.component}
+                        </Tabs.Panel>
+                    ))}
+                </Tabs>
+            </Paper>
+        </div>
     );
 };

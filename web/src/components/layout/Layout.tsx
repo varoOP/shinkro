@@ -1,4 +1,5 @@
-import {ActionIcon, AppShell, Code, Container, Flex, Group, Image, Menu, NavLink, rem, Title,} from "@mantine/core";
+import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title, Burger} from "@mantine/core";
+import {useDisclosure} from "@mantine/hooks";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
 import {MdDarkMode, MdLightMode} from "react-icons/md";
@@ -15,6 +16,7 @@ import {NAV_ROUTES} from "./navigation";
 import classes from "./Layout.module.css";
 
 export const Layout = () => {
+    const [opened, {toggle}] = useDisclosure();
     const router = useRouter();
 
     const {isError: isConfigError, error: configError, data: config} = useQuery(ConfigQueryOptions(true));
@@ -23,9 +25,13 @@ export const Layout = () => {
     }
 
     const {colorScheme, toggleTheme} = useThemeToggle();
-    // const settings = SettingsContext.use();
 
-    // Handle logout mutation
+    const handleNavLinkClick = () => {
+        if (window.innerWidth < 768 && opened) {
+            toggle();
+        }
+    };
+
     const logoutMutation = useMutation({
         mutationFn: APIClient.auth.logout,
         onSuccess: () => {
@@ -44,18 +50,15 @@ export const Layout = () => {
 
     return (
         <AppShell
-            padding="md"
             header={{height: 60}}
-            navbar={{
-                width: 250,
-                breakpoint: "sm",
-            }}
+            navbar={{width: 300, breakpoint: 'sm', collapsed: {mobile: !opened}}}
             className={classes.appshell}
         >
             <AppShell.Header className={classes.header}>
-                <Group h="100%" px="md" align="center">
+                <Group h="100%" px={"md"} align="center" gap={0}>
+                    <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" mr={"xs"}/>
                     <Image src={Logo} height={60}/>
-                    <Flex align="flex-end" gap="xs">
+                    <Flex align="flex-end" gap="xs" ml={"xs"}>
                         <Title order={3}>shinkro</Title>
                         <Code fw={700} className={classes.code}>
                             {config?.version}
@@ -75,7 +78,7 @@ export const Layout = () => {
                                 variant="outline"
                                 radius="md"
                                 size="lg"
-                                style={{marginLeft: "auto"}}
+                                ml={"auto"}
                             >
                                 <FaUser style={{width: "80%", height: "80%"}}/>
                             </ActionIcon>
@@ -94,19 +97,19 @@ export const Layout = () => {
                     </Menu>
 
                     <ExternalLink href="https://discord.gg/ZkYdfNgbAT">
-                        <ActionIcon variant="filled" color="#7289da" radius="md" size="lg">
+                        <ActionIcon variant="filled" color="#7289da" radius="md" size="lg" visibleFrom={"sm"} ml={"xs"}>
                             <FaDiscord style={{width: "80%", height: "80%"}}/>
                         </ActionIcon>
                     </ExternalLink>
 
                     <ExternalLink href="https://github.com/varoOP/shinkro">
-                        <ActionIcon variant="default" radius="md" size="lg">
+                        <ActionIcon variant="default" radius="md" size="lg" visibleFrom={"sm"} ml={"xs"}>
                             <FaGithub style={{width: "80%", height: "80%"}}/>
                         </ActionIcon>
                     </ExternalLink>
 
                     <ExternalLink href="https://docs.shinkro.com">
-                        <ActionIcon variant="default" radius="md" size="lg">
+                        <ActionIcon variant="default" radius="md" size="lg" visibleFrom={"sm"} ml={"xs"}>
                             <GrHelpBook style={{width: "80%", height: "80%"}}/>
                         </ActionIcon>
                     </ExternalLink>
@@ -117,6 +120,7 @@ export const Layout = () => {
                         size="lg"
                         onClick={toggleTheme}
                         aria-label="Theme Switch"
+                        ml={"xs"}
                     >
                         {colorScheme === "dark" ? (
                             <MdLightMode style={{width: "80%", height: "80%"}}/>
@@ -134,6 +138,7 @@ export const Layout = () => {
                         to={item.path}
                         params={{}}
                         style={{textDecoration: "none", color: "inherit"}}
+                        onClick={handleNavLinkClick}
                     >
                         {({isActive}) => {
                             return (
@@ -151,9 +156,9 @@ export const Layout = () => {
                 ))}
             </AppShell.Navbar>
             <AppShell.Main>
-                <Container style={{minWidth: "1280px", minHeight: "720px"}}>
+                <div className={classes.variableCenter}>
                     <Outlet/>
-                </Container>
+                </div>
             </AppShell.Main>
         </AppShell>
     );

@@ -1,4 +1,4 @@
-import {createTheme, virtualColor} from "@mantine/core";
+import {createTheme, virtualColor, Button} from "@mantine/core";
 
 export const theme = createTheme({
     primaryColor: "primary",
@@ -38,22 +38,11 @@ export const theme = createTheme({
 
     fontFamily: "Verdana, sans-serif",
 
-    // components: {
-    //     Paper: Paper.extend({
-    //         defaultProps: {
-    //             mt: "sm",
-    //             shadow: "md",
-    //             radius: "md",
-    //             withBorder: true,
-    //         },
-    //         styles: {
-    //             root: {
-    //                 minWidth: 450,
-    //                 minHeight: 250,
-    //                 margin: "0 auto",
-    //                 width: "100%",
-    //             },
-    //         },
-    //     }),
-    // },
+    components: {
+        Button: Button.extend({
+            defaultProps: {
+                variant: "outline",
+            },
+        }),
+    },
 });

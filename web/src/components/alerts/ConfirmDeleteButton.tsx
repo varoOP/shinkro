@@ -14,7 +14,7 @@ interface ConfirmDeleteButtonProps {
 export const ConfirmDeleteButton = ({
                                         onConfirm,
                                         title = "Confirm Deletion",
-                                        message = "This action cannot be undone. Are you sure you want to delete? It will erase your Plex Media Server connection settings.",
+                                        message = "",
                                         confirmText = "DELETE",
                                         cancelText = "CANCEL",
                                         loading = false,
@@ -28,14 +28,14 @@ export const ConfirmDeleteButton = ({
                     icon={<HiExclamationTriangle size="1.5rem"/>}
                     title="Warning"
                     color="red"
-                    variant="light"
+                    variant="outline"
                     mb="md"
                 >
-                    {message}
+                    This action cannot be undone! Are you sure you want to delete? {message}
                 </Alert>
 
                 <Group justify="flex-end" mt="md">
-                    <Button variant="default" onClick={close}>
+                    <Button onClick={close}>
                         {cancelText}
                     </Button>
                     <Button
@@ -51,7 +51,7 @@ export const ConfirmDeleteButton = ({
                 </Group>
             </Modal>
 
-            <Button color="red" onClick={open}>
+            <Button color="red" variant={"filled"} onClick={open}>
                 {confirmText}
             </Button>
         </>

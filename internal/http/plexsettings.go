@@ -2,8 +2,10 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/varoOP/shinkro/pkg/plex"
 	"io"
 	"net/http"
@@ -16,10 +18,10 @@ import (
 
 type plexsettingsService interface {
 	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
+	Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
 	Get(ctx context.Context) (*domain.PlexSettings, error)
 	Delete(ctx context.Context) error
 	GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error)
-	GetEncryptionKey() ([]byte, error)
 }
 
 type plexsettingsHandler struct {
@@ -48,8 +50,15 @@ func (h plexsettingsHandler) Routes(r chi.Router) {
 
 func (h plexsettingsHandler) getPlexSettings(w http.ResponseWriter, r *http.Request) {
 	ps, err := h.service.Get(r.Context())
+	if errors.Is(err, sql.ErrNoRows) {
+		h.encoder.NoContent(w)
+		return
+	}
 	if err != nil {
-		h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{})
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "PLEX_SETTINGS_ERROR",
+			"message": err.Error(),
+		})
 		return
 	}
 	h.encoder.StatusResponse(w, http.StatusOK, ps)
@@ -72,19 +81,7 @@ func (h plexsettingsHandler) putPlexSettings(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ps, err := h.service.Get(r.Context())
-	if err != nil {
-		h.encoder.StatusResponse(w, http.StatusNoContent, map[string]interface{}{
-			"code":    "PLEX_SETTINGS_TOKEN_NOT_FOUND",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	data.TokenIV = ps.TokenIV
-	data.Token = ps.Token
-
-	ps, err = h.service.Store(r.Context(), data)
+	ps, err := h.service.Update(r.Context(), data)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -261,24 +258,6 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encryptionKey, err := h.service.GetEncryptionKey()
-	if err != nil {
-		h.encoder.Error(w, err)
-		return
-	}
-
-	iv, err := generateRandomIV()
-	if err != nil {
-		h.encoder.Error(w, err)
-		return
-	}
-
-	encryptedToken, err := encryptToken(*tokenresp.AuthToken, encryptionKey, iv)
-	if err != nil {
-		h.encoder.Error(w, err)
-		return
-	}
-
 	var plexDetails struct {
 		PlexUser string `json:"username"`
 	}
@@ -312,11 +291,17 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenIV, err := generateRandomIV()
+	if err != nil {
+		h.encoder.Error(w, err)
+		return
+	}
+
 	var p = domain.PlexSettings{
 		ClientID: clientID,
 		PlexUser: plexDetails.PlexUser,
-		Token:    encryptedToken,
-		TokenIV:  iv,
+		Token:    []byte(*tokenresp.AuthToken),
+		TokenIV:  tokenIV,
 	}
 
 	_, err = h.service.Store(r.Context(), p)
@@ -326,7 +311,6 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
-		"token":     encryptedToken,
 		"plex_user": plexDetails.PlexUser,
 		"client_id": clientID,
 	})

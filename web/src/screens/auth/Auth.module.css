@@ -1,0 +1,13 @@
+.outerContainer {
+    width: 100%;
+    min-height: 100vh;
+    padding-top: 10vh;
+}
+
+.innerContainer {
+    width: 100%;
+    max-width: 600px;
+    min-width: 280px;
+    padding: 1rem;
+    margin: 0 auto;
+}

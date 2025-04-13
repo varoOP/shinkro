@@ -9,22 +9,14 @@ import (
 type MalAuthRepo interface {
 	Store(ctx context.Context, ma *MalAuth) error
 	Get(ctx context.Context) (*MalAuth, error)
-	StoreMalAuthOpts(ctx context.Context, mo *MalAuthOpts) error
-	GetMalAuthOpts(ctx context.Context) (*MalAuthOpts, error)
+	Delete(ctx context.Context) error
 }
 
 type MalAuth struct {
 	Id          int
 	Config      oauth2.Config
-	AccessToken oauth2.Token
-}
-
-type MalAuthOpts struct {
-	ClientID     string `json:"clientID"`
-	ClientSecret string `json:"clientSecret"`
-	Verifier     string `json:"verifier"`
-	State        string `json:"state"`
-	Code         string `json:"code"`
+	AccessToken []byte
+	TokenIV     []byte
 }
 
 type MalAuthURLs string
@@ -32,7 +24,7 @@ type MalAuthURLs string
 const AuthURL MalAuthURLs = "https://myanimelist.net/v1/oauth2/authorize"
 const TokenURL MalAuthURLs = "https://myanimelist.net/v1/oauth2/token"
 
-func NewMalAuth(clientID, clientSecret string) *MalAuth {
+func NewMalAuth(clientID, clientSecret string, accessToken, tokenIV []byte) *MalAuth {
 	return &MalAuth{
 		Id: 1,
 		Config: oauth2.Config{
@@ -44,15 +36,7 @@ func NewMalAuth(clientID, clientSecret string) *MalAuth {
 				AuthStyle: oauth2.AuthStyleInParams,
 			},
 		},
-	}
-}
-
-func NewMalAuthOpts(clientID, clientSecret, verifier, state, code string) *MalAuthOpts {
-	return &MalAuthOpts{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Verifier:     verifier,
-		State:        state,
-		Code:         code,
+		AccessToken: accessToken,
+		TokenIV:     tokenIV,
 	}
 }

@@ -3,7 +3,6 @@ export interface PlexConfig {
     port: number;
     tls: boolean;
     tls_skip: boolean;
-    token: string;
     client_id: string;
     anime_libs: string[];
     plex_user: string;

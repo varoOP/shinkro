@@ -1,9 +1,8 @@
 package http
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -209,17 +208,35 @@ func generateRandomIV() ([]byte, error) {
 	return iv, nil
 }
 
-func encryptToken(plaintext string, key []byte, iv []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
+func generatePKCE(length int) (verifier, challenge string, err error) {
+	if length < 43 || length > 128 {
+		return "", "", errors.New("length not supported")
 	}
 
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
+	randomBytes := make([]byte, length)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", "", errors.Errorf("failed to generate random bytes: %v", err)
 	}
 
-	ciphertext := gcm.Seal(nil, iv, []byte(plaintext), nil)
-	return ciphertext, nil
+	verifier = base64.URLEncoding.EncodeToString(randomBytes)
+	verifier = verifier[:length]
+
+	//Waiting for support from MAL side
+	// s256 := sha256.New()
+	// s256.Write([]byte(verifier))
+	// challenge = base64.URLEncoding.EncodeToString(s256.Sum(nil))
+	// challenge = base64.RawURLEncoding.EncodeToString(s256.Sum(nil))
+
+	challenge = verifier
+	return verifier, challenge, nil
+}
+
+func generateState(l int) (string, error) {
+	random := make([]byte, l)
+	_, err := rand.Read(random)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to generate random string")
+	}
+
+	return base64.URLEncoding.EncodeToString(random)[:l], nil
 }

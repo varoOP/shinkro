@@ -1,16 +1,16 @@
 import {useMutation} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
 import {useForm} from "@mantine/form";
+import classes from "./Auth.module.css";
 import {
     Button,
     Paper,
     Image,
     Stack,
+    Group,
     TextInput,
     PasswordInput,
-    Group,
     Title,
-    Container,
 } from "@mantine/core";
 
 import {APIClient} from "@api/APIClient";
@@ -47,37 +47,38 @@ export const Onboarding = () => {
     });
 
     return (
-        <Container>
-            <Image src={Logo} fit="contain" h={100} alt="Logo"/>
-            <Title ta="center" order={2}>
-                shinkro
-            </Title>
-            <Paper p="xl">
-                <Stack align="stretch" justify="center" gap="sm">
+        <div className={classes.outerContainer}>
+            <div className={classes.innerContainer}>
+                <Image src={Logo} fit="contain" h={100} alt="Logo"/>
+                <Title ta="center" order={2}>
+                    shinkro
+                </Title>
+                <Paper withBorder={true} shadow={"xl"} mt={"md"} p={"xl"}>
                     <form
                         onSubmit={form.onSubmit((values) => mutation.mutate(values))}
-                        style={{width: "100%"}}
                     >
-                        <TextInput mt="sm"
-                                   placeholder="USERNAME"
-                                   {...form.getInputProps("username")}
-                        />
-                        <PasswordInput mt="sm"
-                                       placeholder="PASSWORD"
-                                       {...form.getInputProps("pass")}
-                        />
-                        <PasswordInput mt="sm"
-                                       placeholder="CONFIRM PASSWORD"
-                                       {...form.getInputProps("confirmPass")}
-                        />
-                        <Group justify="center" mt="md">
-                            <Button type="submit" fullWidth>
-                                Create Account
-                            </Button>
-                        </Group>
+                        <Stack>
+                            <TextInput mt="sm"
+                                       placeholder="USERNAME"
+                                       {...form.getInputProps("username")}
+                            />
+                            <PasswordInput mt="sm"
+                                           placeholder="PASSWORD"
+                                           {...form.getInputProps("pass")}
+                            />
+                            <PasswordInput mt="sm"
+                                           placeholder="CONFIRM PASSWORD"
+                                           {...form.getInputProps("confirmPass")}
+                            />
+                            <Group justify={"center"}>
+                                <Button type="submit">
+                                    CREATE ACCOUNT
+                                </Button>
+                            </Group>
+                        </Stack>
                     </form>
-                </Stack>
-            </Paper>
-        </Container>
+                </Paper>
+            </div>
+        </div>
     );
 };

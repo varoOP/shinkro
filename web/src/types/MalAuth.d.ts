@@ -1,7 +1,8 @@
-export interface MalAuthOpts {
+export interface MalAuth {
     clientID: string;
     clientSecret: string;
-    verifier: string;
-    state: string;
-    code: string;
+}
+
+export interface StartAuthResponse {
+    url: string;
 }

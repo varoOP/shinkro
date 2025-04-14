@@ -5,40 +5,44 @@ import {Text, Button, Center, Stack, Container, Image, Paper} from "@mantine/cor
 
 export const NotFound = () => {
     return (
-        <Center>
-            <Container size="md">
-                <Paper withBorder={true} radius="md" shadow={"xl"} p={"xl"}>
-                    <Image src={Logo} alt="Logo" width={120} height={120} fit="contain"/>
-                    <Stack align="center" mt="md">
-                        <Text size="xl" fw={700}>404 Page Not Found</Text>
-                        <Text size="lg" c="dimmed">
-                            Oops, looks like there was a little too much plot!
-                        </Text>
-                        <Text size="md" c="dimmed">
-                            In case you think this is a bug rather than too much plot,
-                        </Text>
-                        <Text size="md" c="dimmed">
-                            feel free to report this to our{" "}
-                            <ExternalLink href="https://github.com/varoOP/shinkro">
-                                GitHub page
-                            </ExternalLink>{" "}
-                            or to{" "}
-                            <ExternalLink href="https://discord.gg/ZkYdfNgbAT">
-                                our official Discord channel
-                            </ExternalLink>
-                            .
-                        </Text>
-                        <Text size="md" c="dimmed">
-                            Otherwise, let us help you to get you back on track for more plot!
-                        </Text>
-                        <Link to="/">
-                            <Button size="md" color="blue">
-                                Back to Dashboard
-                            </Button>
-                        </Link>
-                    </Stack>
-                </Paper>
-            </Container>
-        </Center>
+        <div style={{padding: '1rem'}}>
+            <Center pt="10vh">
+                <Container size="md">
+                    <Paper withBorder radius="md" shadow="xl" p="xl">
+                        <Image src={Logo} alt="Logo" width={120} height={120} fit="contain"/>
+                        <Stack align="center" mt="md" gap="xs">
+                            <Text size="xl" fw={700}>
+                                404 — Lost in the Plot
+                            </Text>
+                            <Text size="lg" c="dimmed" ta="center">
+                                You’ve wandered too far and triggered a secret route...
+                            </Text>
+                            <Text size="md" c="dimmed" ta="center">
+                                If you believe this was not fate but a bug,
+                            </Text>
+                            <Text size="md" c="dimmed" ta="center">
+                                send a raven to our{" "}
+                                <ExternalLink href="https://github.com/varoOP/shinkro">
+                                    GitHub guild
+                                </ExternalLink>{" "}
+                                or rally at{" "}
+                                <ExternalLink href="https://discord.gg/ZkYdfNgbAT">
+                                    our Discord tavern
+                                </ExternalLink>
+                                .
+                            </Text>
+                            <Text size="md" c="dimmed" ta="center">
+                                Otherwise, ready your gear — we’ll guide you back to the main story!
+                            </Text>
+                            <Link to="/">
+                                <Button size="md" color="blue" mt="md">
+                                    Return to Dashboard
+                                </Button>
+                            </Link>
+                        </Stack>
+                    </Paper>
+                </Container>
+            </Center>
+        </div>
     );
 };

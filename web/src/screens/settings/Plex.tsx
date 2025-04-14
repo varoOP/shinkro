@@ -6,7 +6,6 @@ import {
     Center,
     Loader,
     Group,
-    Paper,
     Table,
     Flex,
     Divider,
@@ -44,7 +43,7 @@ export const Plex = () => {
     const deleteMutation = useMutation({
         mutationFn: APIClient.plex.delete,
         onSuccess: () => {
-            queryClient.resetQueries({queryKey: PlexSettingsKeys.config()});
+            queryClient.invalidateQueries({queryKey: PlexSettingsKeys.config()});
             displayNotification({
                 title: "Success",
                 message: "Plex settings deleted successfully.",
@@ -95,9 +94,8 @@ export const Plex = () => {
                 {label: 'TLS Skip Verification', value: settings.tls_skip ? 'Enabled' : 'Disabled'},
             ]
             : [];
-
     return (
-        <Paper withBorder={true} p="md" shadow="xl">
+        <>
             <Stack justify="center">
                 <Title order={1} mt="md">
                     Plex Media Server
@@ -164,6 +162,6 @@ export const Plex = () => {
                 onSubmit={handleFormSubmit}
                 defaultValues={settings}
             />
-        </Paper>
+        </>
     );
 };

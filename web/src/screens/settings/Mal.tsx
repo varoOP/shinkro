@@ -1,7 +1,20 @@
 import {APIClient} from "@api/APIClient.ts";
 import {displayNotification} from "@components/notifications";
 import {useState, useEffect} from "react";
-import {Divider, Paper, Text, Title, Stack, PasswordInput, Button, Loader, Flex, Group} from "@mantine/core";
+import {
+    Divider,
+    Paper,
+    Text,
+    Title,
+    Stack,
+    PasswordInput,
+    Button,
+    Loader,
+    Flex,
+    Group,
+    Tooltip,
+    CopyButton
+} from "@mantine/core";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useForm} from "@mantine/form";
 import {MalAuth} from "@app/types/MalAuth";
@@ -13,7 +26,6 @@ export const Mal = () => {
     const queryClient = useQueryClient();
     const {data: malauth, isLoading} = useQuery(MalQueryOptions());
     const [testSucess, setTestSuccess] = useState<boolean | null>(null);
-    ;
 
     const isEmptySettings = !malauth || Object.keys(malauth).length === 0;
 
@@ -32,7 +44,7 @@ export const Mal = () => {
             if (event.origin !== window.location.origin) {
                 return;
             }
-            if (event.data?.type === "mal-auth-success") {
+            if (event.data?.type === "mal-auth") {
                 queryClient.invalidateQueries({queryKey: MalAuthKeys.config()});
             }
         };
@@ -79,16 +91,7 @@ export const Mal = () => {
         onSuccess: (data) => {
             const url = data?.url;
             if (url) {
-                const width = 600;
-                const height = 700;
-                const left = window.screenX + (window.innerWidth - width) / 2;
-                const top = window.screenY + (window.innerHeight - height) / 2;
-
-                window.open(
-                    url,
-                    "MyAnimeList.net OAuth", // popup window name
-                    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-                );
+                window.open(url, "_blank");
             }
         },
         onError: (error) => {
@@ -105,7 +108,7 @@ export const Mal = () => {
     };
 
     return (
-        <Paper withBorder={true} p="md" shadow="xl">
+        <>
             <Stack>
                 <Title order={1} mt="md">
                     MyAnimeList
@@ -124,32 +127,48 @@ export const Mal = () => {
                                     direction={"column"}
                                     gap={"md"}
                                     align={"stretch"}
-                                    w={"350px"}
+                                    w={"100%"}
+                                    maw={"600px"}
+                                    miw={"280px"}
                                     mx={"auto"}
                                 >
                                     <Group justify={"center"}>
-                                        <Text fw={600} size={"md"}>
+                                        <Text fw={600} size={"xl"}>
                                             Login with MyAnimeList.net
                                         </Text>
                                     </Group>
-                                    <form onSubmit={form.onSubmit(handleFormSubmit)}>
-                                        <PasswordInput
-                                            label="Client ID"
-                                            placeholder="Enter Client ID"
-                                            {...form.getInputProps("clientID")}
-                                        />
-                                        <PasswordInput
-                                            label="Client Secret"
-                                            placeholder="Enter Client Secret"
-                                            {...form.getInputProps("clientSecret")}
-                                            mt={"md"}
-                                        />
-                                        <Group justify={"center"}>
-                                            <Button type="submit" mt={"md"}>
-                                                LOGIN
-                                            </Button>
-                                        </Group>
-                                    </form>
+                                    <Paper withBorder p={"md"}>
+                                        <form onSubmit={form.onSubmit(handleFormSubmit)}>
+                                            <PasswordInput
+                                                label="Client ID"
+                                                placeholder="Enter Client ID"
+                                                {...form.getInputProps("clientID")}
+                                            />
+                                            <PasswordInput
+                                                label="Client Secret"
+                                                placeholder="Enter Client Secret"
+                                                {...form.getInputProps("clientSecret")}
+                                                mt={"md"}
+                                            />
+                                            <Group justify={"center"} align={"flex-end"}>
+                                                <CopyButton value={`${window.location.origin}/malauth/callback`}>
+                                                    {({copied, copy}) => (
+                                                        <Tooltip
+                                                            withArrow
+                                                            position={"bottom"}
+                                                            label={`App Redirect URL: ${window.location.origin}/malauth/callback`}>
+                                                            <Button color={copied ? 'teal' : 'mal'} onClick={copy}>
+                                                                {copied ? 'COPIED URL' : 'COPY APP REDIRECT URL'}
+                                                            </Button>
+                                                        </Tooltip>
+                                                    )}
+                                                </CopyButton>
+                                                <Button type="submit" mt={"md"}>
+                                                    LOGIN
+                                                </Button>
+                                            </Group>
+                                        </form>
+                                    </Paper>
                                 </Flex>
                             </>
                         ) : (
@@ -174,6 +193,6 @@ export const Mal = () => {
                     </>
                 )}
             </Stack>
-        </Paper>
+        </>
     );
 };

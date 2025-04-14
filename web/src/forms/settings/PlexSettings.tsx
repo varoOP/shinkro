@@ -74,8 +74,13 @@ export const PlexSettings = ({
     const [testingConnection, setTestingConnection] = useState(false);
 
     useEffect(() => {
-        if (defaultValues) {
+        if (defaultValues && Object.keys(defaultValues).length !== 0) {
             form.setValues(defaultValues);
+        } else {
+            form.reset();
+            setServers(null);
+            setAuthenticated(false);
+            setSelectedServer(null);
         }
     }, [defaultValues]);
 
@@ -86,7 +91,7 @@ export const PlexSettings = ({
             displayNotification(
                 {
                     title: "Plex Already Authenticated",
-                    message: "Loading Servers..",
+                    message: "Choose a Server",
                     type: "info",
                 }
             )

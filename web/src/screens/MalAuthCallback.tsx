@@ -1,7 +1,10 @@
 import {useMutation} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient.ts";
-import {Center, Loader, Stack, Text, Button} from "@mantine/core";
+import {Flex, Group, Loader, Stack, Text, Button, Paper, Image} from "@mantine/core";
+import {SiMyanimelist} from "react-icons/si";
+import {FaArrowRightArrowLeft} from "react-icons/fa6";
 import {useEffect} from "react";
+import Logo from "@app/logo.svg";
 
 export const MalAuthCallback = () => {
     const mutation = useMutation({
@@ -23,49 +26,50 @@ export const MalAuthCallback = () => {
     }, []);
 
     useEffect(() => {
-        if (mutation.isSuccess) {
-            window.opener?.postMessage({type: "mal-auth-success"}, window.location.origin);
-            const timer = setTimeout(() => {
-                window.close();
-            }, 100);
-
-            return () => clearTimeout(timer);
+        if (mutation.isSuccess || mutation.isError) {
+            window.opener?.postMessage({type: "mal-auth"}, window.location.origin);
         }
-    }, [mutation.isSuccess]);
+    }, [mutation.isSuccess, mutation.isError]);
 
-    if (mutation.isPending) {
-        return (
-            <Center style={{height: "100vh"}}>
+    return (
+        <Flex
+            direction={"column"}
+            w={"100%"}
+            maw={"600px"}
+            miw={"280px"}
+            mx={"auto"}
+            pt={"10vh"}
+            align={"stretch"}
+        >
+            <Paper
+                withBorder
+                p="md"
+                shadow="xl"
+            >
+                <Group justify={"center"}>
+                    <Image src={Logo} fit="contain" h={80}/>
+                    <FaArrowRightArrowLeft size={50}/>
+                    <SiMyanimelist size={100} color="#2e51a2"/>
+                </Group>
                 <Stack align="center">
-                    <Loader size="xl"/>
-                    <Text>Authenticating with MyAnimeList...</Text>
+                    {mutation.isPending ? (
+                        <>
+                            <Loader size="xl"/>
+                            <Text>Authenticating with MyAnimeList...</Text>
+                        </>
+                    ) : (
+                        <>
+                            {mutation.isSuccess ? (
+                                <Text size="xl" fw={600} c="green">Authentication Successful!</Text>
+                            ) : (
+                                <Text size="xl" fw={600} c="red">Authentication Failed!</Text>
+                            )}
+                        </>
+                    )}
+                    <Text c={"dimmed"}>You may close this window now.</Text>
+                    <Button onClick={() => window.close()}>CLOSE WINDOW</Button>
                 </Stack>
-            </Center>
-        );
-    }
-
-    if (mutation.isSuccess) {
-        return (
-            <Center style={{height: "100vh"}}>
-                <Stack align="center">
-                    <Text size="xl" fw={600} c="green">Authentication successful!</Text>
-                    <Text>Closing Window in a few seconds..</Text>
-                </Stack>
-            </Center>
-        );
-    }
-
-    if (mutation.isError) {
-        return (
-            <Center style={{height: "100vh"}}>
-                <Stack align="center">
-                    <Text size="xl" fw={600} c="red">Authentication failed!</Text>
-                    <Text>Please close this window and try again.</Text>
-                    <Button onClick={() => window.close()}>Close Window</Button>
-                </Stack>
-            </Center>
-        );
-    }
-
-    return null;
+            </Paper>
+        </Flex>
+    );
 };

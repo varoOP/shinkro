@@ -23,7 +23,7 @@ export const ConfirmDeleteButton = ({
 
     return (
         <>
-            <Modal opened={opened} onClose={close} title={title} centered size="sm">
+            <Modal opened={opened} onClose={close} title={title}>
                 <Alert
                     icon={<HiExclamationTriangle size="1.5rem"/>}
                     title="Warning"

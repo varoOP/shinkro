@@ -323,12 +323,12 @@ export const APIClient = {
     },
 
     malauth: {
-        start: (clientID: string, clientSecret: string) =>
+        start: (ma: MalAuth) =>
             appClient.Post<StartAuthResponse>("api/malauth", {
                 queryString: {
-                    clientID,
-                    clientSecret,
-                }
+                    clientID: ma.clientID,
+                    clientSecret: ma.clientSecret,
+                },
             }),
 
         get: () =>

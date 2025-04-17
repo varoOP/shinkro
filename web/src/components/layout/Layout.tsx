@@ -1,4 +1,4 @@
-import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title, Burger, Paper} from "@mantine/core";
+import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title, Burger} from "@mantine/core";
 import {useDisclosure} from "@mantine/hooks";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
@@ -157,9 +157,7 @@ export const Layout = () => {
             </AppShell.Navbar>
             <AppShell.Main>
                 <div className={classes.variableCenter}>
-                    <Paper mt="md" withBorder p={"md"} h={"100%"} mih={"80vh"}>
-                        <Outlet/>
-                    </Paper>
+                    <Outlet/>
                 </div>
             </AppShell.Main>
         </AppShell>

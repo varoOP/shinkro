@@ -19,18 +19,18 @@ import {
 } from "@app/types/Plex";
 import {APIClient} from "@api/APIClient";
 import {displayNotification} from "@components/notifications";
+import {useMutation, useQueryClient} from "@tanstack/react-query";
+import {PlexSettingsKeys} from "@api/query_keys.ts";
 
 interface Props {
     opened: boolean;
     onClose: () => void;
-    onSubmit: (values: PlexConfig) => void;
     defaultValues?: Partial<PlexConfig>;
 }
 
 export const PlexSettings = ({
                                  opened,
                                  onClose,
-                                 onSubmit,
                                  defaultValues,
                              }: Props) => {
     const form = useForm<PlexConfig>({
@@ -55,6 +55,7 @@ export const PlexSettings = ({
         },
     });
 
+    const queryClient = useQueryClient();
     const [polling, setPolling] = useState(false);
     const [oauthInfo, setOauthInfo] = useState<{
         pin_id: number;
@@ -145,6 +146,10 @@ export const PlexSettings = ({
                 if (result.message === "waiting for auth") {
                     return;
                 }
+                clearInterval(interval);
+                clearTimeout(timeout);
+                setPolling(false);
+                setOauthInfo(null);
                 setAuthenticated(true)
                 form.setValues((prev) => ({
                     ...prev,
@@ -157,10 +162,6 @@ export const PlexSettings = ({
                     message: `Logged in as ${result.plex_user}`,
                     type: "success",
                 });
-                clearInterval(interval);
-                clearTimeout(timeout);
-                setPolling(false);
-                setOauthInfo(null);
             } catch (err) {
                 setAuthenticated(false);
                 const error = err as Error;
@@ -228,11 +229,6 @@ export const PlexSettings = ({
                 return;
             }
             setServers({Servers: serverList});
-            displayNotification({
-                title: "Servers Loaded",
-                message: "Plex servers loaded successfully.",
-                type: "success",
-            });
         } catch (err) {
             const error = err as Error;
             displayNotification({
@@ -269,13 +265,7 @@ export const PlexSettings = ({
         try {
             setLoadingLibraries(true);
             const response = await APIClient.plex.libraries(form.getValues());
-            console.log("Libraries response:", response);
             setLibraries(response.MediaContainer.Directory || []);
-            displayNotification({
-                title: "Libraries Loaded",
-                message: "Anime libraries loaded successfully.",
-                type: "success",
-            });
         } catch (err) {
             const error = err as Error;
             displayNotification({
@@ -315,19 +305,28 @@ export const PlexSettings = ({
         }
     }
 
+    const mutation = useMutation({
+        mutationFn: APIClient.plex.updateSettings,
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: PlexSettingsKeys.config()});
+            onClose();
+            displayNotification({
+                title: "Success",
+                message: "Plex settings updated successfully",
+                type: "success",
+            });
+        },
+        onError: (error) => {
+            displayNotification({
+                title: "Update failed",
+                message: error.message || "Could not update Plex settings",
+                type: "error",
+            });
+        },
+    });
+
     const handleFormSubmit = (values: PlexConfig) => {
-        // Prepare settings for submission.
-        const settings: PlexConfig = {
-            host: values.host,
-            port: values.port,
-            client_id: values.client_id,
-            tls: values.tls,
-            tls_skip: values.tls_skip,
-            anime_libs: values.anime_libs,
-            plex_user: values.plex_user,
-            plex_client_enabled: values.plex_client_enabled,
-        };
-        onSubmit(settings);
+        mutation.mutate(values);
     };
 
     const handHostChange = (value: string | null) => {
@@ -437,13 +436,13 @@ export const PlexSettings = ({
 
                     <Group mt="sm" justify="flex-end">
                         <Button variant="default" onClick={onClose} disabled={polling}>
-                            Cancel
+                            CANCEL
                         </Button>
                         <Button onClick={testPlex} loading={testingConnection}>
-                            Test
+                            TEST
                         </Button>
                         <Button type="submit" disabled={polling}>
-                            Save
+                            SAVE
                         </Button>
                     </Group>
                 </Stack>

@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useMutation, useQueryErrorResetBoundary} from "@tanstack/react-query";
-import {useRouter, useSearch} from "@tanstack/react-router";
+import {useNavigate, useRouter, useSearch} from "@tanstack/react-router";
 import {FaQuestion} from "react-icons/fa";
 import {APIClient} from "@api/APIClient";
 import {displayNotification} from "@components/notifications";
@@ -34,6 +34,7 @@ export const Login = () => {
 
     const router = useRouter();
     const search = useSearch({from: LoginRoute.id});
+    const navigate = useNavigate();
 
     const form = useForm<LoginFormFields>({
         initialValues: {username: "", password: ""},
@@ -92,9 +93,9 @@ export const Login = () => {
 
     React.useLayoutEffect(() => {
         if (auth.isLoggedIn && search.redirect) {
-            router.history.push(search.redirect);
+            void navigate({to: search.redirect});
         } else if (auth.isLoggedIn) {
-            router.history.push("/");
+            void navigate({to: "/"});
         }
     }, [auth.isLoggedIn, search.redirect]);
 

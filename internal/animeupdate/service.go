@@ -103,7 +103,7 @@ func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate,
 	if err := updateFunc(ctx, client); err != nil {
 		return err
 	}
-
+	s.log.Info().Interface("status", anime.ListStatus).Msg("MyAnimeList Updated Successfully")
 	return s.Store(ctx, anime)
 }
 

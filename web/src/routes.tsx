@@ -14,6 +14,13 @@ import {Layout} from "@components/layout";
 import {NotFound} from "@components/alerts/NotFound";
 import {Dashboard} from "@screens/Dashboard";
 import {Settings} from "@screens/Settings";
+import {Application} from "@screens/settings/Application";
+import {User} from "@screens/settings/User";
+import {Api} from "@screens/settings/Api";
+import {Notifications} from "@screens/settings/Notifications";
+import {Logs} from "@screens/settings/Logs";
+import {Plex} from "@screens/settings/Plex";
+import {Mal} from "@screens/settings/Mal";
 import {AuthContext, SettingsContext} from "@utils/Context";
 import {TanStackRouterDevtools} from "@tanstack/router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
@@ -115,23 +122,6 @@ function AuthenticatedLayout() {
     );
 }
 
-// function AuthenticatedMal() {
-//     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
-//     if (!isLoggedIn) {
-//         const redirect =
-//             location.pathname.length > 1
-//                 ? {redirect: location.pathname}
-//                 : undefined;
-//         return <Navigate to="/login" search={redirect}/>;
-//     }
-//
-//     return (
-//         <div className="full-height-center">
-//             <MalAuthCallback/>
-//         </div>
-//     );
-// }
-
 export const MalAuthRoute = createRoute({
     getParentRoute: () => AuthRoute,
     component: MalAuthCallback,
@@ -141,23 +131,59 @@ export const MalAuthRoute = createRoute({
 
 export const SettingsRoute = createRoute({
     getParentRoute: () => AuthIndexRoute,
-    path: "settings", // /settings
+    path: "settings",
     pendingMs: 3000,
     component: Settings,
 });
 
-export const SettingsActiveRoute = createRoute({
-    getParentRoute: () => AuthIndexRoute,
-    path: "settings/$activeTab", // /settings/plex, /settings/mal, etc.
+export const SettingsApplicationRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/",
     pendingMs: 3000,
-    component: Settings,
+    component: Application,
 });
 
-// export const SettingsIndexRoute = createRoute({
-//     getParentRoute: () => SettingsRoute,
-//     path: '/',
-//     component: ApplicationSettings
-// });
+export const SettingsUserRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/user",
+    pendingMs: 3000,
+    component: User,
+});
+
+export const SettingsApiRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/api",
+    pendingMs: 3000,
+    component: Api,
+});
+
+export const SettingsNotificationsRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/notifications",
+    pendingMs: 3000,
+    component: Notifications,
+});
+
+export const SettingsLogsRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/logs",
+    pendingMs: 3000,
+    component: Logs,
+});
+
+export const SettingsPlexRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/plex",
+    pendingMs: 3000,
+    component: Plex,
+});
+
+export const SettingsMalRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "/mal",
+    pendingMs: 3000,
+    component: Mal,
+});
 
 export const AuthIndexRoute = createRoute({
     getParentRoute: () => AuthRoute,
@@ -188,8 +214,17 @@ export const RootRoute = createRootRouteWithContext<{
     notFoundComponent: NotFound,
 });
 
+const settingsRouteTree = SettingsRoute.addChildren([
+    SettingsApplicationRoute,
+    SettingsUserRoute,
+    SettingsApiRoute,
+    SettingsNotificationsRoute,
+    SettingsLogsRoute,
+    SettingsPlexRoute,
+    SettingsMalRoute,
+]);
 const authenticatedTree = AuthRoute.addChildren([
-    AuthIndexRoute.addChildren([DashboardRoute, SettingsRoute, SettingsActiveRoute]),
+    AuthIndexRoute.addChildren([DashboardRoute, settingsRouteTree]),
 ]);
 const routeTree = RootRoute.addChildren([
     LoginRoute,

@@ -1,7 +1,6 @@
 import {
     Button,
     Stack,
-    Loader,
     Group,
     Table,
 } from "@mantine/core";
@@ -25,7 +24,7 @@ export const Plex = () => {
     const queryClient = useQueryClient();
     const [isReachable, setIsReachable] = useState<boolean | null>(null);
     const [opened, {open, close}] = useDisclosure(false);
-    const {data: settings, isLoading} = useQuery(PlexSettingsQueryOptions());
+    const {data: settings} = useQuery(PlexSettingsQueryOptions());
     const isEmptySettings = !settings || Object.keys(settings).length === 0;
 
     useEffect(() => {
@@ -76,16 +75,18 @@ export const Plex = () => {
                     title="Plex Media Server"
                     description="Manage the connection to your Plex Media Server here."
                 />
-                {isLoading || (!isEmptySettings && isReachable === null) ? (
-                    <Loader mt="md" mx={"auto"}/>
-                ) : isEmptySettings ? (
+                {isEmptySettings ? (
                     <CenteredEmptyState
                         message="Plex Setup Not Found"
                         button={<Button onClick={open}>SETUP PLEX</Button>}
                     />
                 ) : (
                     <>
-                        <StatusIndicator label="Connection Status:" status={isReachable}/>
+                        <StatusIndicator
+                            label="Connection Status:"
+                            status={isReachable}
+                            loadStatus={isReachable === null}
+                        />
                         <Table variant="vertical" verticalSpacing="sm" withTableBorder>
                             <Table.Tbody>
                                 {rows.map((row, index) => (

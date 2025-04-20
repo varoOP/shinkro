@@ -4,7 +4,6 @@ import {useState, useEffect} from "react";
 import {
     Stack,
     Button,
-    Loader,
     Group,
 } from "@mantine/core";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
@@ -17,7 +16,7 @@ import {CenteredEmptyState, SettingsSectionHeader, StatusIndicator} from "@scree
 
 export const Mal = () => {
     const queryClient = useQueryClient();
-    const {data: malauth, isLoading} = useQuery(MalQueryOptions());
+    const {data: malauth} = useQuery(MalQueryOptions());
     const [loading, setLoading] = useState(false);
 
     const [opened, {open, close}] = useDisclosure(false);
@@ -80,32 +79,30 @@ export const Mal = () => {
                     title={"MyAnimeList"}
                     description={"Manage the connection to your MyAnimeList account here."}
                 />
-                {(isLoading || (!isEmptySettings && testSucess === null)) ? (
-                    <Loader mt={"md"} mx={"auto"}/>
+                {isEmptySettings ? (
+                    <CenteredEmptyState
+                        message={"No MyAnimeList Credentials Found"}
+                        button={
+                            <Button onClick={open}>
+                                START AUTHENTICATION
+                            </Button>
+                        }
+                    />
                 ) : (
                     <>
-                        {isEmptySettings ? (
-                            <CenteredEmptyState
-                                message={"No MyAnimeList Credentials Found"}
-                                button={
-                                    <Button onClick={open}>
-                                        START AUTHENTICATION
-                                    </Button>
-                                }
+                        <StatusIndicator
+                            label={"Authentication Status:"}
+                            status={testSucess}
+                            loadStatus={testSucess === null}
+                        />
+                        <Group justify="flex-start">
+                            <ConfirmDeleteButton
+                                message={"MyAnimeList.net credentials will be deleted."}
+                                confirmText={"REMOVE ACCESS"}
+                                onConfirm={() => deleteMutation.mutate()}
                             />
-                        ) : (
-                            <>
-                                <StatusIndicator label={"Authentication Status:"} status={testSucess}/>
-                                <Group justify="flex-start">
-                                    <ConfirmDeleteButton
-                                        message={"MyAnimeList.net credentials will be deleted."}
-                                        confirmText={"REMOVE ACCESS"}
-                                        onConfirm={() => deleteMutation.mutate()}
-                                    />
-                                    <Button onClick={open}>RE - AUTHENTICATE</Button>
-                                </Group>
-                            </>
-                        )}
+                            <Button onClick={open}>RE - AUTHENTICATE</Button>
+                        </Group>
                     </>
                 )}
             </Stack>

@@ -1,44 +1,34 @@
 import {Tabs, Divider, Paper} from "@mantine/core";
-import {useParams, useNavigate} from "@tanstack/react-router";
-import {Application} from "@screens/settings/Application";
-import {User} from "@screens/settings/User";
-import {Plex} from "@screens/settings/Plex";
-import {Mal} from "@screens/settings/Mal";
-import {Logs} from "@screens/settings/Logs";
-import {Api} from "@screens/settings/Api";
-import {Notifications} from "@screens/settings/Notifications";
+import {useNavigate, Outlet, useRouterState} from "@tanstack/react-router";
 import {SiMyanimelist, SiPlex} from "react-icons/si";
 import {FaCog, FaUserCog, FaKey, FaBell} from "react-icons/fa";
 import {BsStack} from "react-icons/bs";
 
 const tabsList = [
-    {value: "application", label: "Application", component: Application, icon: <FaCog/>},
-    {value: "user", label: "User", component: User, icon: <FaUserCog/>},
-    {value: "api", label: "API Keys", component: Api, icon: <FaKey/>},
-    {value: "notifications", label: "Notifications", component: Notifications, icon: <FaBell/>},
-    {value: "logs", label: "Logs", component: Logs, icon: <BsStack/>},
-    {value: "plex", label: "Plex Media Server", component: Plex, icon: <SiPlex size={25}/>},
-    {value: "mal", label: "MyAnimeList", component: Mal, icon: <SiMyanimelist size={25}/>},
+    {value: "application", label: "Application", icon: <FaCog/>, path: "/settings"},
+    {value: "user", label: "User", icon: <FaUserCog/>, path: "/settings/user"},
+    {value: "api", label: "API Keys", icon: <FaKey/>, path: "/settings/api"},
+    {value: "notifications", label: "Notifications", icon: <FaBell/>, path: "/settings/notifications"},
+    {value: "logs", label: "Logs", icon: <BsStack/>, path: "/settings/logs"},
+    {value: "plex", label: "Plex", icon: <SiPlex size={20}/>, path: "/settings/plex"},
+    {value: "mal", label: "MyAnimeList", icon: <SiMyanimelist size={20}/>, path: "/settings/mal"},
 ];
 
 export const Settings = () => {
-    const params = useParams({strict: false});
     const navigate = useNavigate();
-    const activeTab = params.activeTab ?? "application";
-    const isValidTab = tabsList.some(tab => tab.value === activeTab);
-    const currentTab = isValidTab ? activeTab : "application";
+    const pathname = useRouterState().location.pathname;
+    console.log(pathname);
+    const activeTab =
+        tabsList.find((tab) => pathname.endsWith(tab.path))?.value || "application";
 
     return (
         <div>
             <Paper mt="md" withBorder p={"md"} h={"100%"} mih={"80vh"}>
                 <Tabs
-                    value={currentTab}
+                    value={activeTab}
                     onChange={(value) => {
-                        if (value === "application" || !value) {
-                            navigate({to: "/settings", replace: true});
-                        } else {
-                            navigate({to: "/settings/$activeTab", params: {activeTab: value}});
-                        }
+                        const tab = tabsList.find((t) => t.value === value);
+                        if (tab) void navigate({to: tab.path});
                     }}
                     variant="pills"
                     radius="sm"
@@ -50,13 +40,8 @@ export const Settings = () => {
                             </Tabs.Tab>
                         ))}
                     </Tabs.List>
-
-                    <Divider size="md" mt="xs"/>
-                    {tabsList.map((tab) => (
-                        <Tabs.Panel key={tab.value} value={tab.value} mt="xs">
-                            <tab.component/>
-                        </Tabs.Panel>
-                    ))}
+                    <Divider mt="xs"/>
+                    <Outlet/>
                 </Tabs>
             </Paper>
         </div>

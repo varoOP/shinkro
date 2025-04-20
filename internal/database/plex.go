@@ -32,7 +32,7 @@ func (repo *PlexRepo) Store(ctx context.Context, r *domain.Plex) error {
 	}
 
 	queryBuilder := repo.db.squirrel.
-		Insert("plex").
+		Insert("plex_payload").
 		Columns("rating", "event", "source", "account_title", "guid_string", "guids", "grand_parent_key", "grand_parent_title", "metadata_index", "library_section_title", "parent_index", "title", "type", "time_stamp").
 		Values(r.Rating, r.Event, r.Source, r.Account.Title, r.Metadata.GUID.GUID, string(guids), r.Metadata.GrandparentKey, r.Metadata.GrandparentTitle, r.Metadata.Index, r.Metadata.LibrarySectionTitle, r.Metadata.ParentIndex, r.Metadata.Title, r.Metadata.Type, r.TimeStamp.Format(time.RFC3339)).
 		Suffix("RETURNING id").RunWith(repo.db.handler)
@@ -56,7 +56,7 @@ func (repo *PlexRepo) FindAll(ctx context.Context) ([]*domain.Plex, error) {
 func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("p.id", "p.rating", "p.event", "p.source", "p.account_title", "p.guid_string", "p.guids", "p.grand_parent_key", "p.grand_parent_title", "p.metadata_index", "p.library_section_title", "p.parent_index", "p.title", "p.type", "p.time_stamp").
-		From("plex p").
+		From("plex_payload p").
 		OrderBy("p.id DESC").
 		Where(sq.Eq{"p.id": req.Id})
 

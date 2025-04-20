@@ -7,7 +7,7 @@ import {FaDiscord, FaGithub, FaUser} from "react-icons/fa";
 import {GrHelpBook} from "react-icons/gr";
 import {BiLogOut} from "react-icons/bi";
 import {useMutation, useQuery} from "@tanstack/react-query";
-import {Link, Outlet, useRouter} from "@tanstack/react-router";
+import {Link, Outlet, useNavigate} from "@tanstack/react-router";
 import {APIClient} from "@api/APIClient";
 import {ConfigQueryOptions} from "@api/queries";
 import {AuthContext, useThemeToggle} from "@utils/Context";
@@ -17,7 +17,7 @@ import classes from "./Layout.module.css";
 
 export const Layout = () => {
     const [opened, {toggle}] = useDisclosure();
-    const router = useRouter();
+    const navigate = useNavigate();
 
     const {isError: isConfigError, error: configError, data: config} = useQuery(ConfigQueryOptions(true));
     if (isConfigError) {
@@ -41,7 +41,7 @@ export const Layout = () => {
                 type: "success",
             });
             AuthContext.reset();
-            router.history.push("/login");
+            void navigate({to: "/login"})
         },
         onError: (err) => {
             console.error("logout error", err);

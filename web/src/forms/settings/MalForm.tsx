@@ -13,6 +13,7 @@ interface Props {
 }
 
 export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
+    const appRedirectURL = `${window.location.origin}${window.APP.baseUrl}malauth/callback`
 
     const form = useForm<MalAuth>({
         initialValues: {
@@ -63,12 +64,12 @@ export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
                     mt={"md"}
                 />
                 <Group justify={"center"} align={"flex-end"}>
-                    <CopyButton value={`${window.location.origin}/malauth/callback`}>
+                    <CopyButton value={appRedirectURL}>
                         {({copied, copy}) => (
                             <Tooltip
                                 withArrow
                                 position={"bottom"}
-                                label={`App Redirect URL: ${window.location.origin}/malauth/callback`}>
+                                label={`App Redirect URL: ${appRedirectURL}`}>
                                 <Button color={copied ? 'teal' : 'mal'} onClick={copy}>
                                     {copied ? 'COPIED URL' : 'COPY APP REDIRECT URL'}
                                 </Button>

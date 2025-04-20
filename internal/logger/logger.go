@@ -21,24 +21,17 @@ func NewLogger(c *domain.Config) zerolog.Logger {
 		defaultWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	}
 
-	if c.LogPath != "" {
-
-		logPath := filepath.Join(c.ConfigPath, c.LogPath)
-		lumberlog := &lumberjack.Logger{
-			Filename:   logPath,
-			MaxSize:    c.LogMaxSize,
-			MaxBackups: c.LogMaxBackups,
-		}
-
-		mw = io.MultiWriter(
-			defaultWriter,
-			lumberlog,
-		)
-
-	} else {
-
-		mw = defaultWriter
+	logPath := filepath.Join(c.ConfigPath, c.LogPath)
+	lumberlog := &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    c.LogMaxSize,
+		MaxBackups: c.LogMaxBackups,
 	}
+
+	mw = io.MultiWriter(
+		defaultWriter,
+		lumberlog,
+	)
 
 	zerolog.TimeFieldFormat = time.RFC3339
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack

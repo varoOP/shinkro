@@ -48,8 +48,8 @@ func (c *AppConfig) defaultConfig() {
 		Host:            "localhost",
 		Port:            7011,
 		BaseUrl:         "/",
-		LogLevel:        "TRACE",
-		LogPath:         "",
+		LogLevel:        "INFO",
+		LogPath:         "logs/shinkro.log",
 		LogMaxSize:      50,
 		LogMaxBackups:   3,
 		SessionSecret:   api.GenerateSecureToken(16),
@@ -74,7 +74,7 @@ EncryptionKey = "{{ .encryptionKey }}"
 
 LogLevel = "INFO"
 
-#LogPath = "log/shinkro.log"
+#LogPath = "logs/shinkro.log"
 
 #LogMaxSize = 50
 

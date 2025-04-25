@@ -22,6 +22,16 @@ export const ApiKeys = {
     detail: (id: string) => [...ApiKeys.details(), id] as const,
 };
 
+export const MappingKeys = {
+    all: ["mappings"] as const,
+    lists: () => [...MappingKeys.all, "list"] as const,
+};
+
+export const LogKeys = {
+    all: ["logs"] as const,
+    lists: () => [...LogKeys.all, "list"] as const,
+}
+
 export const NotificationKeys = {
     all: ["notifications"] as const,
     lists: () => [...NotificationKeys.all, "list"] as const,

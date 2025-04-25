@@ -56,7 +56,7 @@ export const Mal = () => {
     const deleteMutation = useMutation({
         mutationFn: APIClient.malauth.delete,
         onSuccess: () => {
-            queryClient.invalidateQueries(MalQueryOptions());
+            queryClient.invalidateQueries({queryKey: MalAuthKeys.config()});
             displayNotification({
                 title: "MyAnimeList Authentication Deleted Successfully",
                 message: "MyAnimeList updates will no longer be sent",

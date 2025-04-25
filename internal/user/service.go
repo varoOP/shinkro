@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"github.com/rs/zerolog"
 
 	"github.com/varoOP/shinkro/internal/domain"
 )
@@ -16,11 +17,13 @@ type Service interface {
 
 type service struct {
 	repo domain.UserRepo
+	log  zerolog.Logger
 }
 
-func NewService(repo domain.UserRepo) Service {
+func NewService(repo domain.UserRepo, log zerolog.Logger) Service {
 	return &service{
 		repo: repo,
+		log:  log.With().Str("module", "user").Logger(),
 	}
 }
 

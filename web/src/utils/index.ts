@@ -1,48 +1,48 @@
-import { formatDistanceToNowStrict, formatISO9075 } from "date-fns";
+import {formatDistanceToNowStrict, formatISO9075} from "date-fns";
 
 // sleep for x ms
 export function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // get baseUrl sent from server rendered index template
 export function baseUrl() {
-  let baseUrl = "/";
-  if (window.APP.baseUrl) {
-    if (window.APP.baseUrl === "{{.BaseUrl}}") {
-      baseUrl = "/";
-    } else {
-      baseUrl = window.APP.baseUrl.endsWith("/")
-        ? window.APP.baseUrl
-        : `${window.APP.baseUrl}/`;
+    let baseUrl = "/";
+    if (window.APP.baseUrl) {
+        if (window.APP.baseUrl === "{{.BaseUrl}}") {
+            baseUrl = "/";
+        } else {
+            baseUrl = window.APP.baseUrl.endsWith("/")
+                ? window.APP.baseUrl
+                : `${window.APP.baseUrl}/`;
+        }
     }
-  }
-  return baseUrl;
+    return baseUrl;
 }
 
 // get routerBasePath sent from server rendered index template
 // routerBasePath is used for RouterProvider and does not need work with trailing slash
 export function routerBasePath() {
-  let baseUrl = "";
-  if (window.APP.baseUrl) {
-    if (window.APP.baseUrl === "{{.BaseUrl}}") {
-      baseUrl = "";
-    } else {
-      baseUrl = window.APP.baseUrl;
+    let baseUrl = "";
+    if (window.APP.baseUrl) {
+        if (window.APP.baseUrl === "{{.BaseUrl}}") {
+            baseUrl = "";
+        } else {
+            baseUrl = window.APP.baseUrl;
+        }
     }
-  }
-  return baseUrl;
+    return baseUrl;
 }
 
 // get sseBaseUrl for SSE
 export function sseBaseUrl() {
-  if (process.env.NODE_ENV === "development") return "http://localhost:7012/";
+    if (process.env.NODE_ENV === "development") return "http://localhost:7012/";
 
-  return `${window.location.origin}${baseUrl()}`;
+    return `${window.location.origin}${baseUrl()}`;
 }
 
 export function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
+    return classes.filter(Boolean).join(" ");
 }
 
 // column widths for inputs etc
@@ -50,27 +50,27 @@ export type COL_WIDTHS = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 // simplify date
 export function simplifyDate(date?: string) {
-  if (typeof date === "string" && date !== "0001-01-01T00:00:00Z") {
-    return formatISO9075(new Date(date));
-  }
-  return "n/a";
+    if (typeof date === "string" && date !== "0001-01-01T00:00:00Z") {
+        return formatISO9075(new Date(date));
+    }
+    return "n/a";
 }
 
 // if empty date show as n/a
 export function IsEmptyDate(date?: string) {
-  if (typeof date === "string" && date !== "0001-01-01T00:00:00Z") {
-    return formatDistanceToNowStrict(new Date(date), { addSuffix: true });
-  }
-  return "n/a";
+    if (typeof date === "string" && date !== "0001-01-01T00:00:00Z") {
+        return formatDistanceToNowStrict(new Date(date), {addSuffix: true});
+    }
+    return "n/a";
 }
 
 export function slugify(str: string) {
-  return str
-    .normalize("NFKD")
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/[-\s]+/g, "-");
+    return str
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .trim()
+        .replace(/[-\s]+/g, "-");
 }
 
 // WARNING: This is not a drop in replacement solution and
@@ -94,12 +94,12 @@ export function slugify(str: string) {
 // };
 
 const UNITS = [
-  "byte",
-  "kilobyte",
-  "megabyte",
-  "gigabyte",
-  "terabyte",
-  "petabyte",
+    "byte",
+    "kilobyte",
+    "megabyte",
+    "gigabyte",
+    "terabyte",
+    "petabyte",
 ];
 const BYTES_PER_KB = 1000;
 
@@ -111,20 +111,20 @@ const BYTES_PER_KB = 1000;
  * @return Formatted string.
  */
 export function humanFileSize(sizeBytes: number | bigint): string {
-  let size = Math.abs(Number(sizeBytes));
+    let size = Math.abs(Number(sizeBytes));
 
-  let u = 0;
-  while (size >= BYTES_PER_KB && u < UNITS.length - 1) {
-    size /= BYTES_PER_KB;
-    ++u;
-  }
+    let u = 0;
+    while (size >= BYTES_PER_KB && u < UNITS.length - 1) {
+        size /= BYTES_PER_KB;
+        ++u;
+    }
 
-  return new Intl.NumberFormat([], {
-    style: "unit",
-    unit: UNITS[u],
-    unitDisplay: "short",
-    maximumFractionDigits: 1,
-  }).format(size);
+    return new Intl.NumberFormat([], {
+        style: "unit",
+        unit: UNITS[u],
+        unitDisplay: "short",
+        maximumFractionDigits: 1,
+    }).format(size);
 }
 
 // export const RandomLinuxIsos = (count: number) => {
@@ -155,36 +155,48 @@ export function humanFileSize(sizeBytes: number | bigint): string {
 // };
 
 export async function CopyTextToClipboard(text: string) {
-  if ("clipboard" in navigator) {
-    // Safari requires clipboard operations to be directly triggered by a user interaction.
-    // Using setTimeout with a delay of 0 ensures the clipboard operation is deferred until
-    // after the current call stack has cleared, effectively placing it outside of the
-    // immediate execution context of the user interaction event. This workaround allows
-    // the clipboard operation to bypass Safari's security restrictions.
-    setTimeout(async () => {
-      try {
-        await navigator.clipboard.writeText(text);
-        console.log("Text copied to clipboard successfully.");
-      } catch (err) {
-        console.error("Copy to clipboard unsuccessful: ", err);
-      }
-    }, 0);
-  } else {
-    // fallback for browsers that do not support the Clipboard API
-    copyTextToClipboardFallback(text);
-  }
+    if ("clipboard" in navigator) {
+        // Safari requires clipboard operations to be directly triggered by a user interaction.
+        // Using setTimeout with a delay of 0 ensures the clipboard operation is deferred until
+        // after the current call stack has cleared, effectively placing it outside of the
+        // immediate execution context of the user interaction event. This workaround allows
+        // the clipboard operation to bypass Safari's security restrictions.
+        setTimeout(async () => {
+            try {
+                await navigator.clipboard.writeText(text);
+                console.log("Text copied to clipboard successfully.");
+            } catch (err) {
+                console.error("Copy to clipboard unsuccessful: ", err);
+            }
+        }, 0);
+    } else {
+        // fallback for browsers that do not support the Clipboard API
+        copyTextToClipboardFallback(text);
+    }
 }
 
 function copyTextToClipboardFallback(text: string) {
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  document.body.appendChild(textarea);
-  textarea.select();
-  try {
-    document.execCommand("copy");
-    console.log("Text copied to clipboard successfully.");
-  } catch (err) {
-    console.error("Failed to copy text using fallback method: ", err);
-  }
-  document.body.removeChild(textarea);
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand("copy");
+        console.log("Text copied to clipboard successfully.");
+    } catch (err) {
+        console.error("Failed to copy text using fallback method: ", err);
+    }
+    document.body.removeChild(textarea);
+}
+
+export function getParentPath(fullPath: string): string {
+    const parts = fullPath.split("/").filter(Boolean);
+    if (parts.length === 0) return "/";
+    return "/" + parts.slice(0, -1).join("/");
+}
+
+export function getFileExtension(path: string): string {
+    const parts = path.split(".");
+    if (parts.length === 1) return "";
+    return parts.pop() || "";
 }

@@ -27,7 +27,7 @@ type service struct {
 func NewService(config *domain.Config, log zerolog.Logger, repo domain.MalAuthRepo) Service {
 	return &service{
 		config: config,
-		log:    log,
+		log:    log.With().Str("module", "malauth").Logger(),
 		repo:   repo,
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/dcarbone/zadapters/zstdlog"
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/domain"

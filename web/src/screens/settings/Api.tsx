@@ -85,7 +85,7 @@ const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => (
     <Stack>
         <Group gap="xl" justify="flex-start" grow mt="md">
             <Stack justify="center" align="stretch" miw="150px" maw="500px">
-                <Text fw={900} c={isDark ? "plex" : "mal"}>
+                <Text fw={900} truncate c={isDark ? "plex" : "mal"}>
                     {name}
                 </Text>
             </Stack>

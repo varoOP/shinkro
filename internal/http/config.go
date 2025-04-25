@@ -99,10 +99,6 @@ func (h configHandler) updateConfig(w http.ResponseWriter, r *http.Request) {
 		h.cfg.Config.LogLevel = *data.LogLevel
 	}
 
-	if data.LogPath != nil {
-		h.cfg.Config.LogPath = *data.LogPath
-	}
-
 	if err := h.cfg.UpdateConfig(); err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, errorResponse{

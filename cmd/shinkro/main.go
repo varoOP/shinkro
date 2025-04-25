@@ -17,6 +17,7 @@ import (
 	"github.com/varoOP/shinkro/internal/auth"
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/filesystem"
 	"github.com/varoOP/shinkro/internal/http"
 	"github.com/varoOP/shinkro/internal/logger"
 	"github.com/varoOP/shinkro/internal/malauth"
@@ -68,7 +69,7 @@ func main() {
 	switch cmd := pflag.Arg(0); cmd {
 	case "":
 		cfg := config.NewConfig(configPath, version)
-		log := logger.NewLogger(cfg.Config)
+		log := logger.NewLogger(cfg.Config).Logger
 		go cfg.DynamicReload(log)
 		db := database.NewDB(configPath, &log)
 
@@ -78,15 +79,6 @@ func main() {
 		log.Info().Msgf("Build date: %s", date)
 		log.Info().Msgf("Base URL: %s", cfg.Config.BaseUrl)
 		log.Info().Msgf("Log-level: %s", cfg.Config.LogLevel)
-
-		// err, mapLoaded := domain.ChecklocalMaps(cfg)
-		// if err != nil {
-		// 	log.Fatal().Err(err).Msg("Unable to load local custom mapping")
-		// }
-
-		// if mapLoaded {
-		// 	log.Info().Msg("Loaded local custom mapping")
-		// }
 
 		err = db.Migrate()
 		if err != nil {
@@ -102,27 +94,18 @@ func main() {
 		var apiRepo = database.NewAPIRepo(log, db)
 		var mappingRepo = database.NewMappingRepo(log, db)
 
-		// c := cron.New(cron.WithLocation(time.UTC))
-		// c.AddFunc("0 1 * * MON", func() {
-		// 	// db.UpdateAnime()
-		// 	// malauth.NewOauth2Client(context.Background(), db)
-		// })
-		// c.Start()
-
-		// s := server.NewServer(cfg, n.Notification, db, log)
-		// go s.Start()
-
 		var animeService = anime.NewService(log, animeRepo)
 		var malauthService = malauth.NewService(cfg.Config, log, malauthRepo)
 		var mapService = mapping.NewService(log, mappingRepo)
 		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
 		var plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
 		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService)
-		var userService = user.NewService(userRepo)
+		var userService = user.NewService(userRepo, log)
 		var authService = auth.NewService(log, userService)
 		var apiService = api.NewService(log, apiRepo)
+		var fsService = filesystem.NewService(cfg.Config, log)
 
-		srv := server.NewServer(log, cfg.Config, animeService)
+		srv := server.NewServer(log, cfg.Config, animeService, mapService)
 		if err := srv.Start(); err != nil {
 			log.Fatal().Stack().Err(err).Msg("could not start server")
 			return
@@ -143,6 +126,8 @@ func main() {
 				malauthService,
 				apiService,
 				authService,
+				mapService,
+				fsService,
 			)
 			errorChannel <- httpServer.Open()
 		}()

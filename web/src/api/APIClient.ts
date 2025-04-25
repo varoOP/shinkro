@@ -8,6 +8,8 @@ import {
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
+import {Mapping, ValidateMap} from "@app/types/Mapping";
+import {FileSystem, LogFileResponse} from "@app/types/FileSystem";
 
 type RequestBody = BodyInit | object | Record<string, unknown> | null;
 type Primitive = string | number | boolean | symbol | undefined;
@@ -349,10 +351,34 @@ export const APIClient = {
             appClient.Get("api/malauth/test"),
     },
 
-    logs: {
-        files: () => appClient.Get<LogFileResponse>("api/logs/files"),
-        getFile: (file: string) => appClient.Get(`api/logs/files/${file}`),
+    mapping: {
+        get: () =>
+            appClient.Get<Mapping>("api/mapping"),
+
+        update: (mapping: Mapping) =>
+            appClient.Post("api/mapping", {
+                body: mapping,
+            }),
+
+        validate: (map: ValidateMap) =>
+            appClient.Post("api/mapping/validate", {
+                body: map,
+            }),
     },
+
+    fs: {
+        listDirs: (path: string) =>
+            appClient.Get<FileSystem[]>("api/fs", {
+                queryString: {
+                    path,
+                },
+            }),
+
+        listLogs: () => appClient.Get<LogFileResponse[]>("api/fs/logs"),
+
+        // getLog: (name: string) => appClient.Get(`api/fs/logs/${name}`),
+    },
+
     events: {
         logs: () =>
             new EventSource(`${sseBaseUrl()}api/events?stream=logs`, {

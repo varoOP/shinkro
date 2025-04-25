@@ -3,7 +3,7 @@ package logger
 import (
 	"io"
 	"os"
-	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -12,23 +12,54 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func NewLogger(c *domain.Config) zerolog.Logger {
+type dynamicLevelWriter struct {
+	writer io.Writer
+	mu     sync.RWMutex
+	level  zerolog.Level
+}
 
-	var mw io.Writer
+func (d *dynamicLevelWriter) Write(p []byte) (n int, err error) {
+	return d.writer.Write(p)
+}
+
+func (d *dynamicLevelWriter) WriteLevel(l zerolog.Level, p []byte) (n int, err error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if l >= d.level {
+		return d.writer.Write(p)
+	}
+	return len(p), nil
+}
+
+func (d *dynamicLevelWriter) SetLevel(level zerolog.Level) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.level = level
+}
+
+type Logger struct {
+	zerolog.Logger
+	levelWriter *dynamicLevelWriter
+	writer      io.Writer
+	mu          sync.Mutex
+}
+
+var instance *Logger
+
+func NewLogger(c *domain.Config) *Logger {
 	var defaultWriter io.Writer = os.Stderr
 
 	if c.Version == "dev" {
 		defaultWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	}
 
-	logPath := filepath.Join(c.ConfigPath, c.LogPath)
 	lumberlog := &lumberjack.Logger{
-		Filename:   logPath,
+		Filename:   c.LogPath,
 		MaxSize:    c.LogMaxSize,
 		MaxBackups: c.LogMaxBackups,
 	}
 
-	mw = io.MultiWriter(
+	mw := io.MultiWriter(
 		defaultWriter,
 		lumberlog,
 	)
@@ -36,17 +67,49 @@ func NewLogger(c *domain.Config) zerolog.Logger {
 	zerolog.TimeFieldFormat = time.RFC3339
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
-	log := zerolog.New(mw).With().Timestamp().Logger()
-	switch c.LogLevel {
-	case "TRACE":
-		log = log.Level(zerolog.TraceLevel)
-	case "DEBUG":
-		log = log.Level(zerolog.DebugLevel)
-	case "ERROR":
-		log = log.Level(zerolog.ErrorLevel)
-	case "INFO":
-		log = log.Level(zerolog.InfoLevel)
+	level := parseLogLevel(c.LogLevel)
+	dynWriter := &dynamicLevelWriter{
+		writer: mw,
+		level:  level,
 	}
 
-	return log
+	log := zerolog.New(dynWriter).With().Timestamp().Logger()
+
+	instance = &Logger{
+		Logger:      log,
+		writer:      mw,
+		levelWriter: dynWriter,
+	}
+
+	return instance
+}
+
+func parseLogLevel(level string) zerolog.Level {
+	switch level {
+	case "TRACE":
+		return zerolog.TraceLevel
+	case "DEBUG":
+		return zerolog.DebugLevel
+	case "ERROR":
+		return zerolog.ErrorLevel
+	case "INFO":
+		return zerolog.InfoLevel
+	default:
+		return zerolog.InfoLevel
+	}
+}
+
+func (l *Logger) SetLogLevel(level string) error {
+	parsed := parseLogLevel(level)
+	l.levelWriter.SetLevel(parsed)
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Logger = zerolog.New(l.levelWriter).With().Timestamp().Logger()
+
+	return nil
+}
+
+func GetInstance() *Logger {
+	return instance
 }

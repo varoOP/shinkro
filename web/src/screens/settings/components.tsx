@@ -1,17 +1,42 @@
-import {Title, Text, Divider, Group, Flex, Stack, Loader} from "@mantine/core";
+import {Title, Text, Divider, Group, Flex, Stack, Loader, Tooltip, ActionIcon} from "@mantine/core";
 import {ReactNode} from "react";
+import {FaExternalLinkAlt} from "react-icons/fa";
+import {ExternalLink} from "@components/ExternalLink.tsx";
 
 export const SettingsSectionHeader = ({
                                           title,
                                           description,
+                                          note,
+                                          link,
                                       }: {
     title: string;
     description: string;
+    note?: ReactNode;
+    link?: string;
 }) => (
     <div>
         <Group align={"flex-end"} gap={"xl"}>
             <Stack>
-                <Title order={1} mt="md">{title}</Title>
+                <Group align={"flex-end"}>
+                    <Title order={1} mt="md">{title}</Title>
+                    {note && (
+                        <ExternalLink href={link ?? ""}>
+                            <Tooltip
+                                label={note}
+                                position="right"
+                                withArrow
+                                color={"blue.9"}
+                                multiline={true}
+                                maw={520}
+                            >
+
+                                <ActionIcon size="sm" color={"blue.9"}>
+                                    <FaExternalLinkAlt/>
+                                </ActionIcon>
+                            </Tooltip>
+                        </ExternalLink>
+                    )}
+                </Group>
                 <Text>{description}</Text>
             </Stack>
         </Group>

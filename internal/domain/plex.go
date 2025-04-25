@@ -195,8 +195,8 @@ type GUID struct {
 type PlexPayloadSource string
 
 const (
-	PlexWebhook PlexPayloadSource = "Plex Webhook"
-	Tautulli    PlexPayloadSource = "Tautulli"
+	PlexWebhook     PlexPayloadSource = "Plex Webhook"
+	TautulliWebhook PlexPayloadSource = "Tautulli"
 )
 
 type PlexEvent string

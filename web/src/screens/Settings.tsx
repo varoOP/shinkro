@@ -1,13 +1,14 @@
 import {Tabs, Divider, Paper} from "@mantine/core";
 import {useNavigate, Outlet, useRouterState} from "@tanstack/react-router";
 import {SiMyanimelist, SiPlex} from "react-icons/si";
-import {FaCog, FaUserCog, FaKey, FaBell} from "react-icons/fa";
+import {FaCog, FaUserCog, FaKey, FaBell, FaMap} from "react-icons/fa";
 import {BsStack} from "react-icons/bs";
 
 const tabsList = [
     {value: "application", label: "Application", icon: <FaCog/>, path: "/settings"},
     {value: "user", label: "User", icon: <FaUserCog/>, path: "/settings/user"},
     {value: "api", label: "API Keys", icon: <FaKey/>, path: "/settings/api"},
+    {value: "mapping", label: "Mapping", icon: <FaMap/>, path: "/settings/mapping"},
     {value: "notifications", label: "Notifications", icon: <FaBell/>, path: "/settings/notifications"},
     {value: "logs", label: "Logs", icon: <BsStack/>, path: "/settings/logs"},
     {value: "plex", label: "Plex", icon: <SiPlex size={20}/>, path: "/settings/plex"},
@@ -17,7 +18,6 @@ const tabsList = [
 export const Settings = () => {
     const navigate = useNavigate();
     const pathname = useRouterState().location.pathname;
-    console.log(pathname);
     const activeTab =
         tabsList.find((tab) => pathname.endsWith(tab.path))?.value || "application";
 

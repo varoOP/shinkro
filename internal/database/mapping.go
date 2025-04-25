@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	sq "github.com/Masterminds/squirrel"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -24,9 +25,9 @@ func NewMappingRepo(log zerolog.Logger, db *DB) domain.MappingRepo {
 func (repo *MappingRepo) Store(ctx context.Context, m *domain.MapSettings) error {
 
 	queryBuilder := repo.db.squirrel.
-		Replace("mapping").
-		Columns("tvdb_enabled", "tmdb_enabled", "tvdb_path", "tmdb_path").
-		Values(m.TVDBEnabled, m.TMDBEnabled, m.CustomMapTVDBPath, m.CustomMapTMDBPath).
+		Replace("mapping_settings").
+		Columns("id", "tvdb_enabled", "tmdb_enabled", "tvdb_path", "tmdb_path").
+		Values(1, m.TVDBEnabled, m.TMDBEnabled, m.CustomMapTVDBPath, m.CustomMapTMDBPath).
 		RunWith(repo.db.handler)
 
 	_, err := queryBuilder.Exec()
@@ -41,7 +42,8 @@ func (repo *MappingRepo) Store(ctx context.Context, m *domain.MapSettings) error
 func (repo *MappingRepo) Get(ctx context.Context) (*domain.MapSettings, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("m.tvdb_enabled", "m.tmdb_enabled", "m.tvdb_path", "m.tmdb_path").
-		From("mapping m").
+		From("mapping_settings m").
+		Where(sq.Eq{"m.id": 1}).
 		RunWith(repo.db.handler)
 
 	query, args, err := queryBuilder.ToSql()

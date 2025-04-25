@@ -1,11 +1,9 @@
-package tautulli
+package domain
 
 import (
 	"encoding/json"
 	"strconv"
 	"time"
-
-	"github.com/varoOP/shinkro/internal/domain"
 )
 
 type Tautulli struct {
@@ -13,16 +11,16 @@ type Tautulli struct {
 		Title string `json:"title"`
 	} `json:"Account"`
 	Metadata struct {
-		GrandparentKey      string               `json:"grandparentKey"`
-		GrandparentTitle    string               `json:"grandparentTitle"`
-		GUID                domain.GUID          `json:"guid"`
-		Index               string               `json:"index"`
-		LibrarySectionTitle string               `json:"librarySectionTitle"`
-		ParentIndex         string               `json:"parentIndex"`
-		Title               string               `json:"title"`
-		Type                domain.PlexMediaType `json:"type"`
+		GrandparentKey      string        `json:"grandparentKey"`
+		GrandparentTitle    string        `json:"grandparentTitle"`
+		GUID                GUID          `json:"guid"`
+		Index               string        `json:"index"`
+		LibrarySectionTitle string        `json:"librarySectionTitle"`
+		ParentIndex         string        `json:"parentIndex"`
+		Title               string        `json:"title"`
+		Type                PlexMediaType `json:"type"`
 	} `json:"Metadata"`
-	Event domain.PlexEvent `json:"event"`
+	Event PlexEvent `json:"event"`
 }
 
 func NewTautulli(b []byte) (*Tautulli, error) {
@@ -35,7 +33,7 @@ func NewTautulli(b []byte) (*Tautulli, error) {
 	return t, nil
 }
 
-func ToPlex(b []byte) (*domain.Plex, error) {
+func ToPlex(b []byte) (*Plex, error) {
 	t, err := NewTautulli(b)
 	if err != nil {
 		return nil, err
@@ -51,9 +49,9 @@ func ToPlex(b []byte) (*domain.Plex, error) {
 		return nil, err
 	}
 
-	return &domain.Plex{
+	return &Plex{
 		Event:     t.Event,
-		Source:    domain.Tautulli,
+		Source:    TautulliWebhook,
 		TimeStamp: time.Now(),
 		Account: struct {
 			Id           int    `json:"id"`
@@ -62,7 +60,7 @@ func ToPlex(b []byte) (*domain.Plex, error) {
 		}{
 			Title: t.Account.Title,
 		},
-		Metadata: domain.Metadata{
+		Metadata: Metadata{
 			GrandparentKey:      t.Metadata.GrandparentKey,
 			GrandparentTitle:    t.Metadata.GrandparentTitle,
 			GUID:                t.Metadata.GUID,

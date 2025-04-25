@@ -1,6 +1,14 @@
 import {queryOptions} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient";
-import {ApiKeys, NotificationKeys, SettingsKeys, PlexSettingsKeys, MalAuthKeys} from "@api/query_keys";
+import {
+    ApiKeys,
+    NotificationKeys,
+    SettingsKeys,
+    PlexSettingsKeys,
+    MalAuthKeys,
+    MappingKeys,
+    LogKeys
+} from "@api/query_keys";
 
 export const ConfigQueryOptions = (enabled: boolean = true) =>
     queryOptions({
@@ -20,15 +28,32 @@ export const PlexSettingsQueryOptions = (enabled: boolean = true) =>
         refetchOnWindowFocus: false,
     });
 
-export const MalQueryOptions = (enabled: boolean = true) => {
-    return queryOptions({
+export const MalQueryOptions = (enabled: boolean = true) =>
+    queryOptions({
         queryKey: MalAuthKeys.config(),
         queryFn: () => APIClient.malauth.get(),
         enabled: enabled,
         retry: false,
         refetchOnWindowFocus: false,
     });
-}
+
+export const MappingQueryOptions = (enabled: boolean = true) =>
+    queryOptions({
+        queryKey: MappingKeys.lists(),
+        queryFn: () => APIClient.mapping.get(),
+        enabled: enabled,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
+export const LogQueryOptions = (enabled: boolean = true) =>
+    queryOptions({
+        queryKey: LogKeys.lists(),
+        queryFn: () => APIClient.fs.listLogs(),
+        enabled: enabled,
+        retry: false,
+        refetchOnWindowFocus: true,
+    });
 
 export const UpdatesQueryOptions = (enabled: boolean) =>
     queryOptions({

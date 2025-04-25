@@ -25,7 +25,7 @@ type service struct {
 
 func NewService(log zerolog.Logger, repo domain.AnimeRepo) Service {
 	return &service{
-		log:  log,
+		log:  log.With().Str("module", "anime").Logger(),
 		repo: repo,
 	}
 }

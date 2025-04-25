@@ -1,4 +1,4 @@
-type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR" | "TRACE";
+type LogLevel = "DEBUG" | "INFO" | "ERROR" | "TRACE";
 
 interface Config {
     config_dir: string;
@@ -23,15 +23,4 @@ interface ConfigUpdate {
     log_path?: string;
     base_url?: string;
     check_for_updates?: boolean;
-}
-
-interface LogFile {
-    filename: string;
-    size: string;
-    updated_at: string;
-}
-
-interface LogFileResponse {
-    files: LogFile[];
-    count: number;
 }

@@ -21,6 +21,7 @@ import {Notifications} from "@screens/settings/Notifications";
 import {Logs} from "@screens/settings/Logs";
 import {Plex} from "@screens/settings/Plex";
 import {Mal} from "@screens/settings/Mal";
+import {MapSettings} from "@screens/settings/Mapping";
 import {AuthContext, SettingsContext} from "@utils/Context";
 import {TanStackRouterDevtools} from "@tanstack/router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
@@ -145,44 +146,51 @@ export const SettingsApplicationRoute = createRoute({
 
 export const SettingsUserRoute = createRoute({
     getParentRoute: () => SettingsRoute,
-    path: "/user",
+    path: "user",
     pendingMs: 3000,
     component: User,
 });
 
 export const SettingsApiRoute = createRoute({
     getParentRoute: () => SettingsRoute,
-    path: "/api",
+    path: "api",
     pendingMs: 3000,
     component: Api,
 });
 
 export const SettingsNotificationsRoute = createRoute({
     getParentRoute: () => SettingsRoute,
-    path: "/notifications",
+    path: "notifications",
     pendingMs: 3000,
     component: Notifications,
 });
 
 export const SettingsLogsRoute = createRoute({
     getParentRoute: () => SettingsRoute,
-    path: "/logs",
+    path: "logs",
     pendingMs: 3000,
     component: Logs,
 });
 
 export const SettingsPlexRoute = createRoute({
     getParentRoute: () => SettingsRoute,
-    path: "/plex",
+    path: "plex",
     pendingMs: 3000,
     component: Plex,
 });
 
 export const SettingsMalRoute = createRoute({
     getParentRoute: () => SettingsRoute,
-    path: "/mal",
+    path: "mal",
     pendingMs: 3000,
     component: Mal,
+});
+
+export const SettingsMappingRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "mapping",
+    pendingMs: 3000,
+    component: MapSettings,
 });
 
 export const AuthIndexRoute = createRoute({
@@ -222,6 +230,7 @@ const settingsRouteTree = SettingsRoute.addChildren([
     SettingsLogsRoute,
     SettingsPlexRoute,
     SettingsMalRoute,
+    SettingsMappingRoute,
 ]);
 const authenticatedTree = AuthRoute.addChildren([
     AuthIndexRoute.addChildren([DashboardRoute, settingsRouteTree]),

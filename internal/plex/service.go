@@ -52,12 +52,12 @@ func (s *service) Store(ctx context.Context, plex *domain.Plex) error {
 }
 
 func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
-	anime, err := s.extractSourceIdForAnime(ctx, plex)
+	a, err := s.extractSourceIdForAnime(ctx, plex)
 	if err != nil {
 		return err
 	}
 
-	err = s.animeUpdateService.UpdateAnimeList(ctx, anime, plex.Event)
+	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
 	if err != nil {
 		return err
 	}
@@ -83,23 +83,8 @@ func (s *service) extractSourceIdForAnime(ctx context.Context, plex *domain.Plex
 		return nil, err
 	}
 
-	if source == domain.AniDB && plex.Metadata.ParentIndex > 1 {
-		req := &domain.GetAnimeRequest{
-			IDtype: source,
-			Id:     id,
-		}
-
-		a, err := s.animeService.GetByID(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-
-		source = domain.TVDB
-		id = a.TVDBId
-	}
-
-	anime := plex.SetAnimeFields(source, id)
-	return &anime, nil
+	a := plex.SetAnimeFields(source, id)
+	return &a, nil
 }
 
 func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agent domain.PlexSupportedAgents) (domain.PlexSupportedDBs, int, error) {

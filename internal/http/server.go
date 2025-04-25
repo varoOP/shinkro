@@ -30,9 +30,11 @@ type Server struct {
 	malauthService      malauthService
 	apiService          apikeyService
 	authService         authService
+	mappingService      mappingService
+	fsService           filesystemService
 }
 
-func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService) Server {
+func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService) Server {
 	return Server{
 		log:                 log.With().Str("module", "http").Logger(),
 		config:              config,
@@ -46,6 +48,8 @@ func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, ve
 		malauthService:      malauthSvc,
 		apiService:          apiSvc,
 		authService:         authSvc,
+		mappingService:      mappingSvc,
+		fsService:           fsSvc,
 	}
 }
 
@@ -104,6 +108,8 @@ func (s Server) Handler() http.Handler {
 		r.Route("/plex/settings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)
 		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService, s.cookieStore).Routes)
 		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
+		r.Route("/mapping", newMappingHandler(encoder, s.mappingService).Routes)
+		r.Route("/fs", newFilesystemHandler(encoder, s.fsService).Routes)
 	})
 
 	// Mount API routes under baseUrl + "api"
@@ -118,12 +124,3 @@ func (s Server) Handler() http.Handler {
 
 	return r
 }
-
-// func (s Server) index(w http.ResponseWriter, r *http.Request) {
-// 	p := web.IndexParams{
-// 		Title:   "Dashboard",
-// 		Version: s.version,
-// 		BaseUrl: s.config.BaseUrl,
-// 	}
-// 	web.Index(w, p)
-// }

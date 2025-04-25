@@ -15,8 +15,8 @@ type MappingRepo interface {
 }
 
 type Mapping struct {
-	MapSettings MapSettings
-	AnimeMap    AnimeMap
+	MapSettings *MapSettings
+	AnimeMap    *AnimeMap
 }
 
 type MapSettings struct {
@@ -72,6 +72,13 @@ type CommunityMapUrls string
 const (
 	CommunityMapTVDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
 	CommunityMapTMDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
+)
+
+type MapValidationUrls string
+
+const (
+	TVDBValidationUrl MapValidationUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tvdb.json"
+	TMDBValidationUrl MapValidationUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
 )
 
 func (s *AnimeTVShows) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeTV) {
@@ -166,11 +173,11 @@ func NewMapSettings(tvdb, tmdb bool, tvdbPath, tmdbPath string) *MapSettings {
 func (ms *MapSettings) LocalMapsExist() (bool, bool) {
 	tvdb, tmdb := false, false
 
-	if fileExists(ms.CustomMapTVDBPath) {
+	if fileExists(ms.CustomMapTVDBPath) && ms.TVDBEnabled {
 		tvdb = true
 	}
 
-	if fileExists(ms.CustomMapTMDBPath) {
+	if fileExists(ms.CustomMapTMDBPath) && ms.TMDBEnabled {
 		tmdb = true
 	}
 

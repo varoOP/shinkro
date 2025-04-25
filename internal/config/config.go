@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"github.com/varoOP/shinkro/internal/logger"
 	"html/template"
 	"log"
 	"os"
@@ -33,8 +34,13 @@ func NewConfig(dir string, version string) *AppConfig {
 	}
 
 	c.defaultConfig()
-	c.Config.Version = version
 	c.Config.ConfigPath = dir
+	c.Config.Version = version
+	lp, err := filepath.Abs(filepath.Join(c.Config.ConfigPath, "logs/shinkro.log"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.Config.LogPath = lp
 
 	c.parseConfig(dir)
 	c.parseEnv()
@@ -49,7 +55,6 @@ func (c *AppConfig) defaultConfig() {
 		Port:            7011,
 		BaseUrl:         "/",
 		LogLevel:        "INFO",
-		LogPath:         "logs/shinkro.log",
 		LogMaxSize:      50,
 		LogMaxBackups:   3,
 		SessionSecret:   api.GenerateSecureToken(16),
@@ -74,7 +79,7 @@ EncryptionKey = "{{ .encryptionKey }}"
 
 LogLevel = "INFO"
 
-#LogPath = "logs/shinkro.log"
+#LogPath = "{{ .logPath }}"
 
 #LogMaxSize = 50
 
@@ -153,6 +158,7 @@ func (c *AppConfig) writeConfig(configPath string, configFile string) error {
 			"host":          host,
 			"sessionSecret": c.Config.SessionSecret,
 			"encryptionKey": c.Config.EncryptionKey,
+			"logPath":       c.Config.LogPath,
 		}
 
 		var buffer bytes.Buffer
@@ -277,11 +283,10 @@ func (c *AppConfig) DynamicReload(log zerolog.Logger) {
 		// Update the Config fields
 		if c.Config != nil {
 			c.Config.LogLevel = k.String("LogLevel")
-			lvl, err := zerolog.ParseLevel(c.Config.LogLevel)
+			err := logger.GetInstance().SetLogLevel(c.Config.LogLevel)
 			if err != nil {
-				lvl = zerolog.DebugLevel
+				log.Error().Err(err).Msg("error updating log level")
 			}
-			zerolog.SetGlobalLevel(lvl)
 
 			c.Config.LogPath = k.String("LogPath")
 			c.Config.CheckForUpdates = k.Bool("CheckForUpdates")

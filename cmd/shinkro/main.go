@@ -22,6 +22,7 @@ import (
 	"github.com/varoOP/shinkro/internal/logger"
 	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/mapping"
+	"github.com/varoOP/shinkro/internal/notification"
 	"github.com/varoOP/shinkro/internal/plex"
 	"github.com/varoOP/shinkro/internal/plexsettings"
 	"github.com/varoOP/shinkro/internal/server"
@@ -93,13 +94,15 @@ func main() {
 		var userRepo = database.NewUserRepo(log, db)
 		var apiRepo = database.NewAPIRepo(log, db)
 		var mappingRepo = database.NewMappingRepo(log, db)
+		var notificationRepo = database.NewNotificationRepo(log, db)
 
 		var animeService = anime.NewService(log, animeRepo)
 		var malauthService = malauth.NewService(cfg.Config, log, malauthRepo)
 		var mapService = mapping.NewService(log, mappingRepo)
 		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
 		var plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
-		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService)
+		var notificationService = notification.NewService(log, notificationRepo)
+		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, notificationService)
 		var userService = user.NewService(userRepo, log)
 		var authService = auth.NewService(log, userService)
 		var apiService = api.NewService(log, apiRepo)
@@ -128,6 +131,7 @@ func main() {
 				authService,
 				mapService,
 				fsService,
+				notificationService,
 			)
 			errorChannel <- httpServer.Open()
 		}()

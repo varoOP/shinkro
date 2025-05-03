@@ -32,9 +32,10 @@ type Server struct {
 	authService         authService
 	mappingService      mappingService
 	fsService           filesystemService
+	notificationService notificationService
 }
 
-func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService) Server {
+func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService) Server {
 	return Server{
 		log:                 log.With().Str("module", "http").Logger(),
 		config:              config,
@@ -50,6 +51,7 @@ func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, ve
 		authService:         authSvc,
 		mappingService:      mappingSvc,
 		fsService:           fsSvc,
+		notificationService: notificationSvc,
 	}
 }
 
@@ -110,6 +112,7 @@ func (s Server) Handler() http.Handler {
 		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
 		r.Route("/mapping", newMappingHandler(encoder, s.mappingService).Routes)
 		r.Route("/fs", newFilesystemHandler(encoder, s.fsService).Routes)
+		r.Route("/notification", newNotificationHandler(encoder, s.notificationService).Routes)
 	})
 
 	// Mount API routes under baseUrl + "api"

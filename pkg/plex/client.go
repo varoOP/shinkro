@@ -33,6 +33,7 @@ type tokenTransport struct {
 func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", sharedhttp.UserAgent)
 	req.Header.Set("X-Plex-Token", t.token)
 	req.Header.Set("X-Plex-Product", "shinkro")
 	req.Header.Set("X-Plex-Client-Identifier", t.clientID)

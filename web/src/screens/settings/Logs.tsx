@@ -13,7 +13,6 @@ export const Logs = () => {
 
     const queryClient = useQueryClient();
     const {data} = useQuery(ConfigQueryOptions());
-    const logLevel: LogLevel = data?.log_level ?? "INFO";
 
     const mutation = useMutation({
         mutationFn: (config: ConfigUpdate) => APIClient.config.update(config),
@@ -34,27 +33,29 @@ export const Logs = () => {
     return (
         <main>
             <SettingsSectionHeader title={"Logs"} description={"Manage shinkro logs here."}/>
-            <Stack mt={"md"}>
-                <Text fw={900} size={"xl"}>
-                    Log Settings:
-                </Text>
-                <Group>
-                    <Text fw={600} size={"md"}>
-                        Log Level:
+            {data && (
+                <Stack mt={"md"}>
+                    <Text fw={900} size={"xl"}>
+                        Log Settings:
                     </Text>
-                    <Select
-                        size={"xs"}
-                        data={[
-                            {value: "DEBUG", label: "DEBUG"},
-                            {value: "INFO", label: "INFO"},
-                            {value: "ERROR", label: "ERROR"},
-                            {value: "TRACE", label: "TRACE"},
-                        ]}
-                        defaultValue={logLevel}
-                        onChange={(value: LogLevel | string | null) => mutation.mutate({log_level: value ? value as LogLevel : "INFO"})}
-                    />
-                </Group>
-            </Stack>
+                    <Group>
+                        <Text fw={600} size={"md"}>
+                            Log Level:
+                        </Text>
+                        <Select
+                            size={"xs"}
+                            data={[
+                                {value: "DEBUG", label: "DEBUG"},
+                                {value: "INFO", label: "INFO"},
+                                {value: "ERROR", label: "ERROR"},
+                                {value: "TRACE", label: "TRACE"},
+                            ]}
+                            defaultValue={data.log_level}
+                            onChange={(value: LogLevel | string | null) => mutation.mutate({log_level: value ? value as LogLevel : ""})}
+                        />
+                    </Group>
+                </Stack>
+            )}
             <Divider mt={"md"}/>
             <LogFiles/>
         </main>
@@ -103,7 +104,7 @@ export const LogFiles = () => {
                             </Stack>
                             <Stack>
                                 <ActionIcon
-                                    disabled={isDownloading}
+                                    loading={isDownloading}
                                     onClick={() => handleDownload(log.name)}
                                 >
                                     <FaDownload/>

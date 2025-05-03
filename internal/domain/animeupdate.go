@@ -14,17 +14,17 @@ type AnimeUpdateRepo interface {
 }
 
 type AnimeUpdate struct {
-	ID          int64                `json:"id"`
-	MALId       int                  `json:"malid"`
-	SourceDB    PlexSupportedDBs     `json:"sourceDB"`
-	SourceId    int                  `json:"sourceID"`
-	EpisodeNum  int                  `json:"episodeNum"`
-	SeasonNum   int                  `json:"seasonNum"`
-	Timestamp   time.Time            `json:"timestamp"`
-	ListDetails ListDetails          `json:"listDetails"`
-	ListStatus  *mal.AnimeListStatus `json:"listStatus"`
-	PlexId      int64                `json:"plexID"`
-	Plex        *Plex                `json:"-"`
+	ID          int64               `json:"id"`
+	MALId       int                 `json:"malid"`
+	SourceDB    PlexSupportedDBs    `json:"sourceDB"`
+	SourceId    int                 `json:"sourceID"`
+	EpisodeNum  int                 `json:"episodeNum"`
+	SeasonNum   int                 `json:"seasonNum"`
+	Timestamp   time.Time           `json:"timestamp"`
+	ListDetails ListDetails         `json:"listDetails"`
+	ListStatus  mal.AnimeListStatus `json:"listStatus"`
+	PlexId      int64               `json:"plexID"`
+	Plex        *Plex               `json:"-"`
 }
 
 type ListDetails struct {
@@ -57,7 +57,7 @@ func (ap *AnimeUpdate) UpdateRating(ctx context.Context, client *mal.Client) err
 		return err
 	}
 
-	ap.ListStatus = l
+	ap.ListStatus = *l
 	return nil
 }
 
@@ -76,7 +76,7 @@ func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client
 		return err
 	}
 
-	ap.ListStatus = l
+	ap.ListStatus = *l
 	return nil
 }
 

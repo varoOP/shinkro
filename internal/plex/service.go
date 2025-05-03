@@ -2,6 +2,9 @@ package plex
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"github.com/varoOP/shinkro/internal/notification"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
@@ -22,24 +25,26 @@ type Service interface {
 }
 
 type service struct {
-	log                zerolog.Logger
-	repo               domain.PlexRepo
-	plexettingsService plexsettings.Service
-	animeService       anime.Service
-	mapService         mapping.Service
-	malauthService     malauth.Service
-	animeUpdateService animeupdate.Service
+	log                 zerolog.Logger
+	repo                domain.PlexRepo
+	plexettingsService  plexsettings.Service
+	animeService        anime.Service
+	mapService          mapping.Service
+	malauthService      malauth.Service
+	animeUpdateService  animeupdate.Service
+	notificationService notification.Service
 }
 
-func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service) Service {
+func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, notificationSvc notification.Service) Service {
 	return &service{
-		log:                log.With().Str("module", "plex").Logger(),
-		repo:               repo,
-		plexettingsService: plexsettingsSvc,
-		animeService:       animeSvc,
-		mapService:         mapSvc,
-		malauthService:     malauthSvc,
-		animeUpdateService: animeUpdateSvc,
+		log:                 log.With().Str("module", "plex").Logger(),
+		repo:                repo,
+		plexettingsService:  plexsettingsSvc,
+		animeService:        animeSvc,
+		mapService:          mapSvc,
+		malauthService:      malauthSvc,
+		animeUpdateService:  animeUpdateSvc,
+		notificationService: notificationSvc,
 	}
 }
 
@@ -54,13 +59,43 @@ func (s *service) Store(ctx context.Context, plex *domain.Plex) error {
 func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 	a, err := s.extractSourceIdForAnime(ctx, plex)
 	if err != nil {
+		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
+			Message:      err.Error(),
+			AnimeLibrary: plex.Metadata.LibrarySectionKey,
+			PlexEvent:    plex.Event,
+			PlexSource:   plex.Source,
+		})
 		return err
 	}
 
 	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
 	if err != nil {
+		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
+			Message:      err.Error(),
+			AnimeLibrary: a.Plex.Metadata.LibrarySectionKey,
+			PlexEvent:    a.Plex.Event,
+			PlexSource:   a.Plex.Source,
+		})
+
 		return err
 	}
+
+	s.notificationService.Send(domain.NotificationEventSuccess, domain.NotificationPayload{
+		MediaName:       a.ListDetails.Title,
+		MALID:           a.MALId,
+		AnimeLibrary:    a.Plex.Metadata.LibrarySectionKey,
+		EpisodesWatched: a.ListStatus.NumEpisodesWatched,
+		EpisodesTotal:   a.ListDetails.TotalEpisodeNum,
+		TimesRewatched:  a.ListStatus.NumTimesRewatched,
+		PictureURL:      a.ListDetails.PictureURL,
+		StartDate:       a.ListStatus.StartDate,
+		FinishDate:      a.ListStatus.FinishDate,
+		AnimeStatus:     string(a.ListStatus.Status),
+		Score:           a.ListStatus.Score,
+		PlexEvent:       a.Plex.Event,
+		PlexSource:      a.Plex.Source,
+		Timestamp:       time.Now(),
+	})
 
 	return nil
 }
@@ -94,5 +129,5 @@ func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agen
 	case domain.PlexAgent:
 		return s.plexettingsService.HandlePlexAgent(ctx, p)
 	}
-	return "", 0, nil
+	return "", 0, errors.New("unknown agent")
 }

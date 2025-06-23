@@ -11,8 +11,8 @@ const tabsList = [
     {value: "mapping", label: "Mapping", icon: <FaMap/>, path: "/settings/mapping"},
     {value: "notifications", label: "Notifications", icon: <FaBell/>, path: "/settings/notifications"},
     {value: "logs", label: "Logs", icon: <BsStack/>, path: "/settings/logs"},
-    {value: "plex", label: "Plex", icon: <SiPlex size={20}/>, path: "/settings/plex"},
-    {value: "mal", label: "MyAnimeList", icon: <SiMyanimelist size={20}/>, path: "/settings/mal"},
+    {value: "plex", label: "Plex", icon: <SiPlex/>, path: "/settings/plex"},
+    {value: "mal", label: "MyAnimeList", icon: <SiMyanimelist/>, path: "/settings/mal"},
 ];
 
 export const Settings = () => {

@@ -69,19 +69,18 @@ export const Plex = () => {
         : [];
 
     return (
-        <>
-            <Stack>
-                <SettingsSectionHeader
-                    title="Plex Media Server"
-                    description="Manage the connection to your Plex Media Server here."
-                />
+        <main>
+            <SettingsSectionHeader
+                title="Plex Media Server"
+                description="Manage the connection to your Plex Media Server here."
+            />
                 {isEmptySettings ? (
                     <CenteredEmptyState
                         message="Plex Setup Not Found"
                         button={<Button onClick={open}>SETUP PLEX</Button>}
                     />
                 ) : (
-                    <>
+                    <Stack mt={"md"}>
                         <StatusIndicator
                             label="Connection Status:"
                             status={isReachable}
@@ -104,14 +103,13 @@ export const Plex = () => {
                             />
                             <Button onClick={open}>EDIT SETTINGS</Button>
                         </Group>
-                    </>
+                    </Stack>
                 )}
-            </Stack>
             <PlexSettings
                 opened={opened}
                 onClose={close}
                 defaultValues={settings}
             />
-        </>
+        </main>
     );
 };

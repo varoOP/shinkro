@@ -73,45 +73,43 @@ export const Mal = () => {
     })
 
     return (
-        <>
-            <Stack>
-                <SettingsSectionHeader
-                    title={"MyAnimeList"}
-                    description={"Manage the connection to your MyAnimeList account here."}
+        <main>
+            <SettingsSectionHeader
+                title={"MyAnimeList"}
+                description={"Manage the connection to your MyAnimeList account here."}
+            />
+            {isEmptySettings ? (
+                <CenteredEmptyState
+                    message={"No MyAnimeList Credentials Found"}
+                    button={
+                        <Button onClick={open}>
+                            START AUTHENTICATION
+                        </Button>
+                    }
                 />
-                {isEmptySettings ? (
-                    <CenteredEmptyState
-                        message={"No MyAnimeList Credentials Found"}
-                        button={
-                            <Button onClick={open}>
-                                START AUTHENTICATION
-                            </Button>
-                        }
+            ) : (
+                <Stack mt={"md"}>
+                    <StatusIndicator
+                        label={"Authentication Status:"}
+                        status={testSucess}
+                        loadStatus={testSucess === null}
                     />
-                ) : (
-                    <>
-                        <StatusIndicator
-                            label={"Authentication Status:"}
-                            status={testSucess}
-                            loadStatus={testSucess === null}
+                    <Group justify="flex-start">
+                        <ConfirmDeleteButton
+                            message={"MyAnimeList.net credentials will be deleted."}
+                            confirmText={"REMOVE ACCESS"}
+                            onConfirm={() => deleteMutation.mutate()}
                         />
-                        <Group justify="flex-start">
-                            <ConfirmDeleteButton
-                                message={"MyAnimeList.net credentials will be deleted."}
-                                confirmText={"REMOVE ACCESS"}
-                                onConfirm={() => deleteMutation.mutate()}
-                            />
-                            <Button onClick={open}>RE - AUTHENTICATE</Button>
-                        </Group>
-                    </>
-                )}
-            </Stack>
+                        <Button onClick={open}>RE - AUTHENTICATE</Button>
+                    </Group>
+                </Stack>
+            )}
             <MalForm
                 opened={opened}
                 onClose={close}
                 loading={loading}
                 setLoading={setLoading}
             />
-        </>
+        </main>
     );
 };

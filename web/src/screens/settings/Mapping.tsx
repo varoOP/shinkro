@@ -1,4 +1,4 @@
-import {SettingsSectionHeader} from "@screens/settings/components.tsx";
+import {SettingsSectionHeader, TMDBIcon, TVDBIcon} from "@screens/settings/components.tsx";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {MappingQueryOptions} from "@api/queries.ts";
 import {APIClient} from "@api/APIClient.ts";
@@ -67,7 +67,7 @@ export const MapSettings = () => {
     };
 
     return (
-        <>
+        <main>
             <SettingsSectionHeader
                 title="Mapping"
                 description="Set up custom mapping for anime matching here."
@@ -75,7 +75,7 @@ export const MapSettings = () => {
                 note={
                     <Stack>
                         <Text fw={600} size={"sm"}>
-                            Community map(s) are disabled upon enabling custom map(s).
+                            Community map(s) is disabled upon enabling custom map(s).
                         </Text>
                         <Text fw={600} size={"sm"}>
                             Instead of maintaining custom maps, you can consider contributing to the community maps by
@@ -84,14 +84,13 @@ export const MapSettings = () => {
                     </Stack>
                 }
             />
-
             {mapping && (
                 <Stack gap="md" mt="md">
                     <Group justify="flex-start" align="center" wrap="nowrap">
+                        <Text w={100} fw={600}>Enabled</Text>
                         <Text w={80} fw={600}>Type</Text>
                         <Text w={575} miw={80} fw={600} style={{flex: 1}}>Path</Text>
                         <Text w={200} fw={600}>Actions</Text>
-                        <Text fw={600}>Enable</Text>
                     </Group>
 
                     <Divider/>
@@ -103,8 +102,26 @@ export const MapSettings = () => {
                         return (
                             <div key={type}>
                                 <Group justify="flex-start" align="center" wrap="nowrap">
-                                    <Text w={80}>{type.toUpperCase()}</Text>
+                                    <Switch
+                                        size="sm"
+                                        checked={enabled}
+                                        disabled={!path}
+                                        onChange={() => {
+                                            const updated = {...mapping};
+                                            if (isTVDB) updated.tvdb_enabled = !enabled;
+                                            else updated.tmdb_enabled = !enabled;
+                                            mutation.mutate(updated);
+                                        }}
+                                        w={82}
+                                        ml={18}
+                                    />
+                                    {type === "tvdb" ? (
+                                        <TVDBIcon/>
+                                    ) : (
+                                        <TMDBIcon/>
+                                    )}
                                     <Text
+                                        ml={40}
                                         miw={80}
                                         style={{
                                             flex: 1,
@@ -144,18 +161,6 @@ export const MapSettings = () => {
                                             Reset
                                         </Button>
                                     </Group>
-                                    <Switch
-                                        size="sm"
-                                        checked={enabled}
-                                        disabled={!path}
-                                        onChange={() => {
-                                            const updated = {...mapping};
-                                            if (isTVDB) updated.tvdb_enabled = !enabled;
-                                            else updated.tmdb_enabled = !enabled;
-                                            mutation.mutate(updated);
-                                        }}
-                                        w={50}
-                                    />
                                 </Group>
                                 <Divider mt={"md"}/>
                             </div>
@@ -163,12 +168,11 @@ export const MapSettings = () => {
                     })}
                 </Stack>
             )}
-
             <MapDirSelect
                 opened={modalOpen}
                 onClose={close}
                 onSelect={handlePathSelect}
             />
-        </>
+        </main>
     );
 };

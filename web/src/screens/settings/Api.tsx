@@ -9,7 +9,8 @@ import {displayNotification} from "@components/notifications";
 import {useDisclosure} from "@mantine/hooks";
 import {APIClient} from "@api/APIClient.ts";
 import {ApiAddKey} from "@forms/settings/ApiAddKey.tsx";
-import {FaTrash, FaCopy} from "react-icons/fa";
+import {FaCopy} from "react-icons/fa";
+import {ConfirmDeleteIcon} from "@components/alerts/ConfirmDeleteIcon";
 
 export const Api = () => {
     const [opened, {open, close}] = useDisclosure(false);
@@ -30,25 +31,25 @@ export const Api = () => {
     });
 
     return (
-        <>
-            <Stack>
-                <SettingsSectionHeader
-                    title="API Keys"
-                    description="Manage your shinkro API keys here."
-                />
-                {keys?.length ? (
+        <main>
+            <SettingsSectionHeader
+                title="API Keys"
+                description="Manage your shinkro API keys here."
+            />
+            {keys?.length ? (
+                <Stack mt={"md"} mb={"md"}>
                     <KeyList keys={keys} onDelete={mutation.mutate} isDark={isDark}/>
-                ) : (
-                    <CenteredEmptyState message="No API Keys Found"/>
-                )}
-                <Group justify={"center"}>
-                    <Button onClick={open} size="compact-xs">
-                        ADD NEW
-                    </Button>
-                </Group>
-            </Stack>
+                </Stack>
+            ) : (
+                <CenteredEmptyState message="No API Keys Found"/>
+            )}
+            <Group justify={"center"}>
+                <Button onClick={open} size="compact-xs">
+                    ADD NEW
+                </Button>
+            </Group>
             <ApiAddKey opened={opened} onClose={close}/>
-        </>
+        </main>
     );
 };
 
@@ -108,14 +109,13 @@ const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => (
                             </div>
                         }
                     />
-                    <ActionIcon
-                        maw={"20px"}
-                        onClick={() => onDelete(value)}
-                        color="red"
+                    <ConfirmDeleteIcon
+                        onConfirm={() => onDelete(value)}
+                        title="Delete API Key"
+                        message={`Are you sure you want to delete the API key "${name}"?`}
+                        confirmText="DELETE"
                         variant="outline"
-                    >
-                        <FaTrash/>
-                    </ActionIcon>
+                    />
                 </Group>
             </Stack>
         </Group>

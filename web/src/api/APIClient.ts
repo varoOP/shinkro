@@ -388,7 +388,7 @@ export const APIClient = {
     notifications: {
         getAll: () => appClient.Get<ServiceNotification[]>("api/notification"),
         create: (notification: ServiceNotification) =>
-            appClient.Post("api/notification", {
+            appClient.Post<ServiceNotification>("api/notification", {
                 body: notification,
             }),
         update: (notification: ServiceNotification) =>

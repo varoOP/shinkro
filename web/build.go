@@ -28,9 +28,7 @@ type IndexParams struct {
 }
 
 var (
-	//go:embed all:dist
 	Dist embed.FS
-
 	DistDirFS = MustSubFS(Dist, "dist")
 )
 

@@ -3,7 +3,7 @@ import {
     ActionIcon, CopyButton, useMantineColorScheme, Divider
 } from "@mantine/core";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
-import {useSuspenseQuery, useQueryClient, useMutation} from "@tanstack/react-query";
+import {useQuery, useQueryClient, useMutation} from "@tanstack/react-query";
 import {ApikeysQueryOptions} from "@api/queries.ts";
 import {displayNotification} from "@components/notifications";
 import {useDisclosure} from "@mantine/hooks";
@@ -14,7 +14,7 @@ import {ConfirmDeleteIcon} from "@components/alerts/ConfirmDeleteIcon";
 
 export const Api = () => {
     const [opened, {open, close}] = useDisclosure(false);
-    const {data: keys} = useSuspenseQuery(ApikeysQueryOptions());
+    const {data: keys} = useQuery(ApikeysQueryOptions());
     const queryClient = useQueryClient();
     const {colorScheme} = useMantineColorScheme();
     const isDark = colorScheme === 'dark';

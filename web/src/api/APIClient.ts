@@ -379,12 +379,12 @@ export const APIClient = {
         // getLog: (name: string) => appClient.Get(`api/fs/logs/${name}`),
     },
 
-    events: {
-        logs: () =>
-            new EventSource(`${sseBaseUrl()}api/events?stream=logs`, {
-                withCredentials: true,
-            }),
-    },
+    // events: {
+    //     logs: () =>
+    //         new EventSource(`${sseBaseUrl()}api/events?stream=logs`, {
+    //             withCredentials: true,
+    //         }),
+    // },
     notifications: {
         getAll: () => appClient.Get<ServiceNotification[]>("api/notification"),
         create: (notification: ServiceNotification) =>
@@ -401,8 +401,8 @@ export const APIClient = {
                 body: notification,
             }),
     },
-    updates: {
-        check: () => appClient.Get("api/updates/check"),
-        getLatestRelease: () => appClient.Get<GithubRelease>("api/updates/latest"),
-    },
+    // updates: {
+    //     check: () => appClient.Get("api/updates/check"),
+    //     getLatestRelease: () => appClient.Get<GithubRelease>("api/updates/latest"),
+    // },
 };

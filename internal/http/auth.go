@@ -201,7 +201,7 @@ func (h authHandler) updateUser(w http.ResponseWriter, r *http.Request) {
 	data.UsernameCurrent = chi.URLParam(r, "username")
 
 	if err := h.service.UpdateUser(r.Context(), data); err != nil {
-		h.encoder.StatusError(w, http.StatusForbidden, err)
+		h.encoder.StatusError(w, http.StatusBadRequest, err)
 		return
 	}
 

@@ -81,12 +81,6 @@ func (s Server) Handler() http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(hlog.NewHandler(s.log))
-	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-		hlog.FromRequest(r).Debug().
-			Int("status", status).
-			Dur("duration", duration).
-			Msg("Request processed")
-	}))
 
 	baseUrl, webBase := normalizeBaseUrl(s.config.Config.BaseUrl)
 	c := cors.New(cors.Options{
@@ -103,6 +97,7 @@ func (s Server) Handler() http.Handler {
 	encoder := encoder{}
 
 	apiRouter := chi.NewRouter()
+	apiRouter.Use(hlog.NewHandler(s.log))
 	apiRouter.Route("/auth", newAuthHandler(encoder, s.log, s, s.config.Config, s.cookieStore, s.authService).Routes)
 
 	apiRouter.Group(func(r chi.Router) {

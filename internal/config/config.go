@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"github.com/varoOP/shinkro/internal/logger"
 	"html/template"
 	"log"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/varoOP/shinkro/internal/logger"
 
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
@@ -88,7 +89,7 @@ LogLevel = "INFO"
 CheckForUpdates = true
 `
 
-func (c *AppConfig) writeConfig(configPath string, configFile string) error {
+func (c *AppConfig) WriteConfig(configPath string, configFile string) error {
 	cfgPath := filepath.Join(configPath, configFile)
 
 	// check if configPath exists, if not create it
@@ -181,7 +182,7 @@ func (c *AppConfig) parseConfig(dir string) {
 	dirClean := path.Clean(dir)
 
 	if dirClean != "" {
-		if err := c.writeConfig(dirClean, "config.toml"); err != nil {
+		if err := c.WriteConfig(dirClean, "config.toml"); err != nil {
 			log.Printf("write error: %q", err)
 		}
 	}

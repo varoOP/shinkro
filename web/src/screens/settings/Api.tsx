@@ -97,6 +97,7 @@ const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => (
                         value={value}
                         readOnly
                         variant="filled"
+                        style={{ minWidth: 350, width: 360 }}
                         leftSection={
                             <div style={{pointerEvents: "all"}}>
                                 <CopyButton value={value}>

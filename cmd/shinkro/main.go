@@ -1,15 +1,20 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/animeupdate"
@@ -17,6 +22,7 @@ import (
 	"github.com/varoOP/shinkro/internal/auth"
 	"github.com/varoOP/shinkro/internal/config"
 	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/filesystem"
 	"github.com/varoOP/shinkro/internal/http"
 	"github.com/varoOP/shinkro/internal/logger"
@@ -32,9 +38,11 @@ import (
 const usage = `shinkro
 Sync your Anime watch status in Plex to myanimelist.net!
 Usage:
-    shinkro --config <path to shinkro configuration directory> Run shinkro
-    shinkro version                                            Print version info
-    shinkro help                                               Show this help message
+    shinkro --config <path to shinkro configuration directory>           Run shinkro
+    shinkro setup [--config <dir>]                                      Setup new config, DB, and admin user
+    shinkro --config=<dir> change-password <username>                   Change password for user
+    shinkro version                                                     Print version info
+    shinkro help                                                        Show this help message
 `
 
 func init() {
@@ -148,6 +156,96 @@ func main() {
 			}
 			os.Exit(0)
 		}
+
+	case "setup":
+		fmt.Println("--- Shinkro Setup ---")
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Printf("Config directory [%s]: ", configPath)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input != "" {
+			configPath = input
+		}
+		cfg := config.NewConfig(configPath, version)
+		log := logger.NewLogger(cfg.Config).Logger
+		if err := cfg.WriteConfig(configPath, "config.toml"); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write config: %v\n", err)
+			os.Exit(1)
+		}
+		db := database.NewDB(configPath, &log)
+		if err := db.Migrate(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to migrate DB: %v\n", err)
+			os.Exit(1)
+		}
+		userRepo := database.NewUserRepo(log, db)
+		userService := user.NewService(userRepo, log)
+		authService := auth.NewService(log, userService)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		fmt.Print("Enter username: ")
+		username, _ := reader.ReadString('\n')
+		username = strings.TrimSpace(username)
+		var password, password2 string
+		for {
+			fmt.Print("Enter password: ")
+			pw1, _ := term.ReadPassword(int(os.Stdin.Fd()))
+			fmt.Println()
+			fmt.Print("Confirm password: ")
+			pw2, _ := term.ReadPassword(int(os.Stdin.Fd()))
+			fmt.Println()
+			password = strings.TrimSpace(string(pw1))
+			password2 = strings.TrimSpace(string(pw2))
+			if password == password2 && password != "" {
+				break
+			}
+			fmt.Println("Passwords do not match or are empty. Try again.")
+		}
+		if err := authService.CreateUser(ctx, domain.CreateUserRequest{Username: username, Password: password}); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create user: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Setup complete! Config, DB, and admin user created.")
+		os.Exit(0)
+
+	case "change-password":
+		if pflag.NArg() < 2 {
+			fmt.Fprintln(os.Stderr, "Usage: shinkro --config=<dir> change-password <username>")
+			os.Exit(1)
+		}
+		username := pflag.Arg(1)
+		cfg := config.NewConfig(configPath, version)
+		log := logger.NewLogger(cfg.Config).Logger
+		db := database.NewDB(configPath, &log)
+		userRepo := database.NewUserRepo(log, db)
+		userService := user.NewService(userRepo, log)
+		authService := auth.NewService(log, userService)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		fmt.Printf("Changing password for user '%s'\n", username)
+		fmt.Print("Enter current password: ")
+		pwCur, _ := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		fmt.Print("Enter new password: ")
+		pwNew, _ := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		fmt.Print("Confirm new password: ")
+		pwNew2, _ := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		if strings.TrimSpace(string(pwNew)) != strings.TrimSpace(string(pwNew2)) || strings.TrimSpace(string(pwNew)) == "" {
+			fmt.Fprintln(os.Stderr, "New passwords do not match or are empty.")
+			os.Exit(1)
+		}
+		updateReq := domain.UpdateUserRequest{
+			UsernameCurrent: username,
+			PasswordCurrent: strings.TrimSpace(string(pwCur)),
+			PasswordNew:     strings.TrimSpace(string(pwNew)),
+		}
+		if err := authService.UpdateUser(ctx, updateReq); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to change password: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Password updated successfully.")
+		os.Exit(0)
 
 	case "version":
 		fmt.Fprintln(flag.CommandLine.Output(), "Version:", version)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
 )
 
@@ -83,6 +84,8 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 
 	agent, err := plex.CheckPlex(plexSettings)
 	if err != nil {
+		log := hlog.FromRequest(r)
+		log.Error().Err(err).Msg("Error processing plex")
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "BAD_REQUEST",
 			"message": err.Error(),

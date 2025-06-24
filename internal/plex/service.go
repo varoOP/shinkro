@@ -2,9 +2,10 @@ package plex
 
 import (
 	"context"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/varoOP/shinkro/internal/notification"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
@@ -17,11 +18,10 @@ import (
 
 type Service interface {
 	Store(ctx context.Context, plex *domain.Plex) error
-	// FindAll(ctx context.Context) ([]*domain.Plex, error)
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
-	ProcessPlex(ctx context.Context, plex *domain.Plex) error
-	// ProcessPlexScrobbleEvent(plex *domain.Plex) error
-	// Delete(ctx context.Context, req *domain.DeletePlexRequest) error
+	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
+	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
+	CountScrobbleEvents(ctx context.Context) (int, error)
 }
 
 type service struct {
@@ -56,8 +56,12 @@ func (s *service) Store(ctx context.Context, plex *domain.Plex) error {
 	return s.repo.Store(ctx, plex)
 }
 
-func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
-	a, err := s.extractSourceIdForAnime(ctx, plex)
+func (s *service) GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error) {
+	return s.plexettingsService.Get(ctx)
+}
+
+func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error {
+	a, err := s.extractSourceIdForAnime(ctx, plex, agent)
 	if err != nil {
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
 			Message:      err.Error(),
@@ -100,19 +104,7 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 	return nil
 }
 
-func (s *service) extractSourceIdForAnime(ctx context.Context, plex *domain.Plex) (*domain.AnimeUpdate, error) {
-	plexSettings, err := s.plexettingsService.Get(ctx)
-	if err != nil {
-		s.log.Error().Err(err).Msg("")
-		return nil, err
-	}
-
-	agent, err := plex.CheckPlex(plexSettings)
-	if err != nil {
-		s.log.Debug().Err(err).Msg("")
-		return nil, err
-	}
-
+func (s *service) extractSourceIdForAnime(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) (*domain.AnimeUpdate, error) {
 	source, id, err := s.getSourceIDFromAgent(ctx, plex, agent)
 	if err != nil {
 		return nil, err
@@ -122,12 +114,16 @@ func (s *service) extractSourceIdForAnime(ctx context.Context, plex *domain.Plex
 	return &a, nil
 }
 
-func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agent domain.PlexSupportedAgents) (domain.PlexSupportedDBs, int, error) {
-	switch agent {
+func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agent *domain.PlexSupportedAgents) (domain.PlexSupportedDBs, int, error) {
+	switch *agent {
 	case domain.HAMA, domain.MALAgent:
-		return p.Metadata.GUID.HamaMALAgent(agent)
+		return p.Metadata.GUID.HamaMALAgent(*agent)
 	case domain.PlexAgent:
 		return s.plexettingsService.HandlePlexAgent(ctx, p)
 	}
 	return "", 0, errors.New("unknown agent")
+}
+
+func (s *service) CountScrobbleEvents(ctx context.Context) (int, error) {
+	return s.repo.CountScrobbleEvents(ctx)
 }

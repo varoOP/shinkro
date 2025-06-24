@@ -53,3 +53,26 @@ func (repo *AnimeUpdateRepo) Store(ctx context.Context, r *domain.AnimeUpdate) e
 func (repo *AnimeUpdateRepo) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error) {
 	return nil, nil
 }
+
+func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
+	queryBuilder := repo.db.squirrel.
+		Select("count(*)").
+		From("anime_update")
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	row := repo.db.handler.QueryRowContext(ctx, query, args...)
+	if err := row.Err(); err != nil {
+		return 0, errors.Wrap(err, "error executing query")
+	}
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, errors.Wrap(err, "error scanning row")
+	}
+
+	return count, nil
+}

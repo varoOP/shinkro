@@ -15,6 +15,7 @@ type Service interface {
 	Store(ctx context.Context, animeupdate *domain.AnimeUpdate) error
 	GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error)
 	UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error
+	Count(ctx context.Context) (int, error)
 }
 
 type service struct {
@@ -146,4 +147,8 @@ func (s *service) convertAniDBToTVDB(ctx context.Context, anime *domain.AnimeUpd
 	}
 
 	return &newAnime
+}
+
+func (s *service) Count(ctx context.Context) (int, error) {
+	return s.repo.Count(ctx)
 }

@@ -13,8 +13,9 @@ import (
 type plexService interface {
 	Store(ctx context.Context, plex *domain.Plex) error
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
-	ProcessPlex(ctx context.Context, plex *domain.Plex) error
-	// CheckPlex(plex *domain.Plex) bool
+	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
+	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
+	CountScrobbleEvents(ctx context.Context) (int, error)
 }
 
 type plexHandler struct {
@@ -31,6 +32,7 @@ func newPlexHandler(encoder encoder, service plexService) *plexHandler {
 
 func (h plexHandler) Routes(r chi.Router) {
 	r.Get("/", h.getPlex)
+	r.Get("/scrobbleCount", h.getScrobbleCount)
 	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.postPlex)
 }
 
@@ -66,7 +68,7 @@ func (h plexHandler) getPlex(w http.ResponseWriter, r *http.Request) {
 
 func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 	plex := r.Context().Value(domain.PlexPayload).(*domain.Plex)
-	err := h.service.Store(r.Context(), plex)
+	plexSettings, err := h.service.GetPlexSettings(r.Context())
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "BAD_REQUEST",
@@ -75,7 +77,25 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.ProcessPlex(r.Context(), plex)
+	agent, err := plex.CheckPlex(plexSettings)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "BAD_REQUEST",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = h.service.Store(r.Context(), plex)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "BAD_REQUEST",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = h.service.ProcessPlex(r.Context(), plex, &agent)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
 			"code":    "INTERNAL_SERVER_ERROR",
@@ -92,4 +112,18 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	h.encoder.StatusCreated(w)
+}
+
+func (h plexHandler) getScrobbleCount(w http.ResponseWriter, r *http.Request) {
+	count, err := h.service.CountScrobbleEvents(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
+			"code":    "INTERNAL_SERVER_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
+		"count": count,
+	})
 }

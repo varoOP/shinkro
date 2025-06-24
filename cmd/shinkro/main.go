@@ -132,6 +132,7 @@ func main() {
 				mapService,
 				fsService,
 				notificationService,
+				animeUpdateService,
 			)
 			errorChannel <- httpServer.Open()
 		}()

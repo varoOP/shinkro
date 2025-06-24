@@ -11,6 +11,7 @@ import (
 type AnimeUpdateRepo interface {
 	Store(ctx context.Context, animeUpdate *AnimeUpdate) error
 	GetByID(ctx context.Context, req *GetAnimeUpdateRequest) (*AnimeUpdate, error)
+	Count(ctx context.Context) (int, error)
 }
 
 type AnimeUpdate struct {

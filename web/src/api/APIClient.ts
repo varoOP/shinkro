@@ -322,6 +322,9 @@ export const APIClient = {
             appClient.Post<PlexLibraryResponse>("api/plex/settings/libraries", {
                 body: config,
             }),
+
+        getScrobbleCount: () =>
+            appClient.Get<{count: number}>("api/plex/scrobbleCount"),
     },
 
     malauth: {
@@ -377,6 +380,11 @@ export const APIClient = {
         listLogs: () => appClient.Get<LogFileResponse[]>("api/fs/logs"),
 
         // getLog: (name: string) => appClient.Get(`api/fs/logs/${name}`),
+    },
+
+    animeupdate: {
+        getCount: () =>
+            appClient.Get<{count: number}>("api/animeupdate/count"),
     },
 
     // events: {

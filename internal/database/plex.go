@@ -102,5 +102,30 @@ func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*dom
 }
 
 func (repo *PlexRepo) Delete(ctx context.Context, req *domain.DeletePlexRequest) error {
+	//TODO: Implement delete for plex payloads
 	return nil
+}
+
+func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context) (int, error) {
+	queryBuilder := repo.db.squirrel.
+		Select("count(*)").
+		From("plex_payload").
+		Where(sq.Eq{"event": "media.scrobble"})
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	row := repo.db.handler.QueryRowContext(ctx, query, args...)
+	if err := row.Err(); err != nil {
+		return 0, errors.Wrap(err, "error executing query")
+	}
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, errors.Wrap(err, "error scanning row")
+	}
+
+	return count, nil
 }

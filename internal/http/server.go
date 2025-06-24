@@ -33,9 +33,10 @@ type Server struct {
 	mappingService      mappingService
 	fsService           filesystemService
 	notificationService notificationService
+	animeUpdateService  animeupdateService
 }
 
-func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService) Server {
+func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService, animeUpdateSvc animeupdateService) Server {
 	return Server{
 		log:                 log.With().Str("module", "http").Logger(),
 		config:              config,
@@ -52,6 +53,7 @@ func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, ve
 		mappingService:      mappingSvc,
 		fsService:           fsSvc,
 		notificationService: notificationSvc,
+		animeUpdateService:  animeUpdateSvc,
 	}
 }
 
@@ -113,6 +115,7 @@ func (s Server) Handler() http.Handler {
 		r.Route("/mapping", newMappingHandler(encoder, s.mappingService).Routes)
 		r.Route("/fs", newFilesystemHandler(encoder, s.fsService).Routes)
 		r.Route("/notification", newNotificationHandler(encoder, s.notificationService).Routes)
+		r.Route("/animeupdate", newAnimeupdateHandler(encoder, s.animeUpdateService).Routes)
 	})
 
 	// Mount API routes under baseUrl + "api"

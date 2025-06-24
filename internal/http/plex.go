@@ -16,6 +16,7 @@ type plexService interface {
 	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
 	CountScrobbleEvents(ctx context.Context) (int, error)
+	CountRateEvents(ctx context.Context) (int, error)
 }
 
 type plexHandler struct {
@@ -32,7 +33,7 @@ func newPlexHandler(encoder encoder, service plexService) *plexHandler {
 
 func (h plexHandler) Routes(r chi.Router) {
 	r.Get("/", h.getPlex)
-	r.Get("/scrobbleCount", h.getScrobbleCount)
+	r.Get("/count", h.getCounts)
 	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.postPlex)
 }
 
@@ -114,8 +115,16 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 	h.encoder.StatusCreated(w)
 }
 
-func (h plexHandler) getScrobbleCount(w http.ResponseWriter, r *http.Request) {
-	count, err := h.service.CountScrobbleEvents(r.Context())
+func (h plexHandler) getCounts(w http.ResponseWriter, r *http.Request) {
+	countScrobble, err := h.service.CountScrobbleEvents(r.Context())
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
+			"code":    "INTERNAL_SERVER_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+	countRate, err := h.service.CountRateEvents(r.Context())
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
 			"code":    "INTERNAL_SERVER_ERROR",
@@ -124,6 +133,7 @@ func (h plexHandler) getScrobbleCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
-		"count": count,
+		"countScrobble": countScrobble,
+		"countRate":     countRate,
 	})
 }

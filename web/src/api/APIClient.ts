@@ -322,8 +322,8 @@ export const APIClient = {
                 body: config,
             }),
 
-        getScrobbleCount: () =>
-            appClient.Get<{count: number}>("api/plex/scrobbleCount"),
+        getCounts: () =>
+            appClient.Get<{countScrobble: number, countRate: number}>("api/plex/count"),
     },
 
     malauth: {
@@ -384,6 +384,8 @@ export const APIClient = {
     animeupdate: {
         getCount: () =>
             appClient.Get<{count: number}>("api/animeupdate/count"),
+        getRecent: (limit = 5) =>
+            appClient.Get<any[]>("api/animeupdate/recent", { queryString: { limit } }),
     },
 
     // events: {

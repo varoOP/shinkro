@@ -17,6 +17,7 @@ type PlexRepo interface {
 	Get(ctx context.Context, req *GetPlexRequest) (*Plex, error)
 	Delete(ctx context.Context, req *DeletePlexRequest) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
+	CountRateEvents(ctx context.Context) (int, error)
 }
 
 type Plex struct {

@@ -22,6 +22,7 @@ type Service interface {
 	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
 	CountScrobbleEvents(ctx context.Context) (int, error)
+	CountRateEvents(ctx context.Context) (int, error)
 }
 
 type service struct {
@@ -126,4 +127,8 @@ func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agen
 
 func (s *service) CountScrobbleEvents(ctx context.Context) (int, error) {
 	return s.repo.CountScrobbleEvents(ctx)
+}
+
+func (s *service) CountRateEvents(ctx context.Context) (int, error) {
+	return s.repo.CountRateEvents(ctx)
 }

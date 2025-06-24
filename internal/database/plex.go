@@ -153,3 +153,36 @@ func (repo *PlexRepo) CountRateEvents(ctx context.Context) (int, error) {
 
 	return count, nil
 }
+
+func (repo *PlexRepo) GetRecent(ctx context.Context, limit int) ([]*domain.Plex, error) {
+	queryBuilder := repo.db.squirrel.
+		Select("id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
+		From("plex_payload").
+		OrderBy("time_stamp DESC").
+		Limit(uint64(limit))
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	rows, err := repo.db.handler.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error executing query")
+	}
+	defer rows.Close()
+
+	payloads := make([]*domain.Plex, 0)
+	for rows.Next() {
+		var p domain.Plex
+		var guidsStr string
+		if err := rows.Scan(&p.ID, &p.Rating, &p.Event, &p.Source, &p.Account.Title, &p.Metadata.GUID.GUID, &guidsStr, &p.Metadata.GrandparentKey, &p.Metadata.GrandparentTitle, &p.Metadata.Index, &p.Metadata.LibrarySectionTitle, &p.Metadata.ParentIndex, &p.Metadata.Title, &p.Metadata.Type, &p.TimeStamp); err != nil {
+			return nil, errors.Wrap(err, "error scanning row")
+		}
+		if err := json.Unmarshal([]byte(guidsStr), &p.Metadata.GUID.GUIDS); err != nil {
+			return nil, errors.Wrap(err, "error unmarshaling guids")
+		}
+		payloads = append(payloads, &p)
+	}
+	return payloads, nil
+}

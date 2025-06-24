@@ -116,6 +116,7 @@ func (s Server) Handler() http.Handler {
 		r.Route("/fs", newFilesystemHandler(encoder, s.fsService).Routes)
 		r.Route("/notification", newNotificationHandler(encoder, s.notificationService).Routes)
 		r.Route("/animeupdate", newAnimeupdateHandler(encoder, s.animeUpdateService).Routes)
+		r.Get("/updates/latest", GetLatestReleaseHandler)
 	})
 
 	// Mount API routes under baseUrl + "api"

@@ -324,6 +324,9 @@ export const APIClient = {
 
         getCounts: () =>
             appClient.Get<{countScrobble: number, countRate: number}>("api/plex/count"),
+
+        getRecent: (limit = 20) =>
+            appClient.Get<any[]>("api/plex/getRecent", { queryString: { limit } }),
     },
 
     malauth: {
@@ -386,6 +389,8 @@ export const APIClient = {
             appClient.Get<{count: number}>("api/animeupdate/count"),
         getRecent: (limit = 5) =>
             appClient.Get<any[]>("api/animeupdate/recent", { queryString: { limit } }),
+        getByPlexId: (plexId: number) =>
+            appClient.Get<any | null>("api/animeupdate/byPlexId", { queryString: { id: plexId } }),
     },
 
     // events: {
@@ -410,8 +415,7 @@ export const APIClient = {
                 body: notification,
             }),
     },
-    // updates: {
-    //     check: () => appClient.Get("api/updates/check"),
-    //     getLatestRelease: () => appClient.Get<GithubRelease>("api/updates/latest"),
-    // },
+    updates: {
+        getLatestRelease: () => appClient.Get<any>("api/updates/latest"),
+    },
 };

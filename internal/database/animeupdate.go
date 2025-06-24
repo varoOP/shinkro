@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 
 	"github.com/pkg/errors"
@@ -118,4 +119,35 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 		}
 	}
 	return updates, nil
+}
+
+func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error) {
+	queryBuilder := repo.db.squirrel.
+		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		From("anime_update").
+		Where("plex_id = ?", plexID).
+		OrderBy("time_stamp DESC").
+		Limit(1)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	row := repo.db.handler.QueryRowContext(ctx, query, args...)
+	var au domain.AnimeUpdate
+	var listDetailsBytes, listStatusBytes []byte
+	if err := row.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No update for this plex_id
+		}
+		return nil, errors.Wrap(err, "error scanning row")
+	}
+	if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
+		return nil, errors.Wrap(err, "error unmarshalling list_details")
+	}
+	if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
+		return nil, errors.Wrap(err, "error unmarshalling list_status")
+	}
+	return &au, nil
 }

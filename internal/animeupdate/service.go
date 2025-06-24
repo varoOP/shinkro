@@ -17,6 +17,7 @@ type Service interface {
 	UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
+	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
 }
 
 type service struct {
@@ -156,4 +157,8 @@ func (s *service) Count(ctx context.Context) (int, error) {
 
 func (s *service) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
 	return s.repo.GetRecentUnique(ctx, limit)
+}
+
+func (s *service) GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error) {
+	return s.repo.GetByPlexID(ctx, plexID)
 }

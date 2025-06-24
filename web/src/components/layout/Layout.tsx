@@ -1,4 +1,4 @@
-import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title, Burger} from "@mantine/core";
+import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title, Burger, Badge} from "@mantine/core";
 import {useDisclosure} from "@mantine/hooks";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
@@ -9,7 +9,7 @@ import {BiLogOut} from "react-icons/bi";
 import {useMutation, useQuery} from "@tanstack/react-query";
 import {Link, Outlet, useNavigate} from "@tanstack/react-router";
 import {APIClient} from "@api/APIClient";
-import {ConfigQueryOptions} from "@api/queries";
+import {ConfigQueryOptions, latestReleaseQueryOptions} from "@api/queries";
 import {AuthContext, useThemeToggle} from "@utils/Context";
 import {ExternalLink} from "@components/ExternalLink";
 import {NAV_ROUTES} from "./navigation";
@@ -20,6 +20,7 @@ export const Layout = () => {
     const navigate = useNavigate();
 
     const {isError: isConfigError, error: configError, data: config} = useQuery(ConfigQueryOptions(true));
+    const { data: latestRelease } = useQuery(latestReleaseQueryOptions());
     if (isConfigError) {
         console.log(configError);
     }
@@ -48,6 +49,20 @@ export const Layout = () => {
         },
     });
 
+    // Helper to compare versions (assumes semver, ignores pre-release/build)
+    function isUpdateAvailable(current: string, latest: string) {
+        const cur = current.replace(/^v/, '').split('.').map(Number);
+        const lat = latest.replace(/^v/, '').split('.').map(Number);
+        for (let i = 0; i < Math.max(cur.length, lat.length); i++) {
+            const a = cur[i] || 0, b = lat[i] || 0;
+            if (a < b) return true;
+            if (a > b) return false;
+        }
+        return false;
+    }
+
+    const isDevOrNightly = config?.version && /dev|nightly/i.test(config.version);
+
     return (
         <AppShell
             header={{height: 60}}
@@ -63,6 +78,13 @@ export const Layout = () => {
                         <Code fw={700} className={classes.code}>
                             {config?.version}
                         </Code>
+                    </Flex>
+                    <Flex align="center" mt="xs">
+                        {latestRelease?.tag_name && config?.version && !isDevOrNightly && isUpdateAvailable(config.version, latestRelease.tag_name) && (
+                            <Badge color="blue" size="xs" ml={4} component="a" href={`https://github.com/varoOP/shinkro/releases/tag/${latestRelease.tag_name}`} target="_blank" style={{ verticalAlign: 'middle', cursor: 'pointer' }}>
+                                Update Available!
+                            </Badge>
+                        )}
                     </Flex>
                     <Menu
                         shadow="md"

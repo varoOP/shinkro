@@ -38,3 +38,13 @@ export const NotificationKeys = {
     details: () => [...NotificationKeys.all, "detail"] as const,
     detail: (id: number) => [...NotificationKeys.details(), id] as const,
 };
+
+export const PlexKeys = {
+    all: ["plex"] as const,
+    recentPayloads: (limit: number = 20) => [...PlexKeys.all, "recentPayloads", limit] as const,
+};
+
+export const AnimeUpdateKeys = {
+    all: ["animeUpdate"] as const,
+    byPlexId: (plexId: number) => [...AnimeUpdateKeys.all, "byPlexId", plexId] as const,
+};

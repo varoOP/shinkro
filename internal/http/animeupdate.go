@@ -12,6 +12,7 @@ import (
 type animeupdateService interface {
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
+	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
 }
 
 type animeupdateHandler struct {
@@ -29,6 +30,7 @@ func newAnimeupdateHandler(encoder encoder, service animeupdateService) *animeup
 func (h animeupdateHandler) Routes(r chi.Router) {
 	r.Get("/count", h.getCount)
 	r.Get("/recent", h.getRecent)
+	r.Get("/byPlexId", h.getByPlexID)
 }
 
 func (h animeupdateHandler) getCount(w http.ResponseWriter, r *http.Request) {
@@ -78,4 +80,23 @@ func (h animeupdateHandler) getRecent(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	h.encoder.StatusResponse(w, http.StatusOK, result)
+}
+
+func (h animeupdateHandler) getByPlexID(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{"error": "missing id param"})
+		return
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{"error": "invalid id param"})
+		return
+	}
+	update, err := h.service.GetByPlexID(r.Context(), id)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusNotFound, map[string]interface{}{"error": err.Error()})
+		return
+	}
+	h.encoder.StatusResponse(w, http.StatusOK, update)
 }

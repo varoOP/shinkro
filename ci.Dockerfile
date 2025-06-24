@@ -32,8 +32,7 @@ COPY . ./
 COPY --from=web-builder /web/dist ./web/dist
 COPY --from=web-builder /web/build.go ./web
 
-RUN --mount=target=. \
-    GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o /out/bin/shinkro cmd/shinkro/main.go
+RUN GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o /out/bin/shinkro cmd/shinkro/main.go
 
 # build runner
 FROM alpine:latest

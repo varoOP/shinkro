@@ -67,7 +67,7 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 	if err != nil {
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
 			Message:      err.Error(),
-			AnimeLibrary: plex.Metadata.LibrarySectionKey,
+			AnimeLibrary: plex.Metadata.LibrarySectionTitle,
 			PlexEvent:    plex.Event,
 			PlexSource:   plex.Source,
 		})
@@ -89,7 +89,7 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 	s.notificationService.Send(domain.NotificationEventSuccess, domain.NotificationPayload{
 		MediaName:       a.ListDetails.Title,
 		MALID:           a.MALId,
-		AnimeLibrary:    a.Plex.Metadata.LibrarySectionKey,
+		AnimeLibrary:    a.Plex.Metadata.LibrarySectionTitle,
 		EpisodesWatched: a.ListStatus.NumEpisodesWatched,
 		EpisodesTotal:   a.ListDetails.TotalEpisodeNum,
 		TimesRewatched:  a.ListStatus.NumTimesRewatched,

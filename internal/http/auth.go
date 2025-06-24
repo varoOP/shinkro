@@ -87,6 +87,7 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 
 	// Set cookie options
 	session.Options.HttpOnly = true
+	session.Options.Secure = false
 	session.Options.SameSite = http.SameSiteLaxMode
 	session.Options.Path = h.config.BaseUrl
 

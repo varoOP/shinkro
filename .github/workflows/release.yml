@@ -5,7 +5,6 @@ on:
     branches:
       - "main"
       - "develop"
-      - "feat/web"
     tags:
       - "v*"
   pull_request:
@@ -41,56 +40,6 @@ jobs:
 
       - name: Test
         run: go test -v ./...
-
-  nightly-docker:
-    name: Build and publish nightly Docker images
-    if: github.ref == 'refs/heads/feat/web'
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/varoOP/shinkro
-          tags: |
-            type=raw,value=nightly
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and publish nightly image
-        id: docker_build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./ci.Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VERSION=nightly
-            REVISION=${{ github.sha }}
-
-      - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
 
   goreleaserbuild:
     name: Build Go binaries
@@ -162,7 +111,6 @@ jobs:
 
   docker:
     name: Build and publish Docker images
-    if: github.ref != 'refs/heads/feat/web'
     runs-on: ubuntu-latest
     needs: [test]
     steps:

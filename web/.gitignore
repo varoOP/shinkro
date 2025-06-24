@@ -31,6 +31,7 @@ node_modules/
 web/build
 bin/
 log/
+.vite
 dist/*
 !dist/.gitkeep
 # If needed, package-lock.json shall be added

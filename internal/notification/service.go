@@ -2,8 +2,9 @@ package notification
 
 import (
 	"context"
-	"github.com/rs/zerolog"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/pkg/errors"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -180,6 +181,12 @@ func (s *service) Test(ctx context.Context, notification *domain.Notification) e
 			Subject:   "New update available!",
 			Message:   "v0.2.0",
 			Event:     domain.NotificationEventAppUpdateAvailable,
+			Timestamp: time.Now(),
+		},
+		{
+			Subject:   "Failed to update MyAnimeList",
+			Message:   "MyAnimeList is not available",
+			Event:     domain.NotificationEventError,
 			Timestamp: time.Now(),
 		},
 	}

@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/pkg/sharedhttp"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/sharedhttp"
 )
 
 const MAlAnimeURL = "https://myanimelist.net/anime/%d"

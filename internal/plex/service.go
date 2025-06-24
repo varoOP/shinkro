@@ -67,9 +67,11 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 	if err != nil {
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
 			Message:      err.Error(),
+			Subject:      "Failed to extract anime information",
 			AnimeLibrary: plex.Metadata.LibrarySectionTitle,
 			PlexEvent:    plex.Event,
 			PlexSource:   plex.Source,
+			Timestamp:    time.Now(),
 		})
 		return err
 	}
@@ -78,9 +80,11 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 	if err != nil {
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
 			Message:      err.Error(),
+			Subject:      "Failed to update MyAnimeList",
 			AnimeLibrary: a.Plex.Metadata.LibrarySectionTitle,
 			PlexEvent:    a.Plex.Event,
 			PlexSource:   a.Plex.Source,
+			Timestamp:    time.Now(),
 		})
 
 		return err

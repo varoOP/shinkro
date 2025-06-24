@@ -1,5 +1,4 @@
-import {baseUrl, sseBaseUrl} from "@utils";
-import {GithubRelease} from "@app/types/Update";
+import {baseUrl} from "@utils";
 import {
     PlexConfig,
     PlexOAuthPollResponse,

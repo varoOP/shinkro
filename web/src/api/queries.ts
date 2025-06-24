@@ -55,14 +55,14 @@ export const LogQueryOptions = (enabled: boolean = true) =>
         refetchOnWindowFocus: true,
     });
 
-export const UpdatesQueryOptions = (enabled: boolean) =>
-    queryOptions({
-        queryKey: SettingsKeys.updates(),
-        queryFn: () => APIClient.updates.getLatestRelease(),
-        retry: false,
-        refetchOnWindowFocus: false,
-        enabled: enabled,
-    });
+// export const UpdatesQueryOptions = (enabled: boolean) =>
+//     queryOptions({
+//         queryKey: SettingsKeys.updates(),
+//         queryFn: () => APIClient.updates.getLatestRelease(),
+//         retry: false,
+//         refetchOnWindowFocus: false,
+//         enabled: enabled,
+//     });
 
 export const NotificationsQueryOptions = () =>
     queryOptions({

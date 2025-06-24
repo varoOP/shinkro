@@ -368,7 +368,7 @@ export const PlexSettings = ({
                         placeholder="Select host after selecting server"
                         data={
                             selectedServer
-                                ? selectedServer.connections.map((conn) => conn.address)
+                                ? Array.from(new Set(selectedServer.connections.map((conn) => conn.address)))
                                 : [form.getValues().host]
                         }
                         value={form.getValues().host}
@@ -380,8 +380,14 @@ export const PlexSettings = ({
                         label="Port"
                         placeholder="Select Port after selecting Host"
                         data={
-                            selectedServer
-                                ? selectedServer.connections.map((conn) => String(conn.port))
+                            selectedServer && form.getValues().host
+                                ? Array.from(
+                                    new Set(
+                                        selectedServer.connections
+                                            .filter(conn => conn.address === form.getValues().host)
+                                            .map(conn => String(conn.port))
+                                    )
+                                )
                                 : [form.getValues().port === 0 ? "" : String(form.getValues().port)]
                         }
                         value={String(form.getValues().port)}

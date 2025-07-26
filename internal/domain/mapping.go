@@ -154,6 +154,10 @@ func (s *AnimeTVShows) findBestMatchingAnime(ep int, candidates []AnimeTV) Anime
 }
 
 func (ad *AnimeMapDetails) CalculateEpNum(oldEpNum int) int {
+	if ad.Start == 0 {
+		ad.Start = 1
+	}
+	
 	if ad.UseMapping {
 		return ad.Start + oldEpNum - 1
 	}

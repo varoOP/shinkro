@@ -29,8 +29,9 @@ func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest)
 	queryBuilder := repo.db.squirrel.
 		Select("a.mal_id", "a.title", "a.en_title", "a.anidb_id", "a.tvdb_id", "a.tmdb_id", "a.type", "a.releaseDate").
 		From("anime a").
-		OrderBy("a.mal_id DESC").
-		Where(sq.Eq{id: req.Id})
+		Where(sq.Eq{id: req.Id}).
+		OrderBy("CASE WHEN a.tvdb_id > 0 THEN 0 ELSE 1 END", "a.mal_id DESC").
+		Limit(1)
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {

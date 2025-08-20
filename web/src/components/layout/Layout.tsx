@@ -2,7 +2,7 @@ import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Titl
 import {useDisclosure} from "@mantine/hooks";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
-import {MdDarkMode, MdLightMode} from "react-icons/md";
+import {MdDarkMode, MdLightMode, MdSpaceDashboard, MdSettings} from "react-icons/md";
 import {FaDiscord, FaGithub, FaUser} from "react-icons/fa";
 import {GrHelpBook} from "react-icons/gr";
 import {BiLogOut} from "react-icons/bi";
@@ -14,6 +14,7 @@ import {AuthContext, useThemeToggle} from "@utils/Context";
 import {ExternalLink} from "@components/ExternalLink";
 import {NAV_ROUTES} from "./navigation";
 import classes from "./Layout.module.css";
+import { Text } from "@mantine/core";
 
 export const Layout = () => {
     const [opened, {toggle}] = useDisclosure();
@@ -63,6 +64,11 @@ export const Layout = () => {
 
     const isDevOrNightly = config?.version && /dev|nightly/i.test(config.version);
 
+    const navIconFor = (name: string) => {
+        if (/^settings$/i.test(name)) return <MdSettings size={16} />;
+        return <MdSpaceDashboard size={16} />; // default for Dashboard and others
+    };
+
     return (
         <AppShell
             header={{height: 60}}
@@ -73,7 +79,7 @@ export const Layout = () => {
                 <Group h="100%" px={"md"} align="center" gap={0}>
                     <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" mr={"xs"}/>
                     <Image src={Logo} height={60}/>
-                    <Flex align="flex-end" gap="xs" ml={"xs"}>
+                    <Flex align="flex-end" gap={"xs"} ml={"xs"}>
                         <Title order={3}>shinkro</Title>
                         <Code fw={700} className={classes.code}>
                             v{config?.version}
@@ -167,7 +173,12 @@ export const Layout = () => {
                                 <>
                                     <NavLink
                                         component="button"
-                                        label={item.name}
+                                        label={
+                                            <Group gap={6} align="center">
+                                                {navIconFor(item.name)}
+                                                <Text fw={700}>{item.name}</Text>
+                                            </Group>
+                                        }
                                         active={isActive}
                                         variant="light"
                                         color="blue"

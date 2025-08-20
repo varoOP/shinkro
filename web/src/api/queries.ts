@@ -70,10 +70,20 @@ export const ApikeysQueryOptions = () =>
         refetchOnWindowFocus: false,
     });
 
-export const recentPlexPayloadsQueryOptions = (limit: number = 20) =>
+export const plexHistoryQueryOptions = (opts: {
+    type?: "timeline" | "table";
+    limit?: number;
+    cursor?: string;
+    offset?: number;
+    search?: string;
+    status?: string;
+    event?: string;
+    from?: string;
+    to?: string;
+} = { type: "timeline", limit: 10 }) =>
     queryOptions({
-        queryKey: PlexKeys.recentPayloads(limit),
-        queryFn: () => APIClient.plex.getRecent(limit),
+        queryKey: PlexKeys.history(opts.type ?? "timeline", opts),
+        queryFn: () => APIClient.plex.history(opts),
     });
 
 export const animeUpdateByPlexIdQueryOptions = (plexId: number) =>

@@ -16,7 +16,7 @@ type Service interface {
 }
 
 type service struct {
-	log zerolog.Logger
+	log  zerolog.Logger
 	repo domain.PlexStatusRepo
 }
 
@@ -40,8 +40,14 @@ func (s *service) GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]domain.P
 }
 
 func (s *service) StoreSuccess(ctx context.Context, plex *domain.Plex) error {
+	title := plex.Metadata.GrandparentTitle
+
+	if plex.Metadata.Type == "movie" {
+		title = plex.Metadata.Title
+	}
+
 	status := domain.PlexStatus{
-		Title:   plex.Metadata.GrandparentTitle,
+		Title:   title,
 		Event:   string(plex.Event),
 		Success: true,
 		PlexID:  plex.ID,
@@ -50,8 +56,14 @@ func (s *service) StoreSuccess(ctx context.Context, plex *domain.Plex) error {
 }
 
 func (s *service) StoreError(ctx context.Context, plex *domain.Plex, errorMsg string) error {
+	title := plex.Metadata.GrandparentTitle
+
+	if plex.Metadata.Type == "movie" {
+		title = plex.Metadata.Title
+	}
+
 	status := domain.PlexStatus{
-		Title:    plex.Metadata.GrandparentTitle,
+		Title:    title,
 		Event:    string(plex.Event),
 		Success:  false,
 		ErrorMsg: errorMsg,

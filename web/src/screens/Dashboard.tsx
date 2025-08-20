@@ -1,8 +1,10 @@
-import {useQuery, useQueries} from "@tanstack/react-query";
+import {useInfiniteQuery, useQuery} from "@tanstack/react-query";
+import React from "react";
 import {
     Card,
     Group,
     Stack,
+    Flex,
     Text,
     Title,
     Badge,
@@ -11,19 +13,21 @@ import {
     Timeline,
     TimelineItem,
     Container,
-    Box
+    Box,
+    Code,
+    Button
 } from "@mantine/core";
 import {Carousel} from '@mantine/carousel';
 import {MdMovie, MdStar} from "react-icons/md";
 import {SiMyanimelist} from "react-icons/si";
 import {formatDistanceToNow, parseISO} from "date-fns";
 import {
-    recentPlexPayloadsQueryOptions,
-    animeUpdateByPlexIdQueryOptions,
     plexCountsQueryOptions,
     animeUpdateCountQueryOptions,
     recentAnimeUpdatesQueryOptions
 } from "@api/queries";
+import {APIClient} from "@api/APIClient";
+import {PlexKeys} from "@api/query_keys";
 import {AuthContext} from "@utils/Context";
 import {Navigate} from "@tanstack/react-router";
 
@@ -36,12 +40,17 @@ export const Dashboard = () => {
     const {data: plexCounts, isLoading: plexLoading} = useQuery(plexCountsQueryOptions());
     const {data: animeUpdateCount, isLoading: animeUpdateLoading} = useQuery(animeUpdateCountQueryOptions());
     const {data: recentAnime, isLoading: recentLoading} = useQuery(recentAnimeUpdatesQueryOptions(8));
-    const {data: recentPlex, isLoading: recentPlexLoading} = useQuery(recentPlexPayloadsQueryOptions(5));
 
-    // Fetch AnimeUpdates for each Plex payload
-    const animeUpdateQueries = useQueries({
-        queries: (recentPlex || []).map((plex: any) => animeUpdateByPlexIdQueryOptions(plex.id)),
+    const pageSize = 5;
+    const historyParams = React.useMemo(() => ({ limit: pageSize }), [pageSize]);
+    const timelineQuery = useInfiniteQuery({
+        queryKey: PlexKeys.history("timeline", historyParams),
+        queryFn: ({ pageParam }) => APIClient.plex.history({ type: "timeline", limit: pageSize, cursor: pageParam as string | undefined }),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage: any) => lastPage?.pagination?.next || undefined,
     });
+
+    const timelineItems = (timelineQuery.data?.pages || []).flatMap((p: any) => p?.data || []);
 
     return (
         <Container size={1200} px="md" component="main">
@@ -64,67 +73,83 @@ export const Dashboard = () => {
                 />
             </Stack>
 
-
             {/* Timeline Section */}
             <Stack gap="md" mt="xl">
                 <Title order={2}>Recent Activity Timeline</Title>
-                {recentPlexLoading ? (
+                {timelineQuery.isLoading ? (
                     <Text>Loading timeline...</Text>
-                ) : recentPlex && recentPlex.length > 0 ? (
-                    <Timeline active={-1} bulletSize={24} lineWidth={2}>
-                        {recentPlex.map((plex: any, idx: number) => {
-                            const animeUpdateQuery = animeUpdateQueries[idx];
-                            const animeUpdate = animeUpdateQuery?.data;
-                            return (
-                                <TimelineItem key={plex.id}>
-                                    <Card shadow="xs" padding="sm" radius="md" withBorder>
-                                        <Group>
-                                            <Text fw={700}
-                                                  ml="xs">{plex.metadata?.grandparentTitle || plex.Metadata?.grandparentTitle || plex.grandparentTitle || 'Unknown Title'}</Text>
-                                            {plex.Metadata?.librarySectionTitle && (
-                                                <Badge color="gray"
-                                                       variant="light">{plex.Metadata.librarySectionTitle}</Badge>
-                                            )}
-                                            <Text size="xs" c="dimmed">
-                                                {plex.timestamp ? formatDistanceToNow(new Date(plex.timestamp), {addSuffix: true}) : "-"}
-                                            </Text>
-                                        </Group>
-                                        <Group gap="sm" mb={4} mt="xs">
-                                            <Badge color="plex">
-                                                {plex.event}
-                                            </Badge>
+                ) : timelineItems && timelineItems.length > 0 ? (
+                    <>
+                        <Timeline active={-1} bulletSize={24} lineWidth={2}>
+                            {timelineItems.map((item: any) => {
+                                const plex = item.plex;
+                                const status = item.status;
+                                const animeUpdate = item.animeUpdate;
+                                return (
+                                    <TimelineItem key={plex.id}>
+                                        <Card shadow="xs" padding="sm" radius="md" withBorder>
+                                            <Group>
+                                                <Text fw={700}
+                                                      >{plex?.Metadata?.grandparentTitle || plex?.Metadata?.title || 'Unknown Title'}</Text>
+                                                <Text size="xs" c="dimmed">
+                                                    {plex.timestamp ? formatDistanceToNow(new Date(plex.timestamp), {addSuffix: true}) : "-"}
+                                                </Text>
+                                            </Group>
+                                            <Group gap="sm" mb={4} mt="xs">
+                                            {plex?.Metadata?.librarySectionTitle && (
+                                                    <Badge color="gray"
+                                                           variant="light">{plex.Metadata.librarySectionTitle}</Badge>
+                                                )}
+                                                <Badge color="plex">
+                                                    {plex.event}
+                                                </Badge>
+                                                {status?.success ? (
+                                                    <Badge color="green" variant="filled">Successful</Badge>
+                                                ) : (
+                                                    <Badge color="red" variant="filled">Failed</Badge>
+                                                )}
+                                            </Group>
                                             {animeUpdate ? (
-                                                <Badge color="green" variant="filled">Successful</Badge>
+                                                <Stack gap={2} mt={4}>
+                                                    <Text size="sm" fw={700}>MyAnimeList Update Details</Text>
+                                                    <Text
+                                                        size="sm">Progress: {animeUpdate?.listStatus?.num_episodes_watched}/{animeUpdate?.listDetails?.totalEpisodeNum || '?'}</Text>
+                                                    {animeUpdate?.listStatus?.score > 0 && (
+                                                        <Text size="sm">Score: {animeUpdate.listStatus.score}</Text>
+                                                    )}
+                                                    {animeUpdate?.listStatus?.status && (
+                                                        <Text size="sm">Status: {formatStatus(animeUpdate.listStatus.status)}</Text>
+                                                    )}
+                                                    <Anchor href={`https://myanimelist.net/anime/${animeUpdate.malid}`}
+                                                            target="_blank" underline="hover" c="mal" fw={700}>
+                                                        View on MAL
+                                                    </Anchor>
+                                                </Stack>
                                             ) : (
-                                                <Badge color="red" variant="filled">Failed</Badge>
+                                                status?.errorMsg ? (
+                                                    <Stack gap={4} mt={4}>
+                                                        <Flex gap="xs" justify="flex-start" align="flex-start" direction="row">
+                                                            <Text size="sm" fw={700}>Error:</Text>
+                                                            <Code>{status.errorMsg}</Code>
+                                                        </Flex>
+                                                    </Stack>
+                                                ) : (
+                                                    <Text size="sm" c="dimmed">No MyAnimeList update for this event.</Text>
+                                                )
                                             )}
-                                        </Group>
-                                        {animeUpdateQuery.isLoading ? (
-                                            <Text size="sm" c="dimmed">Loading update...</Text>
-                                        ) : animeUpdate ? (
-                                            <Stack gap={2} mt={4}>
-                                                <Text size="sm" fw={700}>MyAnimeList Update Details</Text>
-                                                <Text
-                                                    size="sm">Progress: {animeUpdate?.listStatus?.num_episodes_watched}/{animeUpdate?.listDetails?.totalEpisodeNum || '?'}</Text>
-                                                {animeUpdate?.listStatus?.score > 0 && (
-                                                    <Text size="sm">Score: {animeUpdate.listStatus.score}</Text>
-                                                )}
-                                                {animeUpdate?.listStatus?.status && (
-                                                    <Text size="sm">Status: {animeUpdate.listStatus.status}</Text>
-                                                )}
-                                                <Anchor href={`https://myanimelist.net/anime/${animeUpdate.malid}`}
-                                                        target="_blank" underline="hover" c="mal" fw={700}>
-                                                    View on MAL
-                                                </Anchor>
-                                            </Stack>
-                                        ) : (
-                                            <Text size="sm" c="dimmed">No MyAnimeList update for this event.</Text>
-                                        )}
-                                    </Card>
-                                </TimelineItem>
-                            );
-                        })}
-                    </Timeline>
+                                        </Card>
+                                    </TimelineItem>
+                                );
+                            })}
+                        </Timeline>
+                        {timelineQuery.hasNextPage && (
+                            <Group justify="center" mt="sm">
+                                <Button onClick={() => timelineQuery.fetchNextPage()} loading={timelineQuery.isFetchingNextPage} variant="light">
+                                    {timelineQuery.isFetchingNextPage ? "Loading..." : "Load more"}
+                                </Button>
+                            </Group>
+                        )}
+                    </>
                 ) : (
                     <Text>No recent activity found.</Text>
                 )}
@@ -132,6 +157,7 @@ export const Dashboard = () => {
         </Container>
     );
 };
+
 
 type StatisticsProps = {
     plexCounts?: { countScrobble?: number; countRate?: number };
@@ -243,6 +269,15 @@ const statusColor = (s: string) =>
 
 const safeDate = (d?: string) => d && d.trim().length > 0 ? d : 'Not set';
 
+// Format MAL status: replace underscores with space and capitalize each word
+const formatStatus = (s?: string) => {
+    if (!s) return "";
+    return s
+        .split('_')
+        .map((w) => (w.length ? w[0].toUpperCase() + w.slice(1) : w))
+        .join(' ');
+};
+
 function RecentlyUpdatedAnimeCarousel({
                                           items,
                                           loading,
@@ -261,8 +296,8 @@ function RecentlyUpdatedAnimeCarousel({
             style={{width: "100%"}}
             slideSize={{base: "100%", sm: "50%", md: "33.333%", lg: "25%"}}
             slideGap="md"
+            controlSize={50}
             withIndicators
-            withControls={false}
             draggable={true}
             height={560}
             emblaOptions={
@@ -291,25 +326,26 @@ function RecentlyUpdatedAnimeCarousel({
                                 />
                             </Anchor>
 
-                            <Group gap="xs" mb={4} mr="auto">
+                            <Group gap="xs" justify="center" mb={4}>
                                 <Badge color={statusColor(anime.animeStatus)} variant="light">
-                                    {anime.animeStatus}
+                                    {anime.animeStatus.replace(/_/g, ' ')}
                                 </Badge>
                                 {anime.rewatchNum > 0 && (
-                                    <Badge color="yellow" variant="light">Rewatched x{anime.rewatchNum}</Badge>
+                                    <Badge color="mal" variant="light">{anime.rewatchNum} rewatches</Badge>
                                 )}
                             </Group>
-
-                            <Text size="sm" mb={2}>
-                                Progress: {anime.watchedNum}/{anime.totalEpisodeNum === 0 ? "?" : anime.totalEpisodeNum}
-                            </Text>
-                            <Text size="sm">Rating: {anime.rating > 0 ? anime.rating : "Not set"}</Text>
-                            <Text size="xs">Start Date: {safeDate(anime.startDate)}</Text>
-                            <Text size="xs">Finish Date: {safeDate(anime.finishDate)}</Text>
-                            <Text size="xs" c="dimmed" mt={4}>
-                                Last Updated:{" "}
-                                {anime.lastUpdated ? formatDistanceToNow(parseISO(anime.lastUpdated), {addSuffix: true}) : "-"}
-                            </Text>
+                            <Stack justify="center" gap={0}>
+                                <Text size="xs" fw={700}>
+                                    Progress: {anime.watchedNum}/{anime.totalEpisodeNum === 0 ? "?" : anime.totalEpisodeNum}
+                                </Text>
+                                <Text size="xs" fw={700}>Rating: {anime.rating > 0 ? anime.rating : "Not set"}</Text>
+                                <Text size="xs" fw={700}>Start Date: {safeDate(anime.startDate)}</Text>
+                                <Text size="xs" fw={700}>Finish Date: {safeDate(anime.finishDate)}</Text>
+                                <Text size="xs" c="dimmed" mt={4}>
+                                    Last Updated: {" "}
+                                    {anime.lastUpdated ? formatDistanceToNow(parseISO(anime.lastUpdated), {addSuffix: true}) : "-"}
+                                </Text>
+                            </Stack>
                         </Card>
                     </Box>
                 </Carousel.Slide>

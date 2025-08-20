@@ -154,17 +154,25 @@ func (repo *PlexRepo) CountRateEvents(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (repo *PlexRepo) GetRecent(ctx context.Context, limit int) ([]*domain.Plex, error) {
+func (repo *PlexRepo) GetWithCursor(ctx context.Context, limit int, cursor *domain.PlexCursor) ([]*domain.Plex, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
-		From("plex_payload").
-		OrderBy("time_stamp DESC").
-		Limit(uint64(limit))
+		From("plex_payload")
+
+	if cursor != nil {
+		// Page strictly by id to avoid time-zone comparison issues
+		queryBuilder = queryBuilder.Where(sq.Lt{"id": cursor.ID})
+	}
+
+	// request one extra row to detect presence of next page
+	queryBuilder = queryBuilder.OrderBy("id DESC").Limit(uint64(limit + 1))
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "error building query")
 	}
+
+	repo.log.Trace().Str("database", "plex.getWithCursor").Msgf("query: '%s', args: '%v'", query, args)
 
 	rows, err := repo.db.handler.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -185,4 +193,100 @@ func (repo *PlexRepo) GetRecent(ctx context.Context, limit int) ([]*domain.Plex,
 		payloads = append(payloads, &p)
 	}
 	return payloads, nil
+}
+
+func (repo *PlexRepo) GetWithOffset(ctx context.Context, req *domain.PlexHistoryRequest) ([]*domain.Plex, int, error) {
+	// Build base query for counting
+	countQueryBuilder := repo.db.squirrel.
+		Select("count(*)").
+		From("plex_payload")
+
+	// Build base query for data
+	queryBuilder := repo.db.squirrel.
+		Select("id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
+		From("plex_payload")
+
+	// Apply filters
+	if req.Search != "" {
+		searchFilter := sq.Or{
+			sq.Like{"title": "%" + req.Search + "%"},
+			sq.Like{"grand_parent_title": "%" + req.Search + "%"},
+		}
+		countQueryBuilder = countQueryBuilder.Where(searchFilter)
+		queryBuilder = queryBuilder.Where(searchFilter)
+	}
+
+	if req.Status != "" && req.Status != "all" {
+		// This will be handled by joining with plex_status table
+		// For now, we'll implement basic filtering
+	}
+
+	if req.Event != "" && req.Event != "all" {
+		eventFilter := sq.Eq{"event": req.Event}
+		countQueryBuilder = countQueryBuilder.Where(eventFilter)
+		queryBuilder = queryBuilder.Where(eventFilter)
+	}
+
+	if req.FromDate != "" {
+		fromDate, err := time.Parse("2006-01-02", req.FromDate)
+		if err == nil {
+			countQueryBuilder = countQueryBuilder.Where(sq.GtOrEq{"time_stamp": fromDate})
+			queryBuilder = queryBuilder.Where(sq.GtOrEq{"time_stamp": fromDate})
+		}
+	}
+
+	if req.ToDate != "" {
+		toDate, err := time.Parse("2006-01-02", req.ToDate)
+		if err == nil {
+			// Add one day to include the entire day
+			toDate = toDate.Add(24 * time.Hour)
+			countQueryBuilder = countQueryBuilder.Where(sq.Lt{"time_stamp": toDate})
+			queryBuilder = queryBuilder.Where(sq.Lt{"time_stamp": toDate})
+		}
+	}
+
+	// Get total count
+	countQuery, countArgs, err := countQueryBuilder.ToSql()
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "error building count query")
+	}
+
+	repo.log.Trace().Str("database", "plex.getWithOffset.count").Msgf("query: '%s', args: '%v'", countQuery, countArgs)
+
+	var totalCount int
+	row := repo.db.handler.QueryRowContext(ctx, countQuery, countArgs...)
+	if err := row.Scan(&totalCount); err != nil {
+		return nil, 0, errors.Wrap(err, "error scanning count")
+	}
+
+	// Build data query with pagination
+	queryBuilder = queryBuilder.OrderBy("time_stamp DESC, id DESC").Limit(uint64(req.Limit)).Offset(uint64(req.Offset))
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "error building query")
+	}
+
+	repo.log.Trace().Str("database", "plex.getWithOffset.data").Msgf("query: '%s', args: '%v'", query, args)
+
+	rows, err := repo.db.handler.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "error executing query")
+	}
+	defer rows.Close()
+
+	payloads := make([]*domain.Plex, 0)
+	for rows.Next() {
+		var p domain.Plex
+		var guidsStr string
+		if err := rows.Scan(&p.ID, &p.Rating, &p.Event, &p.Source, &p.Account.Title, &p.Metadata.GUID.GUID, &guidsStr, &p.Metadata.GrandparentKey, &p.Metadata.GrandparentTitle, &p.Metadata.Index, &p.Metadata.LibrarySectionTitle, &p.Metadata.ParentIndex, &p.Metadata.Title, &p.Metadata.Type, &p.TimeStamp); err != nil {
+			return nil, 0, errors.Wrap(err, "error scanning row")
+		}
+		if err := json.Unmarshal([]byte(guidsStr), &p.Metadata.GUID.GUIDS); err != nil {
+			return nil, 0, errors.Wrap(err, "error unmarshaling guids")
+		}
+		payloads = append(payloads, &p)
+	}
+
+	return payloads, totalCount, nil
 }

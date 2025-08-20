@@ -18,7 +18,8 @@ type PlexRepo interface {
 	Delete(ctx context.Context, req *DeletePlexRequest) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
-	GetRecent(ctx context.Context, limit int) ([]*Plex, error)
+	GetWithCursor(ctx context.Context, limit int, cursor *PlexCursor) ([]*Plex, error)
+	GetWithOffset(ctx context.Context, req *PlexHistoryRequest) ([]*Plex, int, error)
 }
 
 type Plex struct {
@@ -279,6 +280,10 @@ func (p *Plex) IsEventAllowed() bool {
 	return p.Event == PlexRateEvent || p.Event == PlexScrobbleEvent
 }
 
+func (p *Plex) IsRatingAllowed() bool {
+	return p.Rating >= 0
+}
+
 func (p *Plex) IsPlexUserAllowed(ps *PlexSettings) bool {
 	return p.Account.Title == ps.PlexUser
 }
@@ -352,6 +357,10 @@ func (p *Plex) CheckPlex(ps *PlexSettings) (PlexSupportedAgents, error) {
 		return "", errors.Wrap(errors.New("plex media type not supported"), string(p.Metadata.Type))
 	}
 
+	if !p.IsRatingAllowed() {
+		return "", errors.Wrap(errors.New("rating was unset, skipped"), strconv.FormatFloat(float64(p.Rating), 'f', -1, 64))
+	}
+
 	if allowed, agent := p.IsMetadataAgentAllowed(); allowed {
 		return agent, nil
 	}
@@ -408,4 +417,50 @@ func (g *GUID) PlexAgent(mediaType PlexMediaType) (PlexSupportedDBs, int, error)
 	}
 
 	return "", -1, errors.New("no supported online database found")
+}
+
+type PlexHistoryRequest struct {
+	// Pagination
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset,omitempty"` // For table pagination
+	Cursor string `json:"cursor,omitempty"` // For timeline pagination
+
+	// Search & Filter
+	Search   string `json:"search,omitempty"` // Search in title
+	Status   string `json:"status,omitempty"` // success, error, all
+	Event    string `json:"event,omitempty"`  // scrobble, rate, all
+	FromDate string `json:"from,omitempty"`   // ISO date
+	ToDate   string `json:"to,omitempty"`     // ISO date
+
+	// Response type
+	Type string `json:"type,omitempty"` // "timeline" or "table"
+}
+
+type PlexHistoryResponse struct {
+	Data       []PlexHistoryItem     `json:"data"`
+	Pagination PlexHistoryPagination `json:"pagination"`
+}
+
+type PlexHistoryItem struct {
+	Plex        *Plex        `json:"plex"`
+	Status      *PlexStatus  `json:"status"`
+	AnimeUpdate *AnimeUpdate `json:"animeUpdate,omitempty"`
+}
+
+type PlexCursor struct {
+	TimeStamp time.Time `json:"timestamp"`
+	ID        int64     `json:"id"`
+}
+
+type PlexHistoryPagination struct {
+	// For timeline (cursor-based)
+	HasNext bool   `json:"hasNext,omitempty"`
+	HasPrev bool   `json:"hasPrev,omitempty"`
+	Next    string `json:"next,omitempty"`
+	Prev    string `json:"prev,omitempty"`
+
+	// For table (offset-based)
+	CurrentPage int `json:"currentPage,omitempty"`
+	TotalPages  int `json:"totalPages,omitempty"`
+	TotalItems  int `json:"totalItems,omitempty"`
 }

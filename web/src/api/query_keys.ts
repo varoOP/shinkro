@@ -41,7 +41,12 @@ export const NotificationKeys = {
 
 export const PlexKeys = {
     all: ["plex"] as const,
-    recentPayloads: (limit: number = 20) => [...PlexKeys.all, "recentPayloads", limit] as const,
+    history: (type: "timeline" | "table", params: Record<string, unknown>) => [
+        ...PlexKeys.all,
+        "history",
+        type,
+        params,
+    ] as const,
 };
 
 export const AnimeUpdateKeys = {

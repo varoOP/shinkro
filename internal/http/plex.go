@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -19,7 +18,7 @@ type plexService interface {
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
-	GetRecent(ctx context.Context, limit int) ([]*domain.Plex, error)
+	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
 }
 
 type plexHandler struct {
@@ -38,7 +37,7 @@ func (h plexHandler) Routes(r chi.Router) {
 	r.Get("/", h.getPlex)
 	r.Get("/count", h.getCounts)
 	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.postPlex)
-	r.Get("/getRecent", h.getRecent)
+	r.Get("/history", h.getHistory)
 }
 
 func (h plexHandler) getPlex(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +84,7 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 	agent, err := plex.CheckPlex(plexSettings)
 	if err != nil {
 		log := hlog.FromRequest(r)
-		log.Error().Err(err).Msg("Error processing plex")
+		log.Debug().Err(err).Msg("Plex payload not sent for processing")
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "BAD_REQUEST",
 			"message": err.Error(),
@@ -144,33 +143,47 @@ func (h plexHandler) getCounts(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h plexHandler) getRecent(w http.ResponseWriter, r *http.Request) {
+func (h plexHandler) getHistory(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
 	limit := 20
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if n, err := strconv.Atoi(l); err == nil && n > 0 {
 			limit = n
 		}
 	}
-	payloads, err := h.service.GetRecent(r.Context(), limit)
+
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	req := &domain.PlexHistoryRequest{
+		Limit:    limit,
+		Offset:   offset,
+		Cursor:   r.URL.Query().Get("cursor"),
+		Search:   r.URL.Query().Get("search"),
+		Status:   r.URL.Query().Get("status"),
+		Event:    r.URL.Query().Get("event"),
+		FromDate: r.URL.Query().Get("from"),
+		ToDate:   r.URL.Query().Get("to"),
+		Type:     r.URL.Query().Get("type"),
+	}
+
+	// Default to "table" if not specified
+	if req.Type == "" {
+		req.Type = "table"
+	}
+
+	response, err := h.service.GetPlexHistory(r.Context(), req)
 	if err != nil {
-		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
+			"code":    "INTERNAL_SERVER_ERROR",
+			"message": err.Error(),
+		})
 		return
 	}
-	// Map to response with ISO string timestamp
-	result := make([]map[string]interface{}, 0, len(payloads))
-	for _, p := range payloads {
-		m := map[string]interface{}{
-			"id":        p.ID,
-			"rating":    p.Rating,
-			"event":     p.Event,
-			"source":    p.Source,
-			"account":   p.Account,
-			"server":    p.Server,
-			"player":    p.Player,
-			"metadata":  p.Metadata,
-			"timestamp": p.TimeStamp.Format(time.RFC3339),
-		}
-		result = append(result, m)
-	}
-	h.encoder.StatusResponse(w, http.StatusOK, result)
+
+	h.encoder.StatusResponse(w, http.StatusOK, response)
 }

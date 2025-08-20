@@ -325,8 +325,17 @@ export const APIClient = {
         getCounts: () =>
             appClient.Get<{countScrobble: number, countRate: number}>("api/plex/count"),
 
-        getRecent: (limit = 20) =>
-            appClient.Get<any[]>("api/plex/getRecent", { queryString: { limit } }),
+        history: (opts: {
+            type?: "timeline" | "table";
+            limit?: number;
+            cursor?: string;
+            offset?: number;
+            search?: string;
+            status?: string;
+            event?: string;
+            from?: string;
+            to?: string;
+        } = {}) => appClient.Get<any>("api/plex/history", { queryString: opts }),
     },
 
     malauth: {

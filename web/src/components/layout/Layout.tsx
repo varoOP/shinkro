@@ -76,11 +76,11 @@ export const Layout = () => {
                     <Flex align="flex-end" gap="xs" ml={"xs"}>
                         <Title order={3}>shinkro</Title>
                         <Code fw={700} className={classes.code}>
-                            {config?.version}
+                            v{config?.version}
                         </Code>
                     </Flex>
                     <Flex align="center" mt="xs">
-                        {latestRelease?.tag_name && config?.version && !isDevOrNightly && isUpdateAvailable(config.version, latestRelease.tag_name) && (
+                        {config?.check_for_updates && latestRelease?.tag_name && config?.version && !isDevOrNightly && isUpdateAvailable(config.version, latestRelease.tag_name) && (
                             <Badge color="blue" size="xs" ml={4} component="a" href={`https://github.com/varoOP/shinkro/releases/tag/${latestRelease.tag_name}`} target="_blank" style={{ verticalAlign: 'middle', cursor: 'pointer' }}>
                                 Update Available!
                             </Badge>

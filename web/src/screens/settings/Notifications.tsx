@@ -114,7 +114,7 @@ export const Notifications = () => {
                 />
             )}
 
-            <Group justify="flex-end" mt="md">
+            <Group justify="center" mt="md">
                 <Button onClick={() => setModalOpened(true)}>
                     Add New Notification
                 </Button>

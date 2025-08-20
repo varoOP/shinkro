@@ -30,7 +30,7 @@ export const Application = () => {
         <main>
             <SettingsSectionHeader
                 title="Application Settings"
-                description="View your shinkro application configuration here. To change settings, edit config.toml found in the config directory and restart the application."
+                description="To change settings, edit config.toml found in the config directory and restart the application."
             />
             
             {config ? (

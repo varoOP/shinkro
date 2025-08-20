@@ -57,7 +57,7 @@ CREATE TABLE anime_update
 	list_status  	TEXT,
 	plex_id      	INTEGER
 	    REFERENCES plex_payload
-			ON DELETE SET NULL       
+			ON DELETE CASCADE       
 );
 
 CREATE TABLE plex_payload
@@ -93,6 +93,19 @@ CREATE TABLE plex_settings
 	plex_client_enabled			BOOLEAN DEFAULT false NOT NULL,
 	client_id				    TEXT,
 	time_stamp                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE plex_status
+(
+    	id 							INTEGER PRIMARY KEY,
+    	title 							TEXT NOT NULL,
+    	event 						TEXT NOT NULL,
+    	success 			        BOOLEAN NOT NULL,
+    	error_msg 				TEXT,
+    	time_stamp 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    	plex_id 					INTEGER NOT NULL
+    	  REFERENCES plex_payload
+		     ON DELETE CASCADE
 );
 
 CREATE TABLE mapping_settings

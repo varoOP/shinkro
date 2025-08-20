@@ -14,6 +14,7 @@ import (
 	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/mapping"
 	"github.com/varoOP/shinkro/internal/plexsettings"
+	"github.com/varoOP/shinkro/internal/plexstatus"
 )
 
 type Service interface {
@@ -35,9 +36,10 @@ type service struct {
 	malauthService      malauth.Service
 	animeUpdateService  animeupdate.Service
 	notificationService notification.Service
+	plexStatusService   plexstatus.Service
 }
 
-func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, notificationSvc notification.Service) Service {
+func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, notificationSvc notification.Service, plexStatusSvc plexstatus.Service) Service {
 	return &service{
 		log:                 log.With().Str("module", "plex").Logger(),
 		repo:                repo,
@@ -47,6 +49,7 @@ func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo d
 		malauthService:      malauthSvc,
 		animeUpdateService:  animeUpdateSvc,
 		notificationService: notificationSvc,
+		plexStatusService:   plexStatusSvc,
 	}
 }
 
@@ -65,6 +68,7 @@ func (s *service) GetPlexSettings(ctx context.Context) (*domain.PlexSettings, er
 func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error {
 	a, err := s.extractSourceIdForAnime(ctx, plex, agent)
 	if err != nil {
+		s.plexStatusService.StoreError(ctx, plex, err.Error())
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
 			Message:      err.Error(),
 			Subject:      "Failed to extract anime information",
@@ -78,6 +82,7 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 
 	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
 	if err != nil {
+		s.plexStatusService.StoreError(ctx, plex, err.Error())
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
 			Message:      err.Error(),
 			Subject:      "Failed to update MyAnimeList",
@@ -90,6 +95,7 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 		return err
 	}
 
+	s.plexStatusService.StoreSuccess(ctx, plex)
 	s.notificationService.Send(domain.NotificationEventSuccess, domain.NotificationPayload{
 		MediaName:       a.ListDetails.Title,
 		MALID:           a.MALId,

@@ -31,6 +31,7 @@ import (
 	"github.com/varoOP/shinkro/internal/notification"
 	"github.com/varoOP/shinkro/internal/plex"
 	"github.com/varoOP/shinkro/internal/plexsettings"
+	"github.com/varoOP/shinkro/internal/plexstatus"
 	"github.com/varoOP/shinkro/internal/server"
 	"github.com/varoOP/shinkro/internal/user"
 )
@@ -103,6 +104,7 @@ func main() {
 		var apiRepo = database.NewAPIRepo(log, db)
 		var mappingRepo = database.NewMappingRepo(log, db)
 		var notificationRepo = database.NewNotificationRepo(log, db)
+		var plexStatusRepo = database.NewPlexStatusRepo(log, db)
 
 		var animeService = anime.NewService(log, animeRepo)
 		var malauthService = malauth.NewService(cfg.Config, log, malauthRepo)
@@ -110,7 +112,8 @@ func main() {
 		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
 		var plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
 		var notificationService = notification.NewService(log, notificationRepo)
-		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, notificationService)
+		var plexStatusService = plexstatus.NewService(log, plexStatusRepo)
+		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, notificationService, plexStatusService)
 		var userService = user.NewService(userRepo, log)
 		var authService = auth.NewService(log, userService)
 		var apiService = api.NewService(log, apiRepo)

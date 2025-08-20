@@ -1,5 +1,5 @@
 import {useForm} from "@mantine/form";
-import {Button, CopyButton, Group, Modal, PasswordInput, Tooltip} from "@mantine/core";
+import {Button, CopyButton, Group, Modal, PasswordInput, Text, Code} from "@mantine/core";
 import {MalAuth} from "@app/types/MalAuth";
 import {useMutation} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient.ts";
@@ -63,17 +63,16 @@ export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
                     {...form.getInputProps("clientSecret")}
                     mt={"md"}
                 />
+                <Group mt={"md"}>
+                    <Text size="sm">App Redirect URL</Text>
+                    <Code c="dimmed">{appRedirectURL}</Code>
+                </Group>
                 <Group justify={"center"} align={"flex-end"}>
                     <CopyButton value={appRedirectURL}>
                         {({copied, copy}) => (
-                            <Tooltip
-                                withArrow
-                                position={"bottom"}
-                                label={`App Redirect URL: ${appRedirectURL}`}>
                                 <Button color={copied ? 'teal' : 'mal'} onClick={copy}>
                                     {copied ? 'COPIED URL' : 'COPY APP REDIRECT URL'}
                                 </Button>
-                            </Tooltip>
                         )}
                     </CopyButton>
                     <Button type="submit" mt={"md"} loading={loading}>

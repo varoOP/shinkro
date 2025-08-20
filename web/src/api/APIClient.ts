@@ -3,12 +3,15 @@ import {
     PlexConfig,
     PlexOAuthPollResponse,
     PlexOAuthStartResponse,
-    PlexLibraryResponse, PlexServerResponse
+    PlexLibraryResponse, PlexServerResponse,
+    PlexHistoryRequest,
+    PlexHistoryResponse
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
 import {Mapping, ValidateMap} from "@app/types/Mapping";
 import {FileSystem, LogFileResponse} from "@app/types/FileSystem";
+import { RecentAnimeItem } from "@app/types/Anime";
 
 type RequestBody = BodyInit | object | Record<string, unknown> | null;
 type Primitive = string | number | boolean | symbol | undefined;
@@ -325,17 +328,19 @@ export const APIClient = {
         getCounts: () =>
             appClient.Get<{countScrobble: number, countRate: number}>("api/plex/count"),
 
-        history: (opts: {
-            type?: "timeline" | "table";
-            limit?: number;
-            cursor?: string;
-            offset?: number;
-            search?: string;
-            status?: string;
-            event?: string;
-            from?: string;
-            to?: string;
-        } = {}) => appClient.Get<any>("api/plex/history", { queryString: opts }),
+        history: (opts: PlexHistoryRequest = {}) => appClient.Get<PlexHistoryResponse>("api/plex/history", {
+            queryString: {
+                type: opts.type,
+                limit: opts.limit,
+                cursor: opts.cursor,
+                offset: opts.offset,
+                search: opts.search,
+                status: opts.status,
+                event: opts.event,
+                from: opts.from,
+                to: opts.to,
+            }
+        }),
     },
 
     malauth: {
@@ -397,9 +402,8 @@ export const APIClient = {
         getCount: () =>
             appClient.Get<{count: number}>("api/animeupdate/count"),
         getRecent: (limit = 5) =>
-            appClient.Get<any[]>("api/animeupdate/recent", { queryString: { limit } }),
-        getByPlexId: (plexId: number) =>
-            appClient.Get<any | null>("api/animeupdate/byPlexId", { queryString: { id: plexId } }),
+            appClient.Get<RecentAnimeItem[]>("api/animeupdate/recent", { queryString: { limit } }),
+        // getByPlexId removed or will be retyped later if needed
     },
 
     // events: {

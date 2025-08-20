@@ -101,3 +101,62 @@ export interface PlexLibraryLocation {
     id: number;
     path: string;
 }
+
+// Unified Plex History API types
+export type PlexHistoryType = "timeline" | "table";
+
+export interface PlexHistoryRequest {
+    type?: PlexHistoryType;
+    limit?: number;
+    cursor?: string;
+    offset?: number;
+    search?: string;
+    status?: string;
+    event?: string;
+    from?: string;
+    to?: string;
+}
+
+export interface PlexMetadataMinimal {
+    librarySectionTitle?: string;
+    grandparentTitle?: string;
+    title?: string;
+}
+
+export interface PlexPayloadMinimal {
+    id: number;
+    event: string;
+    timestamp: string;
+    Metadata?: PlexMetadataMinimal;
+    // Allow additional fields from backend without strict typing
+    [key: string]: any;
+}
+
+export interface PlexStatusItem {
+    id: number;
+    title?: string;
+    event?: string;
+    success: boolean;
+    errorMsg?: string;
+    plexID: number;
+    timestamp: string | Date;
+}
+
+import type { TimelineAnimeUpdate } from "./Anime";
+
+export interface PlexHistoryItem {
+    plex: PlexPayloadMinimal;
+    status?: PlexStatusItem;
+    animeUpdate?: TimelineAnimeUpdate;
+}
+
+export interface PlexHistoryPagination {
+    hasNext?: boolean;
+    next?: string;
+    totalCount?: number;
+}
+
+export interface PlexHistoryResponse {
+    data: PlexHistoryItem[];
+    pagination: PlexHistoryPagination;
+}

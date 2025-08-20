@@ -14,6 +14,7 @@ type AnimeUpdateRepo interface {
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*AnimeUpdate, error)
+	GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*AnimeUpdate, error)
 }
 
 type AnimeUpdate struct {

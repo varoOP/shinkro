@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -150,4 +151,47 @@ func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*do
 		return nil, errors.Wrap(err, "error unmarshalling list_status")
 	}
 	return &au, nil
+}
+
+func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.AnimeUpdate, error) {
+	if len(plexIDs) == 0 {
+		return []*domain.AnimeUpdate{}, nil
+	}
+
+	queryBuilder := repo.db.squirrel.
+		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		From("anime_update").
+		Where(sq.Eq{"plex_id": plexIDs}).
+		OrderBy("time_stamp DESC")
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	repo.log.Trace().Str("database", "animeupdate.getByPlexIDs").Msgf("query: '%s', args: '%v'", query, args)
+
+	rows, err := repo.db.handler.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error executing query")
+	}
+	defer rows.Close()
+
+	var updates []*domain.AnimeUpdate
+	for rows.Next() {
+		var au domain.AnimeUpdate
+		var listDetailsBytes, listStatusBytes []byte
+		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+			return nil, errors.Wrap(err, "error scanning row")
+		}
+		if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
+			return nil, errors.Wrap(err, "error unmarshalling list_details")
+		}
+		if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
+			return nil, errors.Wrap(err, "error unmarshalling list_status")
+		}
+		updates = append(updates, &au)
+	}
+
+	return updates, nil
 }

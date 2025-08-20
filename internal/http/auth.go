@@ -183,10 +183,11 @@ func (h authHandler) onboardEligible(ctx context.Context) (int, error) {
 // validate sits behind the IsAuthenticated middleware which takes care of checking for a valid session
 // If there is a valid session return OK, otherwise the middleware returns early with a 401
 func (h authHandler) validate(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("session").(*sessions.Session)
-	if session != nil {
-		h.log.Debug().Msgf("found user session: %+v", session)
-
+	// Session is injected by IsAuthenticated middleware using the typed key `sessionkey`
+	if v := r.Context().Value(sessionkey); v != nil {
+		if session, ok := v.(*sessions.Session); ok && session != nil {
+			h.log.Debug().Msgf("found user session: %+v", session)
+		}
 	}
 	// send empty response as ok
 	h.encoder.NoContent(w)

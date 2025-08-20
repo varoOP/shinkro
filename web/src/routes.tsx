@@ -85,23 +85,28 @@ export const LoginRoute = createRoute({
 export const AuthRoute = createRoute({
     getParentRoute: () => RootRoute,
     id: "auth",
-    // Before loading, authenticate the user via our auth context
-    // This will also happen during prefetching (e.g. hovering over links, etc.)
-    beforeLoad: ({context, location}) => {
-        // If the user is not logged in, check for item in localStorage
+    // Validate session before loading protected routes to avoid firing many API calls
+    beforeLoad: async ({context, location}) => {
         if (!AuthContext.get().isLoggedIn) {
             throw redirect({
                 to: LoginRoute.to,
                 search: {
-                    // Use the current location to power a redirect after login
-                    // (Do not use `router.state.resolvedLocation` as it can
-                    // potentially lag behind the actual current location)
                     redirect: location.href,
                 },
             });
         }
-
-        // Otherwise, return the user in context
+        // Validate cookie/session; if invalid, reset and redirect before children mount
+        try {
+            await APIClient.auth.validate();
+        } catch {
+            AuthContext.reset();
+            throw redirect({
+                to: LoginRoute.to,
+                search: {
+                    redirect: location.href,
+                },
+            });
+        }
         return context;
     },
 });
@@ -109,11 +114,11 @@ export const AuthRoute = createRoute({
 function AuthenticatedLayout() {
     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
     if (!isLoggedIn) {
-        const redirect =
+        const redirectParam =
             location.pathname.length > 1
                 ? {redirect: location.pathname}
                 : undefined;
-        return <Navigate to="/login" search={redirect}/>;
+        return <Navigate to="/login" search={redirectParam}/>;
     }
 
     return (

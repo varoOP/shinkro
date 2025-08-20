@@ -15,6 +15,7 @@ type Service interface {
 	Login(ctx context.Context, username, password string) (*domain.User, error)
 	CreateUser(ctx context.Context, req domain.CreateUserRequest) error
 	UpdateUser(ctx context.Context, req domain.UpdateUserRequest) error
+	ResetPassword(ctx context.Context, username, newPassword string) error
 	CreateHash(password string) (hash string, err error)
 	ComparePasswordAndHash(password string, hash string) (match bool, err error)
 }
@@ -141,6 +142,46 @@ func (s *service) UpdateUser(ctx context.Context, req domain.UpdateUserRequest) 
 	if err := s.userSvc.Update(ctx, req); err != nil {
 		s.log.Error().Err(err).Msgf("could not change password for user: %s", req.UsernameCurrent)
 		return errors.New("failed to change password")
+	}
+
+	return nil
+}
+
+func (s *service) ResetPassword(ctx context.Context, username, newPassword string) error {
+	if username == "" {
+		return errors.New("validation error: empty username supplied")
+	}
+	if newPassword == "" {
+		return errors.New("validation error: empty new password supplied")
+	}
+
+	// find user
+	u, err := s.userSvc.FindByUsername(ctx, username)
+	if err != nil {
+		s.log.Trace().Err(err).Msgf("could not find user: %v", username)
+		return errors.Wrapf(err, "user not found: %s", username)
+	}
+
+	if u == nil {
+		return errors.Errorf("user not found: %s", username)
+	}
+
+	// hash the new password
+	hashed, err := s.CreateHash(newPassword)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
+
+	// create update request with only the new password
+	updateReq := domain.UpdateUserRequest{
+		UsernameCurrent: username,
+		PasswordNew:     newPassword,
+		PasswordNewHash: hashed,
+	}
+
+	if err := s.userSvc.Update(ctx, updateReq); err != nil {
+		s.log.Error().Err(err).Msgf("could not reset password for user: %s", username)
+		return errors.New("failed to reset password")
 	}
 
 	return nil

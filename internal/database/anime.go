@@ -74,7 +74,15 @@ func (repo *AnimeRepo) StoreMultiple(anime []*domain.Anime) error {
 		return err
 	}
 
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err := tx.Rollback()
+		if err != nil {
+			repo.log.Error().Err(err).Msg("failed to rollback transaction")
+		} else {
+			repo.log.Info().Msg("transaction rolled back successfully")
+		}
+	}(tx)
+
 	for _, a := range anime {
 		queryBuilder := repo.db.squirrel.
 			Replace("anime").

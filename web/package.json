@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mantine/carousel": "^8.2.4",
     "@mantine/core": "^7.17.4",
     "@mantine/form": "^7.17.4",
     "@mantine/hooks": "^7.17.4",

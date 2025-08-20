@@ -57,41 +57,31 @@ func (s *service) UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate
 }
 
 func (s *service) handleRateEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-	if anime.SourceDB == domain.MAL {
-		anime.MALId = anime.SourceId
-		return s.updateAndStore(ctx, anime, anime.UpdateRating)
-	}
-
-	convertedAnime := s.convertAniDBToTVDB(ctx, anime)
-	animeMap, err := s.mapService.CheckForAnimeinMap(ctx, convertedAnime)
-	if err == nil {
-		anime.MALId = animeMap.Malid
-		return s.updateAndStore(ctx, anime, anime.UpdateRating)
-	}
-
-	if anime.SeasonNum == 1 {
-		return s.updateFromDBAndStore(ctx, anime, anime.UpdateRating)
-	}
-
-	return err
+	return s.handleEvent(ctx, anime, anime.UpdateRating, false)
 }
 
 func (s *service) handleScrobbleEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
+	return s.handleEvent(ctx, anime, anime.UpdateWatchStatus, true)
+}
+
+func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error, isScrobble bool) error {
 	if anime.SourceDB == domain.MAL {
 		anime.MALId = anime.SourceId
-		return s.updateAndStore(ctx, anime, anime.UpdateWatchStatus)
+		return s.updateAndStore(ctx, anime, updateFunc)
 	}
 
 	convertedAnime := s.convertAniDBToTVDB(ctx, anime)
 	animeMap, err := s.mapService.CheckForAnimeinMap(ctx, convertedAnime)
 	if err == nil {
 		anime.MALId = animeMap.Malid
-		anime.EpisodeNum = animeMap.CalculateEpNum(anime.EpisodeNum)
-		return s.updateAndStore(ctx, anime, anime.UpdateWatchStatus)
+		if isScrobble {
+			anime.EpisodeNum = animeMap.CalculateEpNum(anime.EpisodeNum)
+		}
+		return s.updateAndStore(ctx, anime, updateFunc)
 	}
 
 	if anime.SeasonNum == 1 {
-		return s.updateFromDBAndStore(ctx, anime, anime.UpdateWatchStatus)
+		return s.updateFromDBAndStore(ctx, anime, updateFunc)
 	}
 
 	return err
@@ -144,6 +134,7 @@ func (s *service) convertAniDBToTVDB(ctx context.Context, anime *domain.AnimeUpd
 	if aa.TVDBId > 0 {
 		newAnime.SourceDB = domain.TVDB
 		newAnime.SourceId = aa.TVDBId
+		s.log.Debug().Int("converted tvdbId", aa.TVDBId).Msg("Converted Anime to TVDB")
 	} else {
 		return anime
 	}

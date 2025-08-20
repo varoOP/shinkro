@@ -1,4 +1,4 @@
-import {Tabs, Divider, Paper} from "@mantine/core";
+import {Tabs, Divider, Paper, Container} from "@mantine/core";
 import {useNavigate, Outlet, useRouterState} from "@tanstack/react-router";
 import {SiMyanimelist, SiPlex} from "react-icons/si";
 import {FaCog, FaUserCog, FaKey, FaBell, FaMap} from "react-icons/fa";
@@ -22,7 +22,7 @@ export const Settings = () => {
         tabsList.find((tab) => pathname.endsWith(tab.path))?.value || "application";
 
     return (
-        <div>
+        <Container size={1200} px="md" component="main">
             <Paper mt="md" withBorder p={"md"} h={"100%"} mih={"80vh"}>
                 <Tabs
                     value={activeTab}
@@ -44,6 +44,6 @@ export const Settings = () => {
                     <Outlet/>
                 </Tabs>
             </Paper>
-        </div>
+        </Container>
     );
 };

@@ -222,9 +222,6 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		fmt.Printf("Changing password for user '%s'\n", username)
-		fmt.Print("Enter current password: ")
-		pwCur, _ := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Println()
 		fmt.Print("Enter new password: ")
 		pwNew, _ := term.ReadPassword(int(os.Stdin.Fd()))
 		fmt.Println()
@@ -235,12 +232,8 @@ func main() {
 			fmt.Fprintln(os.Stderr, "New passwords do not match or are empty.")
 			os.Exit(1)
 		}
-		updateReq := domain.UpdateUserRequest{
-			UsernameCurrent: username,
-			PasswordCurrent: strings.TrimSpace(string(pwCur)),
-			PasswordNew:     strings.TrimSpace(string(pwNew)),
-		}
-		if err := authService.UpdateUser(ctx, updateReq); err != nil {
+		newPassword := strings.TrimSpace(string(pwNew))
+		if err := authService.ResetPassword(ctx, username, newPassword); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to change password: %v\n", err)
 			os.Exit(1)
 		}

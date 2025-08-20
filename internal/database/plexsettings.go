@@ -18,7 +18,7 @@ type PlexSettingsRepo struct {
 
 func NewPlexSettingsRepo(log zerolog.Logger, db *DB) domain.PlexSettingsRepo {
 	return &PlexSettingsRepo{
-		log: log,
+		log: log.With().Str("repo", "plex_settings").Logger(),
 		db:  db,
 	}
 }

@@ -9,7 +9,6 @@ import {
     MappingKeys,
     LogKeys,
     PlexKeys,
-    AnimeUpdateKeys
 } from "@api/query_keys";
 
 export const ConfigQueryOptions = (enabled: boolean = true) =>
@@ -84,13 +83,6 @@ export const plexHistoryQueryOptions = (opts: {
     queryOptions({
         queryKey: PlexKeys.history(opts.type ?? "timeline", opts),
         queryFn: () => APIClient.plex.history(opts),
-    });
-
-export const animeUpdateByPlexIdQueryOptions = (plexId: number) =>
-    queryOptions({
-        queryKey: AnimeUpdateKeys.byPlexId(plexId),
-        queryFn: () => APIClient.animeupdate.getByPlexId(plexId),
-        enabled: !!plexId,
     });
 
 export const plexCountsQueryOptions = () =>

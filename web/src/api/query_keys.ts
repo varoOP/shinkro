@@ -48,8 +48,3 @@ export const PlexKeys = {
         params,
     ] as const,
 };
-
-export const AnimeUpdateKeys = {
-    all: ["animeUpdate"] as const,
-    byPlexId: (plexId: number) => [...AnimeUpdateKeys.all, "byPlexId", plexId] as const,
-};

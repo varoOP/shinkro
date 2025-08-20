@@ -3,8 +3,6 @@ package server
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strings"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/notification"
+	"github.com/varoOP/shinkro/internal/update"
 )
 
 type Server struct {
@@ -82,7 +81,7 @@ func (s *Server) checkAndNotifyUpdate() {
 	if v == "" || strings.Contains(v, "dev") || strings.Contains(v, "nightly") {
 		return
 	}
-	latest, err := fetchLatestReleaseTag()
+	latest, err := update.LatestTag(context.Background())
 	if err != nil || latest == "" {
 		return
 	}
@@ -99,28 +98,6 @@ func (s *Server) checkAndNotifyUpdate() {
 		Timestamp: time.Now(),
 	})
 	s.lastUpdateNotified = latest
-}
-
-func fetchLatestReleaseTag() (string, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/varoOP/shinkro/releases/latest", nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "shinkro-update-checker")
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	var body struct {
-		TagName string `json:"tag_name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return "", err
-	}
-	return body.TagName, nil
 }
 
 func isUpdateAvailable(current, latest string) bool {

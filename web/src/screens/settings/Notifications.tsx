@@ -71,20 +71,28 @@ export const Notifications = () => {
                             <Group justify="space-between" align="flex-start">
                                 <Stack gap="xs">
                                     <Group>
-                                        <Text fw={500} size="lg">{notification.name}</Text>
+                                    <Text size="sm" c="dimmed" fw={700}>Name:</Text>
+                                    <Text fw={700} size="sm">{notification.name}</Text>
+                                    </Group>
+                                    <Group>
+                                        <Text size="sm" c="dimmed" fw={700}>Enabled:</Text>
                                         <Switch
                                             checked={notification.enabled}
                                             onChange={() => handleToggleEnabled(notification)}
                                             size="md"
                                         />
                                     </Group>
-                                    <Text size="sm" c="dimmed">
-                                        Type: {notification.type}
-                                    </Text>
+                                    <Group>
+                                        <Text size="sm" c="dimmed" fw={700}>Type:</Text>
+                                        <Text size="sm" fw={700}>
+                                            {notification.type}
+                                        </Text>
+                                    </Group>
                                     <Group gap="xs">
+                                        <Text size="sm" c="dimmed" fw={700}>Events:</Text>
                                         {notification.events.map((event) => (
                                             <Badge key={event} variant="light">
-                                                {event}
+                                                {event.replace(/_/g, ' ')}
                                             </Badge>
                                         ))}
                                     </Group>

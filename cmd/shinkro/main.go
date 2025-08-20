@@ -119,7 +119,7 @@ func main() {
 		var apiService = api.NewService(log, apiRepo)
 		var fsService = filesystem.NewService(cfg.Config, log)
 
-		srv := server.NewServer(log, cfg.Config, animeService, mapService)
+		srv := server.NewServer(log, cfg.Config, animeService, mapService, notificationService)
 		if err := srv.Start(); err != nil {
 			log.Fatal().Stack().Err(err).Msg("could not start server")
 			return

@@ -4,6 +4,7 @@ import {createRoot} from "react-dom/client";
 import {MantineProvider} from "@mantine/core";
 import {theme} from "@app/theme";
 import "@mantine/core/styles.css";
+import '@mantine/dates/styles.css';
 import "@mantine/notifications/styles.css";
 import '@mantine/carousel/styles.css';
 import "@app/main.css";

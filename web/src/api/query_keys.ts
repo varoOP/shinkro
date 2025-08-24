@@ -30,6 +30,7 @@ export const MappingKeys = {
 export const LogKeys = {
     all: ["logs"] as const,
     lists: () => [...LogKeys.all, "list"] as const,
+    content: () => [...LogKeys.all, "content"] as const,
 }
 
 export const NotificationKeys = {

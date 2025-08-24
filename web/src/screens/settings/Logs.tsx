@@ -1,16 +1,15 @@
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ConfigQueryOptions, LogQueryOptions} from "@api/queries.ts";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
-import {ActionIcon, Divider, Group, Select, Stack, Text} from "@mantine/core";
-import {FaDownload} from "react-icons/fa";
-import {useState} from "react";
-import {baseUrl} from "@utils";
+import { Divider, Stack, Text, Select, Group, ActionIcon } from "@mantine/core";
+import { useState } from "react";
 import {APIClient} from "@api/APIClient.ts";
 import {displayNotification} from "@components/notifications";
 import {SettingsKeys} from "@api/query_keys.ts";
+import {FaDownload} from "react-icons/fa";
+import {baseUrl} from "@utils";
 
 export const Logs = () => {
-
     const queryClient = useQueryClient();
     const {data} = useQuery(ConfigQueryOptions());
 
@@ -33,6 +32,8 @@ export const Logs = () => {
     return (
         <main>
             <SettingsSectionHeader title={"Logs"} description={"Manage shinkro logs here."}/>
+            
+            {/* Log Settings Section */}
             {data && (
                 <Stack mt={"md"}>
                     <Text fw={900} size={"xl"}>
@@ -56,7 +57,10 @@ export const Logs = () => {
                     </Group>
                 </Stack>
             )}
+            
             <Divider mt={"md"}/>
+            
+            {/* Log Files Section */}
             <LogFiles/>
         </main>
     );
@@ -92,23 +96,23 @@ export const LogFiles = () => {
                     {logs.map((log) => (
                         <Group key={log.name} align={"flex-start"} mt={"md"}>
                             <Stack gap={0}>
-                                <Text fw={600}>
-                                    {log.name}
-                                </Text>
+                                <Group>
+                                    <Text fw={600}>
+                                        {log.name}
+                                    </Text>
+                                    <ActionIcon
+                                        loading={isDownloading}
+                                        onClick={() => handleDownload(log.name)}
+                                    >
+                                        <FaDownload size={12}/>
+                                    </ActionIcon>
+                                </Group>
                                 <Text size={"xs"} c={"dimmed"}>
                                     Size: {log.size_human}
                                 </Text>
                                 <Text size={"xs"} c={"dimmed"}>
                                     Last Modified: {new Date(log.modified_at).toLocaleString()}
                                 </Text>
-                            </Stack>
-                            <Stack>
-                                <ActionIcon
-                                    loading={isDownloading}
-                                    onClick={() => handleDownload(log.name)}
-                                >
-                                    <FaDownload/>
-                                </ActionIcon>
                             </Stack>
                         </Group>
                     ))}

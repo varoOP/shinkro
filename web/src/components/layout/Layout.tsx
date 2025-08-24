@@ -6,6 +6,7 @@ import {MdDarkMode, MdLightMode, MdSpaceDashboard, MdSettings} from "react-icons
 import {FaDiscord, FaGithub, FaUser} from "react-icons/fa";
 import {GrHelpBook} from "react-icons/gr";
 import {BiLogOut} from "react-icons/bi";
+import {BsStack} from "react-icons/bs";
 import {useMutation, useQuery} from "@tanstack/react-query";
 import {Link, Outlet, useNavigate} from "@tanstack/react-router";
 import {APIClient} from "@api/APIClient";
@@ -66,6 +67,7 @@ export const Layout = () => {
 
     const navIconFor = (name: string) => {
         if (/^settings$/i.test(name)) return <MdSettings size={16} />;
+        if (/^logs$/i.test(name)) return <BsStack size={16} />;
         return <MdSpaceDashboard size={16} />; // default for Dashboard and others
     };
 

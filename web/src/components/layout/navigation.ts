@@ -6,5 +6,6 @@ interface NavItem {
 
 export const NAV_ROUTES: Array<NavItem> = [
   { name: "Dashboard", path: "/", exact: true },
+  { name: "Logs", path: "/logs" },
   { name: "Settings", path: "/settings" },
 ];

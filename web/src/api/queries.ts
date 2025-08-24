@@ -56,6 +56,19 @@ export const LogQueryOptions = (enabled: boolean = true) =>
         refetchOnWindowFocus: true,
     });
 
+export const LogContentQueryOptions = (enabled: boolean = true) =>
+    queryOptions({
+        queryKey: LogKeys.content(),
+        queryFn: async () => {
+            const response = await fetch(`${window.location.origin}/api/fs/logs/shinkro.log`);
+            if (!response.ok) throw new Error("Failed to fetch log");
+            return response.text();
+        },
+        enabled: enabled,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
 export const NotificationsQueryOptions = () =>
     queryOptions({
         queryKey: NotificationKeys.lists(),

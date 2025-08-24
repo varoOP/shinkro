@@ -13,12 +13,13 @@ import {Login, Onboarding} from "@screens/auth";
 import {Layout} from "@components/layout";
 import {NotFound} from "@components/alerts/NotFound";
 import {Dashboard} from "@screens/Dashboard";
+import {Logs} from "@screens/Logs";
 import {Settings} from "@screens/Settings";
 import {Application} from "@screens/settings/Application";
 import {User} from "@screens/settings/User";
 import {Api} from "@screens/settings/Api";
 import {Notifications} from "@screens/settings/Notifications";
-import {Logs} from "@screens/settings/Logs";
+import {Logs as SettingsLogs} from "@screens/settings/Logs";
 import {Plex} from "@screens/settings/Plex";
 import {Mal} from "@screens/settings/Mal";
 import {MapSettings} from "@screens/settings/Mapping";
@@ -40,6 +41,13 @@ const DashboardRoute = createRoute({
         return {};
     },
     component: Dashboard,
+});
+
+const LogsRoute = createRoute({
+    getParentRoute: () => AuthIndexRoute,
+    path: "logs",
+    pendingMs: 3000,
+    component: Logs,
 });
 
 export const OnboardRoute = createRoute({
@@ -174,7 +182,7 @@ export const SettingsLogsRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "logs",
     pendingMs: 3000,
-    component: Logs,
+    component: SettingsLogs,
 });
 
 export const SettingsPlexRoute = createRoute({
@@ -238,7 +246,7 @@ const settingsRouteTree = SettingsRoute.addChildren([
     SettingsMappingRoute,
 ]);
 const authenticatedTree = AuthRoute.addChildren([
-    AuthIndexRoute.addChildren([DashboardRoute, settingsRouteTree]),
+    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, settingsRouteTree]),
 ]);
 const routeTree = RootRoute.addChildren([
     LoginRoute,

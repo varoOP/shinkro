@@ -1,4 +1,4 @@
-import {Stack, Text, Group, Select, Button, ActionIcon, Container, Paper, Title, SimpleGrid, Divider} from "@mantine/core";
+import {Stack, Text, Group, Select, Button, ActionIcon, Container, Paper, Title, SimpleGrid} from "@mantine/core";
 import {useState, useRef} from "react";
 import {TfiReload} from "react-icons/tfi";
 import {FaDownload, FaArrowUp, FaArrowDown} from "react-icons/fa";

@@ -23,3 +23,7 @@ export interface TimelineAnimeUpdate {
         totalEpisodeNum?: number;
     };
 }
+
+export interface AnimeUpdateResponse {
+    animeUpdates: RecentAnimeItem[];
+}

@@ -12,7 +12,7 @@ import (
 )
 
 type plexService interface {
-	Store(ctx context.Context, plex *domain.Plex) error
+	Store(ctx context.Context, userID int, plex *domain.Plex) error
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
 	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
@@ -92,7 +92,17 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.Store(r.Context(), plex)
+	// Get userID from API key context (webhooks use API key authentication)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	err = h.service.Store(r.Context(), userID, plex)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "BAD_REQUEST",
@@ -144,6 +154,16 @@ func (h plexHandler) getCounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h plexHandler) getHistory(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from session
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
 	// Parse query parameters
 	limit := 20
 	if l := r.URL.Query().Get("limit"); l != "" {
@@ -160,6 +180,7 @@ func (h plexHandler) getHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &domain.PlexHistoryRequest{
+		UserID:   userID,
 		Limit:    limit,
 		Offset:   offset,
 		Cursor:   r.URL.Query().Get("cursor"),

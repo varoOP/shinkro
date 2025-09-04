@@ -12,10 +12,11 @@ import (
 )
 
 type apikeyService interface {
-	List(ctx context.Context) ([]domain.APIKey, error)
-	Store(ctx context.Context, key *domain.APIKey) error
-	Delete(ctx context.Context, key string) error
+	List(ctx context.Context, userID int) ([]domain.APIKey, error)
+	Store(ctx context.Context, userID int, key *domain.APIKey) error
+	Delete(ctx context.Context, userID int, key string) error
 	ValidateAPIKey(ctx context.Context, token string) bool
+	GetUserIDByAPIKey(ctx context.Context, token string) (int, error)
 }
 
 type apikeyHandler struct {
@@ -37,7 +38,16 @@ func (h apikeyHandler) Routes(r chi.Router) {
 }
 
 func (h apikeyHandler) list(w http.ResponseWriter, r *http.Request) {
-	keys, err := h.service.List(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	keys, err := h.service.List(r.Context(), userID)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -47,13 +57,22 @@ func (h apikeyHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h apikeyHandler) store(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
 	var data domain.APIKey
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	if err := h.service.Store(r.Context(), &data); err != nil {
+	if err := h.service.Store(r.Context(), userID, &data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
@@ -62,9 +81,18 @@ func (h apikeyHandler) store(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h apikeyHandler) delete(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
 	apiKey := chi.URLParam(r, "apikey")
 
-	if err := h.service.Delete(r.Context(), apiKey); err != nil {
+	if err := h.service.Delete(r.Context(), userID, apiKey); err != nil {
 		if errors.Is(err, errors.New("record not found")) {
 			h.encoder.NotFoundErr(w, errors.Errorf("api key %s not found", apiKey))
 			return

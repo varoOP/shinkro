@@ -24,15 +24,17 @@ type APIRepo struct {
 	db  *DB
 }
 
-func (r *APIRepo) Store(ctx context.Context, key *domain.APIKey) error {
+func (r *APIRepo) Store(ctx context.Context, userID int, key *domain.APIKey) error {
 	queryBuilder := r.db.squirrel.
 		Insert("api_key").
 		Columns(
+			"user_id",
 			"name",
 			"key",
 			"scopes",
 		).
 		Values(
+			userID,
 			key.Name,
 			key.Key,
 			pq.Array(key.Scopes),
@@ -45,13 +47,14 @@ func (r *APIRepo) Store(ctx context.Context, key *domain.APIKey) error {
 		return errors.Wrap(err, "error executing query")
 	}
 
+	key.UserID = userID
 	key.CreatedAt = createdAt
 
 	return nil
 }
 
-func (r *APIRepo) Delete(ctx context.Context, key string) error {
-	queryBuilder := r.db.squirrel.Delete("api_key").Where(sq.Eq{"key": key})
+func (r *APIRepo) Delete(ctx context.Context, userID int, key string) error {
+	queryBuilder := r.db.squirrel.Delete("api_key").Where(sq.Eq{"key": key, "user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -68,10 +71,11 @@ func (r *APIRepo) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (r *APIRepo) GetAllAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
+func (r *APIRepo) GetAllAPIKeys(ctx context.Context, userID int) ([]domain.APIKey, error) {
 	queryBuilder := r.db.squirrel.
-		Select("name", "key", "scopes", "created_at").
-		From("api_key")
+		Select("user_id", "name", "key", "scopes", "created_at").
+		From("api_key").
+		Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -91,7 +95,7 @@ func (r *APIRepo) GetAllAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
 
 		var name sql.NullString
 
-		if err := rows.Scan(&name, &a.Key, pq.Array(&a.Scopes), &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.UserID, &name, &a.Key, pq.Array(&a.Scopes), &a.CreatedAt); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
 		}
 
@@ -105,7 +109,7 @@ func (r *APIRepo) GetAllAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
 
 func (r *APIRepo) GetKey(ctx context.Context, key string) (*domain.APIKey, error) {
 	queryBuilder := r.db.squirrel.
-		Select("name", "key", "scopes", "created_at").
+		Select("user_id", "name", "key", "scopes", "created_at").
 		From("api_key").
 		Where(sq.Eq{"key": key})
 
@@ -123,7 +127,7 @@ func (r *APIRepo) GetKey(ctx context.Context, key string) (*domain.APIKey, error
 
 	var name sql.NullString
 
-	if err := row.Scan(&name, &apiKey.Key, pq.Array(&apiKey.Scopes), &apiKey.CreatedAt); err != nil {
+	if err := row.Scan(&apiKey.UserID, &name, &apiKey.Key, pq.Array(&apiKey.Scopes), &apiKey.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("record not found")
 		}
@@ -134,4 +138,27 @@ func (r *APIRepo) GetKey(ctx context.Context, key string) (*domain.APIKey, error
 	apiKey.Name = name.String
 
 	return &apiKey, nil
+}
+
+func (r *APIRepo) GetUserIDByAPIKey(ctx context.Context, key string) (int, error) {
+	queryBuilder := r.db.squirrel.
+		Select("user_id").
+		From("api_key").
+		Where(sq.Eq{"key": key})
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building query")
+	}
+
+	var userID int
+	err = r.db.handler.QueryRowContext(ctx, query, args...).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errors.New("api key not found")
+		}
+		return 0, errors.Wrap(err, "error scanning row")
+	}
+
+	return userID, nil
 }

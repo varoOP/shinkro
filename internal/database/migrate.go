@@ -20,6 +20,7 @@ CREATE TABLE users
     id         INTEGER PRIMARY KEY,
     username   TEXT NOT NULL,
     password   TEXT NOT NULL,
+    admin      BOOLEAN DEFAULT false NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (username)
@@ -36,6 +37,7 @@ CREATE TABLE api_key
 CREATE TABLE malauth 
 (
 	id 					INTEGER PRIMARY KEY,
+	user_id				INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	client_id 			TEXT,
 	client_secret 		TEXT,
 	access_token 		BLOB,
@@ -82,6 +84,7 @@ CREATE TABLE plex_payload
 CREATE TABLE plex_settings
 (
 	id 							INTEGER PRIMARY KEY,
+	user_id						INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	host						TEXT NOT NULL,
 	port						INTEGER,
 	tls 						BOOLEAN,
@@ -146,4 +149,17 @@ CREATE TABLE notification
 
 var migrations = []string{
 	"",
+	"ALTER TABLE users ADD COLUMN admin BOOLEAN DEFAULT false NOT NULL;",
+	"ALTER TABLE malauth ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+	"ALTER TABLE plex_settings ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+	"UPDATE malauth SET user_id = 1 WHERE user_id IS NULL;",
+	"UPDATE plex_settings SET user_id = 1 WHERE user_id IS NULL;",
+	"ALTER TABLE api_key ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+	"UPDATE api_key SET user_id = 1 WHERE user_id IS NULL;",
+	"ALTER TABLE anime_update ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+	"UPDATE anime_update SET user_id = 1 WHERE user_id IS NULL;",
+	"ALTER TABLE plex_payload ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+	"UPDATE plex_payload SET user_id = 1 WHERE user_id IS NULL;",
+	"ALTER TABLE notification ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+	"UPDATE notification SET user_id = 1 WHERE user_id IS NULL;",
 }

@@ -23,7 +23,10 @@ func NewAnimeUpdateRepo(log zerolog.Logger, db *DB) domain.AnimeUpdateRepo {
 	}
 }
 
-func (repo *AnimeUpdateRepo) Store(ctx context.Context, r *domain.AnimeUpdate) error {
+func (repo *AnimeUpdateRepo) Store(ctx context.Context, userID int, r *domain.AnimeUpdate) error {
+	// Set the userID in the AnimeUpdate struct
+	r.UserID = userID
+	
 	listDetails, err := json.Marshal(r.ListDetails)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal listDetails")
@@ -36,8 +39,8 @@ func (repo *AnimeUpdateRepo) Store(ctx context.Context, r *domain.AnimeUpdate) e
 
 	queryBuilder := repo.db.squirrel.
 		Insert("anime_update").
-		Columns("mal_id", "source_db", "source_id", "episode_num", "season_num", "time_stamp", "list_details", "list_status", "plex_id").
-		Values(r.MALId, r.SourceDB, r.SourceId, r.EpisodeNum, r.SeasonNum, r.Timestamp, string(listDetails), string(listStatus), r.PlexId).
+		Columns("user_id", "mal_id", "source_db", "source_id", "episode_num", "season_num", "time_stamp", "list_details", "list_status", "plex_id").
+		Values(r.UserID, r.MALId, r.SourceDB, r.SourceId, r.EpisodeNum, r.SeasonNum, r.Timestamp, string(listDetails), string(listStatus), r.PlexId).
 		Suffix("RETURNING id").RunWith(repo.db.handler)
 
 	var retID int64
@@ -79,10 +82,11 @@ func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
+func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, userID int, limit int) ([]*domain.AnimeUpdate, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		Select("id, user_id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
 		From("anime_update").
+		Where("user_id = ?", userID).
 		OrderBy("time_stamp DESC").
 		Limit(uint64(limit))
 
@@ -102,7 +106,7 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 	for rows.Next() {
 		var au domain.AnimeUpdate
 		var listDetailsBytes, listStatusBytes []byte
-		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+		if err := rows.Scan(&au.ID, &au.UserID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
 		}
 		if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
@@ -124,7 +128,7 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 
 func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		Select("id, user_id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
 		From("anime_update").
 		Where("plex_id = ?", plexID).
 		OrderBy("time_stamp DESC").
@@ -138,7 +142,7 @@ func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*do
 	row := repo.db.handler.QueryRowContext(ctx, query, args...)
 	var au domain.AnimeUpdate
 	var listDetailsBytes, listStatusBytes []byte
-	if err := row.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+	if err := row.Scan(&au.ID, &au.UserID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // No update for this plex_id
 		}
@@ -159,7 +163,7 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 	}
 
 	queryBuilder := repo.db.squirrel.
-		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		Select("id, user_id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
 		From("anime_update").
 		Where(sq.Eq{"plex_id": plexIDs}).
 		OrderBy("time_stamp DESC")
@@ -181,7 +185,7 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 	for rows.Next() {
 		var au domain.AnimeUpdate
 		var listDetailsBytes, listStatusBytes []byte
-		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+		if err := rows.Scan(&au.ID, &au.UserID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
 		}
 		if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {

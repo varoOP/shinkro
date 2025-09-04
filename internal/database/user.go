@@ -45,7 +45,7 @@ func (r *UserRepo) GetUserCount(ctx context.Context) (int, error) {
 
 func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
 	queryBuilder := r.db.squirrel.
-		Select("id", "username", "password").
+		Select("id", "username", "password", "admin").
 		From("users").
 		Where(sq.Eq{"username": username})
 
@@ -61,7 +61,7 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*domain
 
 	var user domain.User
 
-	if err := row.Scan(&user.ID, &user.Username, &user.Password); err != nil {
+	if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Admin); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("record not found")
 		}
@@ -72,11 +72,43 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*domain
 	return &user, nil
 }
 
+func (r *UserRepo) FindAll(ctx context.Context) ([]*domain.User, error) {
+	queryBuilder := r.db.squirrel.
+		Select("id", "username", "password", "admin").
+		From("users")
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	rows, err := r.db.handler.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error executing query")
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+	for rows.Next() {
+		var user domain.User
+		if err := rows.Scan(&user.ID, &user.Username, &user.Password, &user.Admin); err != nil {
+			return nil, errors.Wrap(err, "error scanning row")
+		}
+		users = append(users, &user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(err, "error in rows")
+	}
+
+	return users, nil
+}
+
 func (r *UserRepo) Store(ctx context.Context, req domain.CreateUserRequest) error {
 	queryBuilder := r.db.squirrel.
 		Insert("users").
-		Columns("username", "password").
-		Values(req.Username, req.Password)
+		Columns("username", "password", "admin").
+		Values(req.Username, req.Password, req.Admin)
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {

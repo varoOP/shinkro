@@ -3,13 +3,14 @@ package domain
 import "context"
 
 type PlexSettingsRepo interface {
-	Store(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
-	Update(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
-	Get(ctx context.Context) (*PlexSettings, error)
-	Delete(ctx context.Context) error
+	Store(ctx context.Context, userID int, ps PlexSettings) (*PlexSettings, error)
+	Update(ctx context.Context, userID int, ps PlexSettings) (*PlexSettings, error)
+	Get(ctx context.Context, userID int) (*PlexSettings, error)
+	Delete(ctx context.Context, userID int) error
 }
 
 type PlexSettings struct {
+	UserID            int      `json:"user_id"`
 	Host              string   `json:"host"`
 	Port              int      `json:"port"`
 	TLS               bool     `json:"tls"`
@@ -22,8 +23,9 @@ type PlexSettings struct {
 	ClientID          string   `json:"client_id"`
 }
 
-func NewPlexSettings(host, plexUser, clientID string, token, tokenIV []byte, port int, animeLibs []string, pce, tls, tlsSkip bool) *PlexSettings {
+func NewPlexSettings(userID int, host, plexUser, clientID string, token, tokenIV []byte, port int, animeLibs []string, pce, tls, tlsSkip bool) *PlexSettings {
 	return &PlexSettings{
+		UserID:            userID,
 		Host:              host,
 		Port:              port,
 		TLS:               tls,

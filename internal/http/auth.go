@@ -227,10 +227,17 @@ func (h authHandler) validate(w http.ResponseWriter, r *http.Request) {
 				}
 				h.encoder.StatusResponse(w, http.StatusOK, response)
 				return
-			} else if session, ok := v.(*sessions.Session); !ok || session == nil {
-				h.log.Error().Msg("session not authenticated")
+			} else {
+				// Username not found in session
+				h.log.Error().Msg("username not found in session")
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 				return
+			}
+		} else {
+			// Session not valid
+			h.log.Error().Msg("session not authenticated")
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
 		}
 	}
 	// send empty response as ok

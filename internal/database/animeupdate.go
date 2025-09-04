@@ -80,10 +80,16 @@ func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
 }
 
 func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
-	queryBuilder := repo.db.squirrel.
-		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+	latest := repo.db.squirrel.
+		Select("mal_id, MAX(time_stamp) AS max_ts").
 		From("anime_update").
-		OrderBy("time_stamp DESC").
+		GroupBy("mal_id")
+
+	queryBuilder := repo.db.squirrel.
+		Select("au.id, au.mal_id, au.source_db, au.source_id, au.episode_num, au.season_num, au.time_stamp, au.list_details, au.list_status, au.plex_id").
+		FromSelect(latest, "latest").
+		Join("anime_update au ON latest.mal_id = au.mal_id AND latest.max_ts = au.time_stamp").
+		OrderBy("au.time_stamp DESC").
 		Limit(uint64(limit))
 
 	query, args, err := queryBuilder.ToSql()
@@ -98,7 +104,6 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 	defer rows.Close()
 
 	updates := make([]*domain.AnimeUpdate, 0)
-	seen := make(map[int]bool)
 	for rows.Next() {
 		var au domain.AnimeUpdate
 		var listDetailsBytes, listStatusBytes []byte
@@ -111,13 +116,7 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 		if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
 			return nil, errors.Wrap(err, "error unmarshalling list_status")
 		}
-		if !seen[au.MALId] {
-			updates = append(updates, &au)
-			seen[au.MALId] = true
-		}
-		if len(updates) >= limit {
-			break
-		}
+		updates = append(updates, &au)
 	}
 	return updates, nil
 }

@@ -60,6 +60,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: web
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -71,6 +72,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+
+      - name: Download web production build
+        uses: actions/download-artifact@v5
+        with:
+          name: web-dist
+          path: web/dist
 
       - name: Test
         run: go test -v ./...
@@ -102,7 +109,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: ~> v2
           args: release --clean --skip=validate,publish --parallelism 99
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,7 +149,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: ~> v2
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

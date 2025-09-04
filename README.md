@@ -16,9 +16,9 @@ Installation guide and documentation can be found at https://docs.shinkro.com
 - Support for multiple metadata agents, including default Plex agent, HAMA, and MyAnimeList.bundle.
 - Live updates to myanimelist as soon as you watch or rate in Plex.
 - Powerful anime-id mapping support, make custom maps or use the community mapping.
-- Built on Go making shinkro lightweight and perfect for supporting multiple platforms (Linux, FreeBSD,
+- Built on Go & React making shinkro lightweight and perfect for supporting multiple platforms (Linux, FreeBSD,
   Windows, macOS) on different architectures. (e.g. x86, ARM)
-- Discord Notifications.
+- Discord & Gotify Notifications.
 - Base path / Subfolder (and subdomain) support for convenient reverse-proxy support.
 
 Available methods to use shinkro
@@ -38,23 +38,11 @@ Full installation guide and documentation can be found at https://docs.shinkro.c
 
 ### Quickstart via Docker:
 
-Before your first launch, ensure you've set these environment variables:
-- SHINKRO_USERNAME
-- SHINKRO_PASSWORD
-- PLEX_USERNAME
-- ANIME_LIBRARIES
-
-After shinkro is initialized, configurations are primarily managed through the `config.toml` file. The environment variables above won't override the settings in this config file.
-
 ```
 docker run \
     --name shinkro \
     -v /path/to/shinkro/config:/config \
     -e TZ=US/Pacific \
-    -e SHINKRO_USERNAME=shinkro \
-    -e SHINKRO_PASSWORD=shinkro \
-    -e PLEX_USERNAME=shinkro \
-    -e ANIME_LIBRARIES=Library1,Library2,Library3 \
     -p 7011:7011 \
     --restart unless-stopped \
     ghcr.io/varoop/shinkro:latest
@@ -75,4 +63,4 @@ Come join us on [Discord](https://discord.gg/ZkYdfNgbAT)!
 ## License
 
 * [MIT](https://mit-license.org/)
-* Copyright 2022-2023
+* Copyright 2022-2025

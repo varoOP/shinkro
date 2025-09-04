@@ -7,8 +7,10 @@ import {FaDiscord, FaGithub, FaUser} from "react-icons/fa";
 import {GrHelpBook} from "react-icons/gr";
 import {BiLogOut} from "react-icons/bi";
 import {BsStack} from "react-icons/bs";
+import {SiMyanimelist, SiPlex} from "react-icons/si";
+import {FaSlidersH} from "react-icons/fa";
 import {useMutation, useQuery} from "@tanstack/react-query";
-import {Link, Outlet, useNavigate} from "@tanstack/react-router";
+import {Link, Outlet, useNavigate, useRouterState} from "@tanstack/react-router";
 import {APIClient} from "@api/APIClient";
 import {ConfigQueryOptions, latestReleaseQueryOptions} from "@api/queries";
 import {AuthContext, useThemeToggle} from "@utils/Context";
@@ -20,6 +22,7 @@ import { Text } from "@mantine/core";
 export const Layout = () => {
     const [opened, {toggle}] = useDisclosure();
     const navigate = useNavigate();
+    const pathname = useRouterState().location.pathname;
 
     const {isError: isConfigError, error: configError, data: config} = useQuery(ConfigQueryOptions(true));
     const { data: latestRelease } = useQuery(latestReleaseQueryOptions());
@@ -29,10 +32,24 @@ export const Layout = () => {
 
     const {colorScheme, toggleTheme} = useThemeToggle();
 
-    const handleNavLinkClick = () => {
+    const [settingsOpened, { close: closeSettings, toggle: toggleSettings }] = useDisclosure(false);
+
+    const handleNavLinkClick = (itemName?: string) => {
         if (window.innerWidth < 768 && opened) {
             toggle();
         }
+        // Close settings if Dashboard or Logs is clicked
+        if (itemName && (itemName === 'Dashboard' || itemName === 'Logs')) {
+            closeSettings();
+        }
+    };
+
+    const handleSettingsClick = () => {
+        if (window.innerWidth < 768 && opened) {
+            toggle();
+        }
+        // Navigate to General settings when Settings is clicked
+        navigate({ to: '/settings' });
     };
 
     const logoutMutation = useMutation({
@@ -71,6 +88,13 @@ export const Layout = () => {
         return <MdSpaceDashboard size={16} />; // default for Dashboard and others
     };
 
+    const settingsData = [
+        { label: 'General', icon: FaSlidersH, link: '/settings' },
+        { label: 'Plex', icon: SiPlex, link: '/settings/plex' },
+        { label: 'MyAnimeList', icon: SiMyanimelist, link: '/settings/mal' },
+    ];
+
+
     return (
         <AppShell
             header={{height: 60}}
@@ -84,7 +108,7 @@ export const Layout = () => {
                     <Flex align="flex-end" gap={"xs"} ml={"xs"}>
                         <Title order={3}>shinkro</Title>
                         <Code fw={700} className={classes.code}>
-                            v{config?.version}
+                            {config?.version}
                         </Code>
                     </Flex>
                     <Flex align="center" mt="xs">
@@ -162,17 +186,62 @@ export const Layout = () => {
             </AppShell.Header>
 
             <AppShell.Navbar className={classes.navbar}>
-                {NAV_ROUTES.map((item, itemIdx) => (
-                    <Link
-                        key={item.name + itemIdx}
-                        to={item.path}
-                        params={{}}
-                        style={{textDecoration: "none", color: "inherit"}}
-                        onClick={handleNavLinkClick}
-                    >
-                        {({isActive}) => {
-                            return (
-                                <>
+                {NAV_ROUTES.map((item, itemIdx) => {
+                    if (item.name === 'Settings') {
+                        return (
+                            <NavLink
+                                key={item.name + itemIdx}
+                                label={
+                                    <Group gap={6} align="center">
+                                        {navIconFor(item.name)}
+                                        <Text fw={700}>{item.name}</Text>
+                                    </Group>
+                                }
+                                variant="light"
+                                color="blue"
+                                childrenOffset={28}
+                                opened={settingsOpened}
+                                onChange={toggleSettings}
+                                active={settingsOpened}
+                                onClick={handleSettingsClick}
+                            >
+                                {settingsData.map((setting) => (
+                                    <Link
+                                        key={setting.label}
+                                        to={setting.link}
+                                        style={{textDecoration: "none", color: "inherit"}}
+                                        onClick={() => handleNavLinkClick()}
+                                    >
+                                        {() => (
+                                            <NavLink
+                                                component="button"
+                                                label={
+                                                    <Group gap={6} align="center">
+                                                        <setting.icon size={14} />
+                                                        <Text fw={500} size="sm">{setting.label}</Text>
+                                                    </Group>
+                                                }
+                                                active={pathname === setting.link}
+                                                variant="light"
+                                                color="blue"
+                                            />
+                                        )}
+                                    </Link>
+                                ))}
+                            </NavLink>
+                        );
+                    }
+
+                    return (
+                        <Link
+                            key={item.name + itemIdx}
+                            to={item.path}
+                            params={{}}
+                            style={{textDecoration: "none", color: "inherit"}}
+                            onClick={() => handleNavLinkClick(item.name)}
+                        >
+                            {({isActive}) => {
+                                return (
                                     <NavLink
                                         component="button"
                                         label={
@@ -181,14 +250,15 @@ export const Layout = () => {
                                                 <Text fw={700}>{item.name}</Text>
                                             </Group>
                                         }
-                                        active={isActive}
+                                        active={isActive && !settingsOpened}
                                         variant="light"
                                         color="blue"
                                     />
-                                </>);
-                        }}
-                    </Link>
-                ))}
+                                );
+                            }}
+                        </Link>
+                    );
+                })}
             </AppShell.Navbar>
             <AppShell.Main>
                 <div className={classes.variableCenter}>

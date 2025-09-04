@@ -60,7 +60,7 @@ func handlePlexWebhook(w http.ResponseWriter, r *http.Request) (*domain.Plex, er
 	log := hlog.FromRequest(r)
 	if err := r.ParseMultipartForm(0); err != nil {
 		http.Error(w, "received bad request", http.StatusBadRequest)
-		log.Trace().Err(err).Msg("received bad request")
+		log.Debug().Err(err).Msg("received bad request")
 		return nil, err
 	}
 
@@ -71,7 +71,7 @@ func handlePlexWebhook(w http.ResponseWriter, r *http.Request) (*domain.Plex, er
 		return nil, errors.New("empty paylod")
 	}
 
-	log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+	log.Debug().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 	return domain.NewPlexWebhook([]byte(ps))
 }
 
@@ -80,11 +80,11 @@ func handleTautulli(w http.ResponseWriter, r *http.Request) (*domain.Plex, error
 	ps, err := readRequest(r)
 	if err != nil {
 		http.Error(w, InternalServerError, http.StatusInternalServerError)
-		log.Trace().Err(err).Msg(InternalServerError)
+		log.Debug().Err(err).Msg(InternalServerError)
 		return nil, err
 	}
 
-	log.Trace().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
+	log.Debug().RawJSON("rawPlexPayload", []byte(ps)).Msg("")
 	return domain.ToPlex([]byte(ps))
 }
 

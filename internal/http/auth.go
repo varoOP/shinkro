@@ -185,8 +185,10 @@ func (h authHandler) onboardEligible(ctx context.Context) (int, error) {
 func (h authHandler) validate(w http.ResponseWriter, r *http.Request) {
 	// Session is injected by IsAuthenticated middleware using the typed key `sessionkey`
 	if v := r.Context().Value(sessionkey); v != nil {
-		if session, ok := v.(*sessions.Session); ok && session != nil {
-			h.log.Debug().Msgf("found user session: %+v", session)
+		if session, ok := v.(*sessions.Session); !ok || session == nil {
+			h.log.Error().Msg("session not authenticated")
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
 		}
 	}
 	// send empty response as ok

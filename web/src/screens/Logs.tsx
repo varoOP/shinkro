@@ -1,7 +1,7 @@
-import {Stack, Text, Group, Select, Button, ActionIcon, Container, Paper, Title, SimpleGrid} from "@mantine/core";
+import {Stack, Text, Group, Select, Button, ActionIcon, Container, Paper, Title, SimpleGrid, ScrollArea, TextInput, Divider} from "@mantine/core";
 import {useState, useRef} from "react";
 import {TfiReload} from "react-icons/tfi";
-import {FaDownload, FaArrowUp, FaArrowDown} from "react-icons/fa";
+import {FaDownload, FaArrowUp, FaArrowDown, FaSearch} from "react-icons/fa";
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
@@ -13,9 +13,44 @@ const LogViewer = () => {
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
   const [orderDesc, setOrderDesc] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const logRef = useRef<HTMLDivElement | null>(null);
 
   const { data: logData, isLoading, refetch } = useQuery(LogContentQueryOptions());
+
+  const formatLogLine = (line: string) => {
+    try {
+      const obj = JSON.parse(line);
+      const timestamp = new Date(obj.time).toLocaleString();
+      const level = obj.level?.toUpperCase() || 'UNKNOWN';
+      const module = obj.module ? `[${obj.module}]` : '';
+      const repo = obj.repo ? `[${obj.repo}]` : '';
+      
+      // Handle special Plex payload cases
+      let message = obj.message || '';
+      if (!message && (obj.rawPlexPayload || obj.parsedPlexPayload)) {
+        if (obj.parsedPlexPayload) {
+          message = `Plex Payload: ${obj.parsedPlexPayload}`;
+        } else if (obj.rawPlexPayload) {
+          message = `Raw Plex Payload: ${JSON.stringify(obj.rawPlexPayload, null, 2)}`;
+        }
+      }
+      
+      // Color coding for levels (using ANSI-like approach for better readability)
+      let levelColor = '';
+      switch (level.toLowerCase()) {
+        case 'error': levelColor = '🔴'; break;
+        case 'debug': levelColor = '🔵'; break;
+        case 'trace': levelColor = '⚪'; break;
+        case 'info': levelColor = '🟢'; break;
+        default: levelColor = '⚫';
+      }
+      
+      return `${levelColor} ${timestamp} ${level.padEnd(5)} ${module}${repo} ${message}`;
+    } catch {
+      return line; // Return original line if not valid JSON
+    }
+  };
 
   const filterLog = (log: string) => {
     let lines = log.split("\n").filter(Boolean);
@@ -30,13 +65,23 @@ const LogViewer = () => {
           if (dateFrom && logDate < new Date(dateFrom)) return false;
           if (dateTo && logDate > new Date(dateTo)) return false;
         }
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          const messageMatch = obj.message?.toLowerCase().includes(searchLower);
+          const plexMatch = obj.rawPlexPayload ? JSON.stringify(obj.rawPlexPayload).toLowerCase().includes(searchLower) : false;
+          const parsedPlexMatch = obj.parsedPlexPayload?.toLowerCase().includes(searchLower);
+          
+          if (!messageMatch && !plexMatch && !parsedPlexMatch) {
+            return false;
+          }
+        }
         return true;
       } catch {
         return false;
       }
     });
     if (orderDesc) lines = lines.reverse();
-    return lines.join("\n");
+    return lines.map(formatLogLine).join("\n");
   };
 
   return (
@@ -54,6 +99,14 @@ const LogViewer = () => {
           value={level}
           onChange={setLevel}
           size="xs"
+        />
+        <TextInput
+          placeholder="Search logs..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          size="xs"
+          w={200}
+          leftSection={<FaSearch size={12} />}
         />
         <DateTimePicker
           placeholder="From date and time"
@@ -112,31 +165,25 @@ const LogViewer = () => {
           {orderDesc ? "Newest First" : "Oldest First"}
         </Button>
       </Group>
-      <div
-        ref={logRef}
-        tabIndex={-1}
-        style={{
-          fontFamily: "monospace",
-          background: "#18181a",
-          color: "#fff",
-          borderRadius: 6,
-          border: "1px solid #333",
-          minHeight: 320,
-          maxHeight: '60vh',
-          overflow: "auto",
-          padding: 12,
-          whiteSpace: "pre",
-          fontSize: 13,
-          outline: "none",
-          boxSizing: "border-box",
-          WebkitOverflowScrolling: "touch",
-          pointerEvents: "auto",
-        }}
-        onWheel={e => e.stopPropagation()}
-        onScroll={e => e.stopPropagation()}
-      >
-        {isLoading ? "Loading..." : filterLog(logData || "")}
-      </div>
+      <Divider />
+      <ScrollArea h={"50vh"} type="scroll">
+        <div
+          ref={logRef}
+          tabIndex={-1}
+          style={{
+            fontFamily: "monospace",
+            padding: 12,
+            whiteSpace: "pre",
+            fontSize: 13,
+            lineHeight: 1.4,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        >
+          {isLoading ? "Loading..." : filterLog(logData || "")}
+        </div>
+      </ScrollArea>
+      <Divider />
     </Stack>
   );
 };

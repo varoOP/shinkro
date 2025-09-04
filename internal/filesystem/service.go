@@ -161,6 +161,6 @@ func (s *service) DownloadLogFile(ctx context.Context, filePath string) ([]byte,
 		return nil, err
 	}
 
-	s.log.Debug().Str("path", filePath).Int("size", len(content)).Msg("log file downloaded")
+	s.log.Trace().Str("path", filePath).Int("size", len(content)).Msg("log file downloaded")
 	return content, nil
 }

@@ -108,7 +108,7 @@ export const Layout = () => {
                     <Flex align="flex-end" gap={"xs"} ml={"xs"}>
                         <Title order={3}>shinkro</Title>
                         <Code fw={700} className={classes.code}>
-                            v{config?.version}
+                            {config?.version}
                         </Code>
                     </Flex>
                     <Flex align="center" mt="xs">

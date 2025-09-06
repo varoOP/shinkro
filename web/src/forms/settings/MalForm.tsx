@@ -1,9 +1,11 @@
 import {useForm} from "@mantine/form";
-import {Button, CopyButton, Group, Modal, PasswordInput, Text, Code} from "@mantine/core";
+import {Button, Group, Modal, PasswordInput, Text, Code} from "@mantine/core";
 import {MalAuth} from "@app/types/MalAuth";
 import {useMutation} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient.ts";
 import {displayNotification} from "@components/notifications";
+import {useState} from "react";
+import {CopyTextToClipboard} from "@utils/index";
 
 interface Props {
     opened: boolean;
@@ -13,6 +15,8 @@ interface Props {
 }
 
 export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
+    const [copied, setCopied] = useState(false);
+    const [copyError, setCopyError] = useState(false);
     const appRedirectURL = `${window.location.origin}${window.APP.baseUrl}malauth/callback`
 
     const form = useForm<MalAuth>({
@@ -49,6 +53,23 @@ export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
         form.reset();
     };
 
+    const handleCopy = async () => {
+        try {
+            await CopyTextToClipboard(appRedirectURL);
+            setCopied(true);
+            setCopyError(false);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (error) {
+            console.error('Copy failed:', error);
+            setCopyError(true);
+            displayNotification({
+                title: "Copy Failed",
+                message: "Please manually copy the URL from the text above. Clipboard access may be restricted over HTTP.",
+                type: "info",
+            });
+        }
+    };
+
     return (
         <Modal opened={opened} onClose={onClose} title={"Login to MyAnimeList"}>
             <form onSubmit={form.onSubmit(handleFormSubmit)}>
@@ -68,13 +89,12 @@ export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
                     <Code c="dimmed">{appRedirectURL}</Code>
                 </Group>
                 <Group justify={"center"} align={"flex-end"}>
-                    <CopyButton value={appRedirectURL}>
-                        {({copied, copy}) => (
-                                <Button color={copied ? 'teal' : 'mal'} onClick={copy}>
-                                    {copied ? 'COPIED URL' : 'COPY APP REDIRECT URL'}
-                                </Button>
-                        )}
-                    </CopyButton>
+                    <Button 
+                        color={copied ? 'teal' : copyError ? 'red' : 'mal'} 
+                        onClick={handleCopy}
+                    >
+                        {copied ? 'COPIED URL' : copyError ? 'COPY FAILED' : 'COPY APP REDIRECT URL'}
+                    </Button>
                     <Button type="submit" mt={"md"} loading={loading}>
                         LOGIN
                     </Button>

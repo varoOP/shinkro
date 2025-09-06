@@ -202,7 +202,7 @@ export const Layout = () => {
                                 childrenOffset={28}
                                 opened={settingsOpened}
                                 onChange={toggleSettings}
-                                active={settingsOpened}
+                                active={pathname.startsWith('/settings')}
                                 onClick={handleSettingsClick}
                             >
                                 {settingsData.map((setting) => (
@@ -221,7 +221,7 @@ export const Layout = () => {
                                                         <Text fw={500} size="sm">{setting.label}</Text>
                                                     </Group>
                                                 }
-                                                active={pathname === setting.link}
+                                                active={setting.label === 'General' ? pathname.startsWith('/settings') && !pathname.startsWith('/settings/plex') && !pathname.startsWith('/settings/mal') : pathname === setting.link}
                                                 variant="light"
                                                 color="blue"
                                             />

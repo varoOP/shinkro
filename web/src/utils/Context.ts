@@ -12,12 +12,14 @@ interface SettingsType {
 interface AuthInfo {
   username: string;
   isLoggedIn: boolean;
+  admin: boolean;
 }
 
 // Default values
 const AuthContextDefaults: AuthInfo = {
   username: "",
   isLoggedIn: false,
+  admin: false,
 };
 
 const SettingsContextDefaults: SettingsType = {

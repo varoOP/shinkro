@@ -7,13 +7,14 @@ import (
 )
 
 type MalAuthRepo interface {
-	Store(ctx context.Context, ma *MalAuth) error
-	Get(ctx context.Context) (*MalAuth, error)
-	Delete(ctx context.Context) error
+	Store(ctx context.Context, userID int, ma *MalAuth) error
+	Get(ctx context.Context, userID int) (*MalAuth, error)
+	Delete(ctx context.Context, userID int) error
 }
 
 type MalAuth struct {
 	Id          int
+	UserID      int
 	Config      oauth2.Config
 	AccessToken []byte
 	TokenIV     []byte
@@ -24,9 +25,10 @@ type MalAuthURLs string
 const AuthURL MalAuthURLs = "https://myanimelist.net/v1/oauth2/authorize"
 const TokenURL MalAuthURLs = "https://myanimelist.net/v1/oauth2/token"
 
-func NewMalAuth(clientID, clientSecret string, accessToken, tokenIV []byte) *MalAuth {
+func NewMalAuth(userID int, clientID, clientSecret string, accessToken, tokenIV []byte) *MalAuth {
 	return &MalAuth{
 		Id: 1,
+		UserID: userID,
 		Config: oauth2.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,

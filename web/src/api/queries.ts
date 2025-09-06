@@ -113,7 +113,10 @@ export const animeUpdateCountQueryOptions = () =>
 export const recentAnimeUpdatesQueryOptions = (limit: number = 5) =>
     queryOptions({
         queryKey: ["recentAnimeUpdates", limit],
-        queryFn: () => APIClient.animeupdate.getRecent(limit),
+        queryFn: async () => {
+            const response = await APIClient.animeupdate.getRecent(limit);
+            return response.animeUpdates;
+        },
     });
 
 export const latestReleaseQueryOptions = () =>

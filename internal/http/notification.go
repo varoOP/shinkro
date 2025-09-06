@@ -16,10 +16,10 @@ import (
 
 type notificationService interface {
 	Find(context.Context, domain.NotificationQueryParams) ([]domain.Notification, int, error)
-	FindByID(ctx context.Context, id int) (*domain.Notification, error)
-	Store(ctx context.Context, notification *domain.Notification) error
-	Update(ctx context.Context, notification *domain.Notification) error
-	Delete(ctx context.Context, id int) error
+	FindByID(ctx context.Context, userID, id int) (*domain.Notification, error)
+	Store(ctx context.Context, userID int, notification *domain.Notification) error
+	Update(ctx context.Context, userID int, notification *domain.Notification) error
+	Delete(ctx context.Context, userID, id int) error
 	Test(ctx context.Context, notification *domain.Notification) error
 }
 
@@ -48,7 +48,16 @@ func (h notificationHandler) Routes(r chi.Router) {
 }
 
 func (h notificationHandler) list(w http.ResponseWriter, r *http.Request) {
-	list, _, err := h.service.Find(r.Context(), domain.NotificationQueryParams{})
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	list, _, err := h.service.Find(r.Context(), domain.NotificationQueryParams{UserID: userID})
 	if err != nil {
 		h.encoder.StatusNotFound(w)
 		return
@@ -58,13 +67,22 @@ func (h notificationHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h notificationHandler) store(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
 	var data *domain.Notification
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	err := h.service.Store(r.Context(), data)
+	err = h.service.Store(r.Context(), userID, data)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -74,13 +92,22 @@ func (h notificationHandler) store(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h notificationHandler) findByID(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
 	notificationID, err := strconv.Atoi(chi.URLParam(r, "notificationID"))
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	notification, err := h.service.FindByID(r.Context(), notificationID)
+	notification, err := h.service.FindByID(r.Context(), userID, notificationID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			h.encoder.NotFoundErr(w, errors.New(fmt.Sprintf("notification with id %d not found", notificationID)))
@@ -95,13 +122,22 @@ func (h notificationHandler) findByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h notificationHandler) update(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
 	var data *domain.Notification
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	err := h.service.Update(r.Context(), data)
+	err = h.service.Update(r.Context(), userID, data)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -111,13 +147,22 @@ func (h notificationHandler) update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h notificationHandler) delete(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
+			"code":    "UNAUTHORIZED",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
 	notificationID, err := strconv.Atoi(chi.URLParam(r, "notificationID"))
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	if err := h.service.Delete(r.Context(), notificationID); err != nil {
+	if err := h.service.Delete(r.Context(), userID, notificationID); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}

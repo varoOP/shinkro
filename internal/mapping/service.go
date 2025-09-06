@@ -16,11 +16,11 @@ import (
 )
 
 type Service interface {
-	NewMap(ctx context.Context) (*domain.AnimeMap, error)
-	CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error)
+	NewMap(ctx context.Context, userID int) (*domain.AnimeMap, error)
+	CheckForAnimeinMap(ctx context.Context, userID int, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error)
 	ValidateMap(ctx context.Context, yamlPath string, isTVDB bool) error
-	Store(ctx context.Context, m *domain.MapSettings) error
-	Get(ctx context.Context) (*domain.MapSettings, error)
+	Store(ctx context.Context, userID int, m *domain.MapSettings) error
+	Get(ctx context.Context, userID int) (*domain.MapSettings, error)
 }
 
 type service struct {
@@ -38,8 +38,8 @@ func NewService(log zerolog.Logger, repo domain.MappingRepo) Service {
 	}
 }
 
-func (s *service) Store(ctx context.Context, m *domain.MapSettings) error {
-	if err := s.repo.Store(ctx, m); err != nil {
+func (s *service) Store(ctx context.Context, userID int, m *domain.MapSettings) error {
+	if err := s.repo.Store(ctx, userID, m); err != nil {
 		return err
 	}
 
@@ -51,18 +51,18 @@ func (s *service) Store(ctx context.Context, m *domain.MapSettings) error {
 	return nil
 }
 
-func (s *service) Get(ctx context.Context) (*domain.MapSettings, error) {
-	return s.repo.Get(ctx)
+func (s *service) Get(ctx context.Context, userID int) (*domain.MapSettings, error) {
+	return s.repo.Get(ctx, userID)
 }
 
 // NewMap bypasses cache and always loads fresh mappings
-func (s *service) NewMap(ctx context.Context) (*domain.AnimeMap, error) {
-	return s.loadMap(ctx)
+func (s *service) NewMap(ctx context.Context, userID int) (*domain.AnimeMap, error) {
+	return s.loadMap(ctx, userID)
 }
 
 // loadMap encapsulates loading logic from repository
-func (s *service) loadMap(ctx context.Context) (*domain.AnimeMap, error) {
-	settings, err := s.repo.Get(ctx)
+func (s *service) loadMap(ctx context.Context, userID int) (*domain.AnimeMap, error) {
+	settings, err := s.repo.Get(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *service) loadMap(ctx context.Context) (*domain.AnimeMap, error) {
 }
 
 // getCachedMap returns cached map or loads it if absent
-func (s *service) getCachedMap(ctx context.Context) (*domain.AnimeMap, error) {
+func (s *service) getCachedMap(ctx context.Context, userID int) (*domain.AnimeMap, error) {
 	s.mu.RLock()
 	if s.cachedMap != nil {
 		m := s.cachedMap
@@ -101,7 +101,7 @@ func (s *service) getCachedMap(ctx context.Context) (*domain.AnimeMap, error) {
 	s.mu.RUnlock()
 
 	s.log.Debug().Msg("cache miss, loading map")
-	m, err := s.loadMap(ctx)
+	m, err := s.loadMap(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +112,8 @@ func (s *service) getCachedMap(ctx context.Context) (*domain.AnimeMap, error) {
 }
 
 // reloadMap forces a refresh of the cache
-func (s *service) reloadMap(ctx context.Context) (*domain.AnimeMap, error) {
-	m, err := s.loadMap(ctx)
+func (s *service) reloadMap(ctx context.Context, userID int) (*domain.AnimeMap, error) {
+	m, err := s.loadMap(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +123,8 @@ func (s *service) reloadMap(ctx context.Context) (*domain.AnimeMap, error) {
 	return m, nil
 }
 
-func (s *service) CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error) {
-	animeMap, err := s.getCachedMap(ctx)
+func (s *service) CheckForAnimeinMap(ctx context.Context, userID int, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error) {
+	animeMap, err := s.getCachedMap(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (s *service) CheckForAnimeinMap(ctx context.Context, anime *domain.AnimeUpd
 		return details, nil
 	}
 
-	animeMap, err = s.reloadMap(ctx)
+	animeMap, err = s.reloadMap(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

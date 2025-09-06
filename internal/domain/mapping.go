@@ -10,16 +10,18 @@ import (
 )
 
 type MappingRepo interface {
-	Store(ctx context.Context, m *MapSettings) error
-	Get(ctx context.Context) (*MapSettings, error)
+	Store(ctx context.Context, userID int, m *MapSettings) error
+	Get(ctx context.Context, userID int) (*MapSettings, error)
 }
 
 type Mapping struct {
+	UserID      int
 	MapSettings *MapSettings
 	AnimeMap    *AnimeMap
 }
 
 type MapSettings struct {
+	UserID            int    `json:"user_id"`
 	TVDBEnabled       bool   `json:"tvdb_enabled"`
 	TMDBEnabled       bool   `json:"tmdb_enabled"`
 	CustomMapTVDBPath string `json:"tvdb_path"`

@@ -12,10 +12,11 @@ import (
 )
 
 type Service interface {
-	List(ctx context.Context) ([]domain.APIKey, error)
-	Store(ctx context.Context, key *domain.APIKey) error
-	Delete(ctx context.Context, key string) error
+	List(ctx context.Context, userID int) ([]domain.APIKey, error)
+	Store(ctx context.Context, userID int, key *domain.APIKey) error
+	Delete(ctx context.Context, userID int, key string) error
 	ValidateAPIKey(ctx context.Context, token string) bool
+	GetUserIDByAPIKey(ctx context.Context, token string) (int, error)
 }
 
 type service struct {
@@ -33,24 +34,27 @@ func NewService(log zerolog.Logger, repo domain.APIRepo) Service {
 	}
 }
 
-func (s *service) List(ctx context.Context) ([]domain.APIKey, error) {
+func (s *service) List(ctx context.Context, userID int) ([]domain.APIKey, error) {
 	if len(s.keyCache) > 0 {
 		keys := make([]domain.APIKey, 0, len(s.keyCache))
 
 		for _, key := range s.keyCache {
-			keys = append(keys, key)
+			// Filter by userID when returning from cache
+			if key.UserID == userID {
+				keys = append(keys, key)
+			}
 		}
 
 		return keys, nil
 	}
 
-	return s.repo.GetAllAPIKeys(ctx)
+	return s.repo.GetAllAPIKeys(ctx, userID)
 }
 
-func (s *service) Store(ctx context.Context, apiKey *domain.APIKey) error {
+func (s *service) Store(ctx context.Context, userID int, apiKey *domain.APIKey) error {
 	apiKey.Key = GenerateSecureToken(16)
 
-	if err := s.repo.Store(ctx, apiKey); err != nil {
+	if err := s.repo.Store(ctx, userID, apiKey); err != nil {
 		return err
 	}
 
@@ -62,13 +66,13 @@ func (s *service) Store(ctx context.Context, apiKey *domain.APIKey) error {
 	return nil
 }
 
-func (s *service) Delete(ctx context.Context, key string) error {
+func (s *service) Delete(ctx context.Context, userID int, key string) error {
 	_, err := s.repo.GetKey(ctx, key)
 	if err != nil {
 		return err
 	}
 
-	err = s.repo.Delete(ctx, key)
+	err = s.repo.Delete(ctx, userID, key)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("could not delete api key: %s", key))
 	}
@@ -96,6 +100,16 @@ func (s *service) ValidateAPIKey(ctx context.Context, key string) bool {
 	s.keyCache[key] = *apiKey
 
 	return true
+}
+
+func (s *service) GetUserIDByAPIKey(ctx context.Context, token string) (int, error) {
+	// First check cache
+	if apiKey, ok := s.keyCache[token]; ok {
+		return apiKey.UserID, nil
+	}
+
+	// If not in cache, get from database
+	return s.repo.GetUserIDByAPIKey(ctx, token)
 }
 
 func GenerateSecureToken(length int) string {

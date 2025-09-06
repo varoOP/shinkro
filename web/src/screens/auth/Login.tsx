@@ -57,6 +57,7 @@ export const Login = () => {
             setAuth({
                 isLoggedIn: true,
                 username: variables.username,
+                admin: false, // This will be updated by the validate call
             });
             router.invalidate();
         },

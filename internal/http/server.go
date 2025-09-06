@@ -102,6 +102,7 @@ func (s Server) Handler() http.Handler {
 
 	apiRouter.Group(func(r chi.Router) {
 		r.Use(s.IsAuthenticated)
+		r.Use(s.InjectUserID)
 		r.Route("/config", newConfigHandler(encoder, s, s.config).Routes)
 		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
 		r.Route("/plex/settings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)

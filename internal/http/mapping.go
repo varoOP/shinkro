@@ -9,8 +9,8 @@ import (
 )
 
 type mappingService interface {
-	Store(ctx context.Context, m *domain.MapSettings) error
-	Get(ctx context.Context) (*domain.MapSettings, error)
+	Store(ctx context.Context, userID int, m *domain.MapSettings) error
+	Get(ctx context.Context, userID int) (*domain.MapSettings, error)
 	ValidateMap(ctx context.Context, yamlPath string, isTVDB bool) error
 }
 
@@ -38,7 +38,13 @@ func (h mappingHandler) Routes(r chi.Router) {
 }
 
 func (h mappingHandler) get(w http.ResponseWriter, r *http.Request) {
-	settings, err := h.service.Get(r.Context())
+	userID, err := getUserIDFromContext(r)
+	if err != nil {
+		h.encoder.StatusError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	settings, err := h.service.Get(r.Context(), userID)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -48,13 +54,19 @@ func (h mappingHandler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h mappingHandler) store(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromContext(r)
+	if err != nil {
+		h.encoder.StatusError(w, http.StatusUnauthorized, err)
+		return
+	}
+
 	var data domain.MapSettings
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	if err := h.service.Store(r.Context(), &data); err != nil {
+	if err := h.service.Store(r.Context(), userID, &data); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}

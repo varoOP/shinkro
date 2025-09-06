@@ -22,12 +22,12 @@ func NewMappingRepo(log zerolog.Logger, db *DB) domain.MappingRepo {
 	}
 }
 
-func (repo *MappingRepo) Store(ctx context.Context, m *domain.MapSettings) error {
+func (repo *MappingRepo) Store(ctx context.Context, userID int, m *domain.MapSettings) error {
 
 	queryBuilder := repo.db.squirrel.
 		Replace("mapping_settings").
-		Columns("id", "tvdb_enabled", "tmdb_enabled", "tvdb_path", "tmdb_path").
-		Values(1, m.TVDBEnabled, m.TMDBEnabled, m.CustomMapTVDBPath, m.CustomMapTMDBPath).
+		Columns("user_id", "tvdb_enabled", "tmdb_enabled", "tvdb_path", "tmdb_path").
+		Values(userID, m.TVDBEnabled, m.TMDBEnabled, m.CustomMapTVDBPath, m.CustomMapTMDBPath).
 		RunWith(repo.db.handler)
 
 	_, err := queryBuilder.Exec()
@@ -39,11 +39,11 @@ func (repo *MappingRepo) Store(ctx context.Context, m *domain.MapSettings) error
 	return nil
 }
 
-func (repo *MappingRepo) Get(ctx context.Context) (*domain.MapSettings, error) {
+func (repo *MappingRepo) Get(ctx context.Context, userID int) (*domain.MapSettings, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("m.tvdb_enabled", "m.tmdb_enabled", "m.tvdb_path", "m.tmdb_path").
+		Select("m.user_id", "m.tvdb_enabled", "m.tmdb_enabled", "m.tvdb_path", "m.tmdb_path").
 		From("mapping_settings m").
-		Where(sq.Eq{"m.id": 1}).
+		Where(sq.Eq{"m.user_id": userID}).
 		RunWith(repo.db.handler)
 
 	query, args, err := queryBuilder.ToSql()
@@ -60,8 +60,9 @@ func (repo *MappingRepo) Get(ctx context.Context) (*domain.MapSettings, error) {
 
 	var tvdbPath, tmdbPath string
 	var tvdb, tmdb bool
+	var dbUserID int
 
-	if err := row.Scan(&tvdb, &tmdb, &tvdbPath, &tmdbPath); err != nil {
+	if err := row.Scan(&dbUserID, &tvdb, &tmdb, &tvdbPath, &tmdbPath); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
@@ -69,6 +70,7 @@ func (repo *MappingRepo) Get(ctx context.Context) (*domain.MapSettings, error) {
 	}
 
 	m := domain.NewMapSettings(tvdb, tmdb, tvdbPath, tmdbPath)
+	m.UserID = dbUserID
 
 	return m, nil
 }

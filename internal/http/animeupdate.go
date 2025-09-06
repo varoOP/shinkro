@@ -16,22 +16,8 @@ type animeupdateService interface {
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
 }
 
-type getRecentAnimeUpdateResponse struct {
-	AnimeUpdates []RecentAnimeItem `json:"animeUpdates"`
-}
-
-type RecentAnimeItem struct {
-	AnimeStatus     string `json:"animeStatus"`
-	FinishDate      string `json:"finishDate"`
-	LastUpdated     string `json:"lastUpdated"`
-	MalId           int    `json:"malId"`
-	PictureUrl      string `json:"pictureUrl"`
-	Rating          int    `json:"rating"`
-	RewatchNum      int    `json:"rewatchNum"`
-	StartDate       string `json:"startDate"`
-	Title           string `json:"title"`
-	TotalEpisodeNum int    `json:"totalEpisodeNum"`
-	WatchedNum      int    `json:"watchedNum"`
+type GetRecentAnimeResponse struct {
+	AnimeUpdates []domain.RecentAnimeItem `json:"animeUpdates"`
 }
 
 type animeupdateHandler struct {
@@ -77,9 +63,9 @@ func (h animeupdateHandler) getRecent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userID, err := getUserIDFromSession(r)
+	userID, err := getUserIDFromContext(r)
 	if err != nil {
-		log.Error().Err(err).Msg("error getting user ID from session")
+		log.Error().Err(err).Msg("error getting user ID from context")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -92,9 +78,9 @@ func (h animeupdateHandler) getRecent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Transform domain.AnimeUpdate to RecentAnimeItem
-	items := make([]RecentAnimeItem, 0, len(animeUpdates))
+	items := make([]domain.RecentAnimeItem, 0, len(animeUpdates))
 	for _, update := range animeUpdates {
-		items = append(items, RecentAnimeItem{
+		items = append(items, domain.RecentAnimeItem{
 			AnimeStatus:     string(update.ListDetails.Status),
 			FinishDate:      update.ListStatus.FinishDate,
 			LastUpdated:     update.Timestamp.Format("2006-01-02T15:04:05Z"),
@@ -109,7 +95,7 @@ func (h animeupdateHandler) getRecent(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.encoder.StatusResponse(w, http.StatusOK, getRecentAnimeUpdateResponse{
+	h.encoder.StatusResponse(w, http.StatusOK, GetRecentAnimeResponse{
 		AnimeUpdates: items,
 	})
 }

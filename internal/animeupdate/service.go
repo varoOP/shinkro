@@ -72,7 +72,7 @@ func (s *service) handleEvent(ctx context.Context, userID int, anime *domain.Ani
 	}
 
 	convertedAnime := s.convertAniDBToTVDB(ctx, anime)
-	animeMap, err := s.mapService.CheckForAnimeinMap(ctx, convertedAnime)
+	animeMap, err := s.mapService.CheckForAnimeinMap(ctx, userID, convertedAnime)
 	if err == nil {
 		anime.MALId = animeMap.Malid
 		if isScrobble {

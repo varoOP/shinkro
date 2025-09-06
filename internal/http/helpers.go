@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -17,6 +18,12 @@ import (
 )
 
 const InternalServerError string = "internal server error"
+
+type contextKey string
+
+const (
+	userIDKey contextKey = "userID"
+)
 
 // getUserIDFromSession extracts the user ID from the session or API key context
 func getUserIDFromSession(r *http.Request) (int, error) {
@@ -37,6 +44,23 @@ func getUserIDFromSession(r *http.Request) (int, error) {
 	}
 
 	return userID, nil
+}
+
+func injectUserID(r *http.Request) (*http.Request, error) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		return r, err
+	}
+	
+	ctx := context.WithValue(r.Context(), userIDKey, userID)
+	return r.WithContext(ctx), nil
+}
+
+func getUserIDFromContext(r *http.Request) (int, error) {
+	if userID, ok := r.Context().Value(userIDKey).(int); ok {
+		return userID, nil
+	}
+	return 0, errors.New("userID not found in context")
 }
 
 func contentType(r *http.Request) domain.PlexPayloadSource {

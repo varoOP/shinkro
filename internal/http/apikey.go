@@ -38,7 +38,7 @@ func (h apikeyHandler) Routes(r chi.Router) {
 }
 
 func (h apikeyHandler) list(w http.ResponseWriter, r *http.Request) {
-	userID, err := getUserIDFromSession(r)
+	userID, err := getUserIDFromContext(r)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
 			"code":    "SESSION_ERROR",
@@ -57,7 +57,7 @@ func (h apikeyHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h apikeyHandler) store(w http.ResponseWriter, r *http.Request) {
-	userID, err := getUserIDFromSession(r)
+	userID, err := getUserIDFromContext(r)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
 			"code":    "SESSION_ERROR",
@@ -81,7 +81,7 @@ func (h apikeyHandler) store(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h apikeyHandler) delete(w http.ResponseWriter, r *http.Request) {
-	userID, err := getUserIDFromSession(r)
+	userID, err := getUserIDFromContext(r)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
 			"code":    "SESSION_ERROR",

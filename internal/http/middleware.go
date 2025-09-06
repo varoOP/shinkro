@@ -151,3 +151,17 @@ func (s Server) RequireAdmin(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// InjectUserID middleware extracts userID from session/API key and injects it into context
+func (s Server) InjectUserID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		updatedRequest, err := injectUserID(r)
+		if err != nil {
+			s.log.Error().Err(err).Msg("failed to inject user ID")
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, updatedRequest)
+	})
+}

@@ -41,6 +41,20 @@ type ListDetails struct {
 	PictureURL      string          `json:"pictureUrl"`
 }
 
+type RecentAnimeItem struct {
+	AnimeStatus     string `json:"animeStatus"`
+	FinishDate      string `json:"finishDate"`
+	LastUpdated     string `json:"lastUpdated"`
+	MalId           int    `json:"malId"`
+	PictureUrl      string `json:"pictureUrl"`
+	Rating          int    `json:"rating"`
+	RewatchNum      int    `json:"rewatchNum"`
+	StartDate       string `json:"startDate"`
+	Title           string `json:"title"`
+	TotalEpisodeNum int    `json:"totalEpisodeNum"`
+	WatchedNum      int    `json:"watchedNum"`
+}
+
 type Key string
 
 const (

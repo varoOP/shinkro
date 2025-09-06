@@ -1,6 +1,6 @@
 import {
     Button, Stack, Group, Text, PasswordInput,
-    ActionIcon, CopyButton, useMantineColorScheme, Divider
+    ActionIcon, useMantineColorScheme, Divider
 } from "@mantine/core";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
 import {useQuery, useQueryClient, useMutation} from "@tanstack/react-query";
@@ -11,6 +11,8 @@ import {APIClient} from "@api/APIClient.ts";
 import {ApiAddKey} from "@forms/settings/ApiAddKey.tsx";
 import {FaCopy} from "react-icons/fa";
 import {ConfirmDeleteIcon} from "@components/alerts/ConfirmDeleteIcon";
+import {CopyTextToClipboard} from "@utils/index";
+import {useState} from "react";
 
 export const Api = () => {
     const [opened, {open, close}] = useDisclosure(false);
@@ -82,44 +84,59 @@ interface KeyRowProps {
     isDark: boolean;
 }
 
-const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => (
-    <Stack>
-        <Group gap="xl" justify="flex-start" grow mt="md">
-            <Stack justify="center" align="stretch" miw="150px" maw="500px">
-                <Text fw={900} truncate c={isDark ? "plex" : "mal"}>
-                    {name}
-                </Text>
-            </Stack>
+const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => {
+    const [copied, setCopied] = useState(false);
 
-            <Stack justify="flex-start">
-                <Group grow>
-                    <PasswordInput
-                        value={value}
-                        readOnly
-                        variant="filled"
-                        style={{ minWidth: 350, width: 360 }}
-                        leftSection={
-                            <div style={{pointerEvents: "all"}}>
-                                <CopyButton value={value}>
-                                    {({copied, copy}) => (
-                                        <ActionIcon color={copied ? 'teal' : ''} onClick={copy}>
-                                            <FaCopy/>
-                                        </ActionIcon>
-                                    )}
-                                </CopyButton>
-                            </div>
-                        }
-                    />
-                    <ConfirmDeleteIcon
-                        onConfirm={() => onDelete(value)}
-                        title="Delete API Key"
-                        message={`Are you sure you want to delete the API key "${name}"?`}
-                        confirmText="DELETE"
-                        variant="outline"
-                    />
-                </Group>
-            </Stack>
-        </Group>
-        <Divider/>
-    </Stack>
-);
+    const handleCopy = async () => {
+        try {
+            await CopyTextToClipboard(value);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (error) {
+            console.error('Copy failed:', error);
+            displayNotification({
+                title: "Copy Failed",
+                message: "Please manually copy the API key. Clipboard access may be restricted over HTTP.",
+                type: "info",
+            });
+        }
+    };
+
+    return (
+        <Stack>
+            <Group gap="xl" justify="flex-start" grow mt="md">
+                <Stack justify="center" align="stretch" miw="150px" maw="500px">
+                    <Text fw={900} truncate c={isDark ? "plex" : "mal"}>
+                        {name}
+                    </Text>
+                </Stack>
+
+                <Stack justify="flex-start">
+                    <Group grow>
+                        <PasswordInput
+                            value={value}
+                            readOnly
+                            variant="filled"
+                            style={{ minWidth: 350, width: 360 }}
+                            leftSection={
+                                <div style={{pointerEvents: "all"}}>
+                                    <ActionIcon color={copied ? 'teal' : ''} onClick={handleCopy}>
+                                        <FaCopy/>
+                                    </ActionIcon>
+                                </div>
+                            }
+                        />
+                        <ConfirmDeleteIcon
+                            onConfirm={() => onDelete(value)}
+                            title="Delete API Key"
+                            message={`Are you sure you want to delete the API key "${name}"?`}
+                            confirmText="DELETE"
+                            variant="outline"
+                        />
+                    </Group>
+                </Stack>
+            </Group>
+            <Divider/>
+        </Stack>
+    );
+};

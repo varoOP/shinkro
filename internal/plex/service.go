@@ -165,11 +165,19 @@ func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agen
 }
 
 func (s *service) CountScrobbleEvents(ctx context.Context) (int, error) {
-	return s.repo.CountScrobbleEvents(ctx)
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return s.repo.CountScrobbleEvents(ctx, userID)
 }
 
 func (s *service) CountRateEvents(ctx context.Context) (int, error) {
-	return s.repo.CountRateEvents(ctx)
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return s.repo.CountRateEvents(ctx, userID)
 }
 
 func (s *service) GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error) {

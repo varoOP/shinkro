@@ -107,11 +107,12 @@ func (repo *PlexRepo) Delete(ctx context.Context, req *domain.DeletePlexRequest)
 	return nil
 }
 
-func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context) (int, error) {
+func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context, userID int) (int, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("count(*)").
 		From("plex_payload").
-		Where(sq.Eq{"event": "media.scrobble"})
+		Where(sq.Eq{"event": "media.scrobble"}).
+		Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -131,11 +132,12 @@ func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (repo *PlexRepo) CountRateEvents(ctx context.Context) (int, error) {
+func (repo *PlexRepo) CountRateEvents(ctx context.Context, userID int) (int, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("count(*)").
 		From("plex_payload").
-		Where(sq.Eq{"event": "media.rate"})
+		Where(sq.Eq{"event": "media.rate"}).
+		Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {

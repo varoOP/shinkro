@@ -144,7 +144,11 @@ func (s *service) convertAniDBToTVDB(ctx context.Context, anime *domain.AnimeUpd
 }
 
 func (s *service) Count(ctx context.Context) (int, error) {
-	return s.repo.Count(ctx)
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return s.repo.Count(ctx, userID)
 }
 
 func (s *service) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {

@@ -59,10 +59,11 @@ func (repo *AnimeUpdateRepo) GetByID(ctx context.Context, req *domain.GetAnimeUp
 	return nil, nil
 }
 
-func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
+func (repo *AnimeUpdateRepo) Count(ctx context.Context, userID int) (int, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("count(*)").
-		From("anime_update")
+		From("anime_update").
+		Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {

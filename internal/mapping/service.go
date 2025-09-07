@@ -19,8 +19,8 @@ type Service interface {
 	NewMap(ctx context.Context, userID int) (*domain.AnimeMap, error)
 	CheckForAnimeinMap(ctx context.Context, userID int, anime *domain.AnimeUpdate) (*domain.AnimeMapDetails, error)
 	ValidateMap(ctx context.Context, yamlPath string, isTVDB bool) error
-	Store(ctx context.Context, userID int, m *domain.MapSettings) error
-	Get(ctx context.Context, userID int) (*domain.MapSettings, error)
+	Store(ctx context.Context, m *domain.MapSettings) error
+	Get(ctx context.Context) (*domain.MapSettings, error)
 }
 
 type service struct {
@@ -38,7 +38,12 @@ func NewService(log zerolog.Logger, repo domain.MappingRepo) Service {
 	}
 }
 
-func (s *service) Store(ctx context.Context, userID int, m *domain.MapSettings) error {
+func (s *service) Store(ctx context.Context, m *domain.MapSettings) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	if err := s.repo.Store(ctx, userID, m); err != nil {
 		return err
 	}
@@ -51,7 +56,11 @@ func (s *service) Store(ctx context.Context, userID int, m *domain.MapSettings) 
 	return nil
 }
 
-func (s *service) Get(ctx context.Context, userID int) (*domain.MapSettings, error) {
+func (s *service) Get(ctx context.Context) (*domain.MapSettings, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return s.repo.Get(ctx, userID)
 }
 

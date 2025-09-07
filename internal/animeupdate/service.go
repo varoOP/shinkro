@@ -16,7 +16,7 @@ type Service interface {
 	GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error)
 	UpdateAnimeList(ctx context.Context, userID int, anime *domain.AnimeUpdate, event domain.PlexEvent) error
 	Count(ctx context.Context) (int, error)
-	GetRecentUnique(ctx context.Context, userID int, limit int) ([]*domain.AnimeUpdate, error)
+	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
 	GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.AnimeUpdate, error)
 }
@@ -147,7 +147,11 @@ func (s *service) Count(ctx context.Context) (int, error) {
 	return s.repo.Count(ctx)
 }
 
-func (s *service) GetRecentUnique(ctx context.Context, userID int, limit int) ([]*domain.AnimeUpdate, error) {
+func (s *service) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return s.repo.GetRecentUnique(ctx, userID, limit)
 }
 

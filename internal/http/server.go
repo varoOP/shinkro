@@ -108,11 +108,18 @@ func (s Server) Handler() http.Handler {
 		r.Route("/plex/settings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)
 		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService, s.cookieStore).Routes)
 		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
-		r.Route("/mapping", newMappingHandler(encoder, s.mappingService).Routes)
 		r.Route("/fs", newFilesystemHandler(encoder, s.fsService).Routes)
 		r.Route("/notification", newNotificationHandler(encoder, s.notificationService).Routes)
 		r.Route("/animeupdate", newAnimeupdateHandler(encoder, s.animeUpdateService).Routes)
 		r.Get("/updates/latest", GetLatestReleaseHandler)
+	})
+
+	// Admin-only routes
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(s.IsAuthenticated)
+		r.Use(s.InjectUserID)
+		r.Use(s.RequireAdmin)
+		r.Route("/mapping", newMappingHandler(encoder, s.mappingService).Routes)
 	})
 
 	// Mount API routes under baseUrl + "api"

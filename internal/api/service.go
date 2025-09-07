@@ -12,9 +12,9 @@ import (
 )
 
 type Service interface {
-	List(ctx context.Context, userID int) ([]domain.APIKey, error)
-	Store(ctx context.Context, userID int, key *domain.APIKey) error
-	Delete(ctx context.Context, userID int, key string) error
+	List(ctx context.Context) ([]domain.APIKey, error)
+	Store(ctx context.Context, key *domain.APIKey) error
+	Delete(ctx context.Context, key string) error
 	ValidateAPIKey(ctx context.Context, token string) bool
 	GetUserIDByAPIKey(ctx context.Context, token string) (int, error)
 }
@@ -34,7 +34,12 @@ func NewService(log zerolog.Logger, repo domain.APIRepo) Service {
 	}
 }
 
-func (s *service) List(ctx context.Context, userID int) ([]domain.APIKey, error) {
+func (s *service) List(ctx context.Context) ([]domain.APIKey, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	if len(s.keyCache) > 0 {
 		keys := make([]domain.APIKey, 0, len(s.keyCache))
 
@@ -51,7 +56,12 @@ func (s *service) List(ctx context.Context, userID int) ([]domain.APIKey, error)
 	return s.repo.GetAllAPIKeys(ctx, userID)
 }
 
-func (s *service) Store(ctx context.Context, userID int, apiKey *domain.APIKey) error {
+func (s *service) Store(ctx context.Context, apiKey *domain.APIKey) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	apiKey.Key = GenerateSecureToken(16)
 
 	if err := s.repo.Store(ctx, userID, apiKey); err != nil {
@@ -66,8 +76,13 @@ func (s *service) Store(ctx context.Context, userID int, apiKey *domain.APIKey) 
 	return nil
 }
 
-func (s *service) Delete(ctx context.Context, userID int, key string) error {
-	_, err := s.repo.GetKey(ctx, key)
+func (s *service) Delete(ctx context.Context, key string) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
+	_, err = s.repo.GetKey(ctx, key)
 	if err != nil {
 		return err
 	}

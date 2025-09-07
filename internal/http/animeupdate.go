@@ -12,7 +12,7 @@ import (
 
 type animeupdateService interface {
 	Count(ctx context.Context) (int, error)
-	GetRecentUnique(ctx context.Context, userID int, limit int) ([]*domain.AnimeUpdate, error)
+	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
 }
 
@@ -63,14 +63,7 @@ func (h animeupdateHandler) getRecent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userID, err := getUserIDFromContext(r)
-	if err != nil {
-		log.Error().Err(err).Msg("error getting user ID from context")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	animeUpdates, err := h.service.GetRecentUnique(r.Context(), userID, limit)
+	animeUpdates, err := h.service.GetRecentUnique(r.Context(), limit)
 	if err != nil {
 		log.Error().Err(err).Msg("error getting recent unique anime updates")
 		http.Error(w, "internal server error", http.StatusInternalServerError)

@@ -211,6 +211,14 @@ export const SettingsMappingRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "mapping",
     pendingMs: 3000,
+    beforeLoad: () => {
+        const auth = AuthContext.get();
+        if (!auth.admin) {
+            throw redirect({
+                to: "/settings",
+            });
+        }
+    },
     component: MapSettings,
 });
 

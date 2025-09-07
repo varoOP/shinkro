@@ -2,10 +2,12 @@ import { Container, Paper, Tabs } from "@mantine/core";
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { FaCog, FaUserCog, FaKey, FaBell, FaMap } from "react-icons/fa";
 import { BsStack } from "react-icons/bs";
+import { AuthContext } from "@utils/Context";
 
 export const Settings = () => {
     const pathname = useRouterState().location.pathname;
     const navigate = useNavigate();
+    const [auth] = AuthContext.use();
     
     // Determine active tab based on current path
     const getActiveTab = () => {
@@ -51,9 +53,11 @@ export const Settings = () => {
                             <Tabs.Tab value="api" leftSection={<FaKey size={14} />}>
                                 API Keys
                             </Tabs.Tab>
-                            <Tabs.Tab value="mapping" leftSection={<FaMap size={14} />}>
-                                Mapping
-                            </Tabs.Tab>
+                            {auth.admin && (
+                                <Tabs.Tab value="mapping" leftSection={<FaMap size={14} />}>
+                                    Mapping
+                                </Tabs.Tab>
+                            )}
                             <Tabs.Tab value="notifications" leftSection={<FaBell size={14} />}>
                                 Notifications
                             </Tabs.Tab>

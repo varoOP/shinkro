@@ -19,10 +19,9 @@ import (
 
 const InternalServerError string = "internal server error"
 
-type contextKey string
-
+// Use the same context key as domain package
 const (
-	userIDKey contextKey = "userID"
+	userIDKey = domain.UserIDKey
 )
 
 // getUserIDFromSession extracts the user ID from the session or API key context
@@ -57,10 +56,7 @@ func injectUserID(r *http.Request) (*http.Request, error) {
 }
 
 func getUserIDFromContext(r *http.Request) (int, error) {
-	if userID, ok := r.Context().Value(userIDKey).(int); ok {
-		return userID, nil
-	}
-	return 0, errors.New("userID not found in context")
+	return domain.GetUserIDFromContext(r.Context())
 }
 
 func contentType(r *http.Request) domain.PlexPayloadSource {

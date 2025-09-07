@@ -16,6 +16,7 @@ type apikeyService interface {
 	Store(ctx context.Context, key *domain.APIKey) error
 	Delete(ctx context.Context, key string) error
 	ValidateAPIKey(ctx context.Context, token string) bool
+	GetUserIDByAPIKey(ctx context.Context, token string) (int, error)
 }
 
 type apikeyHandler struct {
@@ -39,7 +40,7 @@ func (h apikeyHandler) Routes(r chi.Router) {
 func (h apikeyHandler) list(w http.ResponseWriter, r *http.Request) {
 	keys, err := h.service.List(r.Context())
 	if err != nil {
-		h.encoder.Error(w, err)
+		h.encoder.StatusError(w, http.StatusInternalServerError, err)
 		return
 	}
 

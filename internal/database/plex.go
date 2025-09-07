@@ -25,6 +25,11 @@ func NewPlexRepo(log zerolog.Logger, db *DB) domain.PlexRepo {
 }
 
 func (repo *PlexRepo) Store(ctx context.Context, r *domain.Plex) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	r.UserID = userID
 
 	guids, err := json.Marshal(r.Metadata.GUID.GUIDS)
 	if err != nil {
@@ -33,8 +38,8 @@ func (repo *PlexRepo) Store(ctx context.Context, r *domain.Plex) error {
 
 	queryBuilder := repo.db.squirrel.
 		Insert("plex_payload").
-		Columns("rating", "event", "source", "account_title", "guid_string", "guids", "grand_parent_key", "grand_parent_title", "metadata_index", "library_section_title", "parent_index", "title", "type", "time_stamp").
-		Values(r.Rating, r.Event, r.Source, r.Account.Title, r.Metadata.GUID.GUID, string(guids), r.Metadata.GrandparentKey, r.Metadata.GrandparentTitle, r.Metadata.Index, r.Metadata.LibrarySectionTitle, r.Metadata.ParentIndex, r.Metadata.Title, r.Metadata.Type, r.TimeStamp.Format(time.RFC3339)).
+		Columns("user_id", "rating", "event", "source", "account_title", "guid_string", "guids", "grand_parent_key", "grand_parent_title", "metadata_index", "library_section_title", "parent_index", "title", "type", "time_stamp").
+		Values(r.UserID, r.Rating, r.Event, r.Source, r.Account.Title, r.Metadata.GUID.GUID, string(guids), r.Metadata.GrandparentKey, r.Metadata.GrandparentTitle, r.Metadata.Index, r.Metadata.LibrarySectionTitle, r.Metadata.ParentIndex, r.Metadata.Title, r.Metadata.Type, r.TimeStamp.Format(time.RFC3339)).
 		Suffix("RETURNING id").RunWith(repo.db.handler)
 
 	var retID int64
@@ -107,10 +112,15 @@ func (repo *PlexRepo) Delete(ctx context.Context, req *domain.DeletePlexRequest)
 }
 
 func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context) (int, error) {
-	queryBuilder := repo.db.squirrel.
-		Select("count(*)").
-		From("plex_payload").
-		Where(sq.Eq{"event": "media.scrobble"})
+       userID, err := domain.GetUserIDFromContext(ctx)
+       if err != nil {
+	       return 0, err
+       }
+       queryBuilder := repo.db.squirrel.
+	       Select("count(*)").
+	       From("plex_payload").
+	       Where(sq.Eq{"event": "media.scrobble"}).
+	       Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -131,10 +141,15 @@ func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context) (int, error) {
 }
 
 func (repo *PlexRepo) CountRateEvents(ctx context.Context) (int, error) {
-	queryBuilder := repo.db.squirrel.
-		Select("count(*)").
-		From("plex_payload").
-		Where(sq.Eq{"event": "media.rate"})
+       userID, err := domain.GetUserIDFromContext(ctx)
+       if err != nil {
+	       return 0, err
+       }
+       queryBuilder := repo.db.squirrel.
+	       Select("count(*)").
+	       From("plex_payload").
+	       Where(sq.Eq{"event": "media.rate"}).
+	       Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -155,9 +170,15 @@ func (repo *PlexRepo) CountRateEvents(ctx context.Context) (int, error) {
 }
 
 func (repo *PlexRepo) GetWithCursor(ctx context.Context, limit int, cursor *domain.PlexCursor) ([]*domain.Plex, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
-		Select("id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
-		From("plex_payload")
+		Select("id, user_id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
+		From("plex_payload").
+		Where("user_id = ?", userID)
 
 	if cursor != nil {
 		// Page strictly by id to avoid time-zone comparison issues
@@ -184,7 +205,7 @@ func (repo *PlexRepo) GetWithCursor(ctx context.Context, limit int, cursor *doma
 	for rows.Next() {
 		var p domain.Plex
 		var guidsStr string
-		if err := rows.Scan(&p.ID, &p.Rating, &p.Event, &p.Source, &p.Account.Title, &p.Metadata.GUID.GUID, &guidsStr, &p.Metadata.GrandparentKey, &p.Metadata.GrandparentTitle, &p.Metadata.Index, &p.Metadata.LibrarySectionTitle, &p.Metadata.ParentIndex, &p.Metadata.Title, &p.Metadata.Type, &p.TimeStamp); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Rating, &p.Event, &p.Source, &p.Account.Title, &p.Metadata.GUID.GUID, &guidsStr, &p.Metadata.GrandparentKey, &p.Metadata.GrandparentTitle, &p.Metadata.Index, &p.Metadata.LibrarySectionTitle, &p.Metadata.ParentIndex, &p.Metadata.Title, &p.Metadata.Type, &p.TimeStamp); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
 		}
 		if err := json.Unmarshal([]byte(guidsStr), &p.Metadata.GUID.GUIDS); err != nil {
@@ -196,15 +217,22 @@ func (repo *PlexRepo) GetWithCursor(ctx context.Context, limit int, cursor *doma
 }
 
 func (repo *PlexRepo) GetWithOffset(ctx context.Context, req *domain.PlexHistoryRequest) ([]*domain.Plex, int, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	
 	// Build base query for counting
 	countQueryBuilder := repo.db.squirrel.
 		Select("count(*)").
-		From("plex_payload")
+		From("plex_payload").
+		Where("user_id = ?", userID)
 
 	// Build base query for data
 	queryBuilder := repo.db.squirrel.
-		Select("id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
-		From("plex_payload")
+		Select("id, user_id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
+		From("plex_payload").
+		Where("user_id = ?", userID)
 
 	// Apply filters
 	if req.Search != "" {
@@ -279,7 +307,7 @@ func (repo *PlexRepo) GetWithOffset(ctx context.Context, req *domain.PlexHistory
 	for rows.Next() {
 		var p domain.Plex
 		var guidsStr string
-		if err := rows.Scan(&p.ID, &p.Rating, &p.Event, &p.Source, &p.Account.Title, &p.Metadata.GUID.GUID, &guidsStr, &p.Metadata.GrandparentKey, &p.Metadata.GrandparentTitle, &p.Metadata.Index, &p.Metadata.LibrarySectionTitle, &p.Metadata.ParentIndex, &p.Metadata.Title, &p.Metadata.Type, &p.TimeStamp); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Rating, &p.Event, &p.Source, &p.Account.Title, &p.Metadata.GUID.GUID, &guidsStr, &p.Metadata.GrandparentKey, &p.Metadata.GrandparentTitle, &p.Metadata.Index, &p.Metadata.LibrarySectionTitle, &p.Metadata.ParentIndex, &p.Metadata.Title, &p.Metadata.Type, &p.TimeStamp); err != nil {
 			return nil, 0, errors.Wrap(err, "error scanning row")
 		}
 		if err := json.Unmarshal([]byte(guidsStr), &p.Metadata.GUID.GUIDS); err != nil {

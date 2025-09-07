@@ -9,7 +9,7 @@ import (
 )
 
 type AnimeUpdateRepo interface {
-	Store(ctx context.Context, animeUpdate *AnimeUpdate) error
+	Store(ctx context.Context, userID int, animeUpdate *AnimeUpdate) error
 	GetByID(ctx context.Context, req *GetAnimeUpdateRequest) (*AnimeUpdate, error)
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*AnimeUpdate, error)
@@ -19,6 +19,7 @@ type AnimeUpdateRepo interface {
 
 type AnimeUpdate struct {
 	ID          int64               `json:"id"`
+	UserID      int                 `json:"userID"`
 	MALId       int                 `json:"malid"`
 	SourceDB    PlexSupportedDBs    `json:"sourceDB"`
 	SourceId    int                 `json:"sourceID"`
@@ -38,6 +39,20 @@ type ListDetails struct {
 	WatchedNum      int             `json:"watchedNum"`
 	Title           string          `json:"title"`
 	PictureURL      string          `json:"pictureUrl"`
+}
+
+type RecentAnimeItem struct {
+	AnimeStatus     string `json:"animeStatus"`
+	FinishDate      string `json:"finishDate"`
+	LastUpdated     string `json:"lastUpdated"`
+	MalId           int    `json:"malId"`
+	PictureUrl      string `json:"pictureUrl"`
+	Rating          int    `json:"rating"`
+	RewatchNum      int    `json:"rewatchNum"`
+	StartDate       string `json:"startDate"`
+	Title           string `json:"title"`
+	TotalEpisodeNum int    `json:"totalEpisodeNum"`
+	WatchedNum      int    `json:"watchedNum"`
 }
 
 type Key string

@@ -6,18 +6,29 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
 )
 
 func (s Server) IsAuthenticated(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var userContext context.Context = r.Context()
+		
 		if token := r.Header.Get("Shinkro-Api-Key"); token != "" {
 			// check header
 			if !s.apiService.ValidateAPIKey(r.Context(), token) {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
+			
+			// Get user ID from API key and add to context
+			userID, err := s.apiService.GetUserIDByAPIKey(r.Context(), token)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+			userContext = context.WithValue(r.Context(), "api_user_id", userID)
 
 		} else if key := r.URL.Query().Get("apiKey"); key != "" {
 			// check query param like ?apiKey=TOKEN
@@ -25,6 +36,14 @@ func (s Server) IsAuthenticated(next http.Handler) http.Handler {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
+			
+			// Get user ID from API key and add to context
+			userID, err := s.apiService.GetUserIDByAPIKey(r.Context(), key)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+			userContext = context.WithValue(r.Context(), "api_user_id", userID)
 		} else {
 			// check session
 			session, err := s.cookieStore.Get(r, "user_session")
@@ -74,11 +93,10 @@ func (s Server) IsAuthenticated(next http.Handler) http.Handler {
 				}
 			}
 
-			ctx := context.WithValue(r.Context(), sessionkey, session)
-			r = r.WithContext(ctx)
+			userContext = context.WithValue(userContext, sessionkey, session)
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(userContext))
 	})
 }
 
@@ -98,5 +116,52 @@ func parsePlexPayload(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), domain.PlexPayload, payload)
 		log.Debug().Str("parsedPlexPayload", fmt.Sprintf("%+v", payload)).Msg("")
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (s Server) RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get session from context (set by IsAuthenticated middleware)
+		session, ok := r.Context().Value(sessionkey).(*sessions.Session)
+		if !ok || session == nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		// Get username from session
+		username, ok := session.Values["username"].(string)
+		if !ok || username == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user is admin
+		user, err := s.authService.FindByUsername(r.Context(), username)
+		if err != nil {
+			s.log.Error().Err(err).Msgf("RequireAdmin: could not find user: %s", username)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		if !user.Admin {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// InjectUserID middleware extracts userID from session/API key and injects it into context
+func (s Server) InjectUserID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		updatedRequest, err := injectUserID(r)
+		if err != nil {
+			s.log.Error().Err(err).Msg("failed to inject user ID")
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, updatedRequest)
 	})
 }

@@ -7,11 +7,12 @@ import (
 
 type NotificationRepo interface {
 	List(ctx context.Context) ([]Notification, error)
+	ListAll(ctx context.Context) ([]Notification, error)
 	Find(ctx context.Context, params NotificationQueryParams) ([]Notification, int, error)
 	FindByID(ctx context.Context, id int) (*Notification, error)
-	Store(ctx context.Context, notification *Notification) error
-	Update(ctx context.Context, notification *Notification) error
-	Delete(ctx context.Context, notificationID int) error
+	Store(ctx context.Context, userID int, notification *Notification) error
+	Update(ctx context.Context, userID int, notification *Notification) error
+	Delete(ctx context.Context, userID int, notificationID int) error
 }
 
 type NotificationSender interface {
@@ -22,6 +23,7 @@ type NotificationSender interface {
 
 type Notification struct {
 	ID        int              `json:"id"`
+	UserID    int              `json:"userID"`
 	Name      string           `json:"name"`
 	Type      NotificationType `json:"type"`
 	Enabled   bool             `json:"enabled"`
@@ -84,6 +86,7 @@ const (
 type NotificationEventArr []NotificationEvent
 
 type NotificationQueryParams struct {
+	UserID  int
 	Limit   uint64
 	Offset  uint64
 	Sort    map[string]string

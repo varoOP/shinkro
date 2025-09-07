@@ -14,11 +14,11 @@ import (
 )
 
 type malauthService interface {
-	Store(ctx context.Context, ma *domain.MalAuth) error
-	Get(ctx context.Context) (*domain.MalAuth, error)
-	Delete(ctx context.Context) error
-	GetMalClient(ctx context.Context) (*mal.Client, error)
-	GetDecrypted(ctx context.Context) (*domain.MalAuth, error)
+	Store(ctx context.Context, userID int, ma *domain.MalAuth) error
+	Get(ctx context.Context, userID int) (*domain.MalAuth, error)
+	Delete(ctx context.Context, userID int) error
+	GetMalClient(ctx context.Context, userID int) (*mal.Client, error)
+	GetDecrypted(ctx context.Context, userID int) (*domain.MalAuth, error)
 }
 
 type maConfig struct {
@@ -49,7 +49,16 @@ func (h malauthHandler) Routes(r chi.Router) {
 }
 
 func (h malauthHandler) get(w http.ResponseWriter, r *http.Request) {
-	ma, err := h.service.Get(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ma, err := h.service.Get(r.Context(), userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		h.encoder.NoContent(w)
 		return
@@ -72,7 +81,16 @@ func (h malauthHandler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h malauthHandler) delete(w http.ResponseWriter, r *http.Request) {
-	err := h.service.Delete(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = h.service.Delete(r.Context(), userID)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -96,7 +114,16 @@ func (h malauthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ma := domain.NewMalAuth(clientID, clientSecret, nil, tokenIV)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ma := domain.NewMalAuth(userID, clientID, clientSecret, nil, tokenIV)
 	verifier, challenge, err := generatePKCE(128)
 	if err != nil {
 		h.encoder.Error(w, err)
@@ -126,7 +153,16 @@ func (h malauthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 	responseType := oauth2.SetAuthURLParam("response_type", "code")
 	authCodeUrl := ma.Config.AuthCodeURL(state, codeChallenge, responseType)
 
-	err = h.service.Store(r.Context(), ma)
+	userID2, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = h.service.Store(r.Context(), userID2, ma)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -171,7 +207,16 @@ func (h malauthHandler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ma, err := h.service.GetDecrypted(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR", 
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ma, err := h.service.GetDecrypted(r.Context(), userID)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -192,7 +237,17 @@ func (h malauthHandler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ma.AccessToken = t
-	err = h.service.Store(r.Context(), ma)
+	
+	userID3, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = h.service.Store(r.Context(), userID3, ma)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -202,8 +257,16 @@ func (h malauthHandler) callback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h malauthHandler) test(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
 
-	c, err := h.service.GetMalClient(r.Context())
+	c, err := h.service.GetMalClient(r.Context(), userID)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return

@@ -42,8 +42,11 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	if _, err := s.mappingService.Get(context.Background()); errors.Is(err, sql.ErrNoRows) {
-		_ = s.mappingService.Store(context.Background(), &domain.MapSettings{
+	// Create context with userID = 1 for server initialization
+	ctx := context.WithValue(context.Background(), domain.UserIDKey, 1)
+	
+	if _, err := s.mappingService.Get(ctx); errors.Is(err, sql.ErrNoRows) {
+		_ = s.mappingService.Store(ctx, &domain.MapSettings{
 			TVDBEnabled:       false,
 			TMDBEnabled:       false,
 			CustomMapTMDBPath: "",

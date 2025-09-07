@@ -13,8 +13,12 @@ import (
 type Service interface {
 	GetUserCount(ctx context.Context) (int, error)
 	Login(ctx context.Context, username, password string) (*domain.User, error)
+	FindByUsername(ctx context.Context, username string) (*domain.User, error)
+	FindAll(ctx context.Context) ([]*domain.User, error)
 	CreateUser(ctx context.Context, req domain.CreateUserRequest) error
+	CreateUserAdmin(ctx context.Context, req domain.CreateUserRequest) error
 	UpdateUser(ctx context.Context, req domain.UpdateUserRequest) error
+	Delete(ctx context.Context, username string) error
 	ResetPassword(ctx context.Context, username, newPassword string) error
 	CreateHash(password string) (hash string, err error)
 	ComparePasswordAndHash(password string, hash string) (match bool, err error)
@@ -64,6 +68,10 @@ func (s *service) Login(ctx context.Context, username, password string) (*domain
 	}
 
 	return u, nil
+}
+
+func (s *service) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
+	return s.userSvc.FindByUsername(ctx, username)
 }
 
 func (s *service) CreateUser(ctx context.Context, req domain.CreateUserRequest) error {
@@ -197,4 +205,23 @@ func (s *service) CreateHash(password string) (hash string, err error) {
 	}
 
 	return argon2id.CreateHash(password, argon2id.DefaultParams)
+}
+
+func (s *service) FindAll(ctx context.Context) ([]*domain.User, error) {
+	return s.userSvc.FindAll(ctx)
+}
+
+func (s *service) CreateUserAdmin(ctx context.Context, req domain.CreateUserRequest) error {
+	// Hash password before storing
+	hash, err := s.CreateHash(req.Password)
+	if err != nil {
+		return errors.Wrap(err, "could not create password hash")
+	}
+	req.Password = hash
+
+	return s.userSvc.CreateUserAdmin(ctx, req)
+}
+
+func (s *service) Delete(ctx context.Context, username string) error {
+	return s.userSvc.Delete(ctx, username)
 }

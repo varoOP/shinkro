@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -10,12 +11,53 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gorilla/sessions"
 
 	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
 )
 
 const InternalServerError string = "internal server error"
+
+// Use the same context key as domain package
+const (
+	userIDKey = domain.UserIDKey
+)
+
+// getUserIDFromSession extracts the user ID from the session or API key context
+func getUserIDFromSession(r *http.Request) (int, error) {
+	// First check if user ID comes from API key
+	if userID, ok := r.Context().Value("api_user_id").(int); ok {
+		return userID, nil
+	}
+
+	// Otherwise, check session
+	session, ok := r.Context().Value(sessionkey).(*sessions.Session)
+	if !ok || session == nil {
+		return 0, errors.New("session not found in context")
+	}
+
+	userID, ok := session.Values["user_id"].(int)
+	if !ok {
+		return 0, errors.New("user_id not found in session")
+	}
+
+	return userID, nil
+}
+
+func injectUserID(r *http.Request) (*http.Request, error) {
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		return r, err
+	}
+	
+	ctx := context.WithValue(r.Context(), userIDKey, userID)
+	return r.WithContext(ctx), nil
+}
+
+func getUserIDFromContext(r *http.Request) (int, error) {
+	return domain.GetUserIDFromContext(r.Context())
+}
 
 func contentType(r *http.Request) domain.PlexPayloadSource {
 	contentType := r.Header.Get("Content-Type")

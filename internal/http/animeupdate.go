@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/hlog"
 	"github.com/varoOP/shinkro/internal/domain"
 )
 
@@ -13,6 +14,10 @@ type animeupdateService interface {
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
+}
+
+type GetRecentAnimeResponse struct {
+	AnimeUpdates []domain.RecentAnimeItem `json:"animeUpdates"`
 }
 
 type animeupdateHandler struct {
@@ -48,38 +53,44 @@ func (h animeupdateHandler) getCount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h animeupdateHandler) getRecent(w http.ResponseWriter, r *http.Request) {
-	limit := 5
+	log := hlog.FromRequest(r)
+	
+	// Parse limit with default value
+	limit := 20
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if n, err := strconv.Atoi(l); err == nil && n > 0 {
 			limit = n
 		}
 	}
-	updates, err := h.service.GetRecentUnique(r.Context(), limit)
+
+	animeUpdates, err := h.service.GetRecentUnique(r.Context(), limit)
 	if err != nil {
-		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
-			"code":    "INTERNAL_SERVER_ERROR",
-			"message": err.Error(),
-		})
+		log.Error().Err(err).Msg("error getting recent unique anime updates")
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	// Only return the fields needed for the dashboard
-	result := make([]map[string]interface{}, 0, len(updates))
-	for _, u := range updates {
-		result = append(result, map[string]interface{}{
-			"malId":           u.MALId,
-			"title":           u.ListDetails.Title,
-			"pictureUrl":      u.ListDetails.PictureURL,
-			"watchedNum":      u.ListStatus.NumEpisodesWatched,
-			"totalEpisodeNum": u.ListDetails.TotalEpisodeNum,
-			"lastUpdated":     u.ListStatus.UpdatedAt,
-			"rating":          u.ListStatus.Score,
-			"animeStatus":     u.ListStatus.Status,
-			"startDate":       u.ListStatus.StartDate,
-			"finishDate":      u.ListStatus.FinishDate,
-			"rewatchNum":      u.ListDetails.RewatchNum,
+
+	// Transform domain.AnimeUpdate to RecentAnimeItem
+	items := make([]domain.RecentAnimeItem, 0, len(animeUpdates))
+	for _, update := range animeUpdates {
+		items = append(items, domain.RecentAnimeItem{
+			AnimeStatus:     string(update.ListDetails.Status),
+			FinishDate:      update.ListStatus.FinishDate,
+			LastUpdated:     update.Timestamp.Format("2006-01-02T15:04:05Z"),
+			MalId:           update.MALId,
+			PictureUrl:      update.ListDetails.PictureURL,
+			Rating:          update.ListStatus.Score,
+			RewatchNum:      update.ListDetails.RewatchNum,
+			StartDate:       update.ListStatus.StartDate,
+			Title:           update.ListDetails.Title,
+			TotalEpisodeNum: update.ListDetails.TotalEpisodeNum,
+			WatchedNum:      update.ListDetails.WatchedNum,
 		})
 	}
-	h.encoder.StatusResponse(w, http.StatusOK, result)
+
+	h.encoder.StatusResponse(w, http.StatusOK, GetRecentAnimeResponse{
+		AnimeUpdates: items,
+	})
 }
 
 func (h animeupdateHandler) getByPlexID(w http.ResponseWriter, r *http.Request) {

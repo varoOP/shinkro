@@ -11,12 +11,12 @@ import (
 )
 
 type Service interface {
-	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
-	Get(ctx context.Context) (*domain.PlexSettings, error)
-	Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
-	Delete(ctx context.Context) error
-	GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error)
-	HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.PlexSupportedDBs, int, error)
+	Store(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error)
+	Get(ctx context.Context, userID int) (*domain.PlexSettings, error)
+	Update(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error)
+	Delete(ctx context.Context, userID int) error
+	GetClient(ctx context.Context, userID int, ps *domain.PlexSettings) (*plex.Client, error)
+	HandlePlexAgent(ctx context.Context, userID int, p *domain.Plex) (domain.PlexSupportedDBs, int, error)
 }
 
 type service struct {
@@ -33,7 +33,7 @@ func NewService(config *domain.Config, log zerolog.Logger, repo domain.PlexSetti
 	}
 }
 
-func (s *service) Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+func (s *service) Store(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error) {
 	eToken, err := s.config.Encrypt(ps.Token, ps.TokenIV)
 	if err != nil {
 		s.log.Error().Err(err).Msg("error encrypting token")
@@ -44,19 +44,19 @@ func (s *service) Store(ctx context.Context, ps domain.PlexSettings) (*domain.Pl
 	return s.repo.Store(ctx, ps)
 }
 
-func (s *service) Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+func (s *service) Update(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error) {
 	return s.repo.Update(ctx, ps)
 }
 
-func (s *service) Get(ctx context.Context) (*domain.PlexSettings, error) {
+func (s *service) Get(ctx context.Context, userID int) (*domain.PlexSettings, error) {
 	return s.repo.Get(ctx)
 }
 
-func (s *service) Delete(ctx context.Context) error {
+func (s *service) Delete(ctx context.Context, userID int) error {
 	return s.repo.Delete(ctx)
 }
 
-func (s *service) GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error) {
+func (s *service) GetClient(ctx context.Context, userID int, ps *domain.PlexSettings) (*plex.Client, error) {
 	if len(ps.TokenIV) == 0 {
 		tempPs, err := s.repo.Get(ctx)
 		if err != nil {
@@ -93,14 +93,14 @@ func (s *service) GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex
 	return c, nil
 }
 
-func (s *service) HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.PlexSupportedDBs, int, error) {
+func (s *service) HandlePlexAgent(ctx context.Context, userID int, p *domain.Plex) (domain.PlexSupportedDBs, int, error) {
 	if p.Metadata.Type == domain.PlexEpisode {
 		ps, err := s.repo.Get(ctx)
 		if err != nil {
 			return "", 0, err
 		}
 
-		pc, err := s.GetClient(ctx, ps)
+		pc, err := s.GetClient(ctx, userID, ps)
 		if err != nil {
 			return "", 0, err
 		}

@@ -11,7 +11,7 @@ import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
 import {Mapping, ValidateMap} from "@app/types/Mapping";
 import {FileSystem, LogFileResponse} from "@app/types/FileSystem";
-import { RecentAnimeItem } from "@app/types/Anime";
+import { AnimeUpdateResponse } from "@app/types/Anime";
 
 type RequestBody = BodyInit | object | Record<string, unknown> | null;
 type Primitive = string | number | boolean | symbol | undefined;
@@ -259,7 +259,7 @@ export const APIClient = {
                 body: {username, password},
             }),
         logout: () => appClient.Post("api/auth/logout"),
-        validate: () => appClient.Get<void>("api/auth/validate"),
+        validate: () => appClient.Get<{username: string, admin: boolean} | void>("api/auth/validate"),
         onboard: (username: string, password: string) =>
             appClient.Post("api/auth/onboard", {
                 body: {username, password},
@@ -267,6 +267,11 @@ export const APIClient = {
         canOnboard: () => appClient.Get("api/auth/onboard"),
         updateUser: (req: UserUpdate) =>
             appClient.Patch(`api/auth/user/${req.username_current}`, {body: req}),
+        getUsers: () => appClient.Get<User[]>("api/auth/users"),
+        createUser: (req: CreateUserRequest) =>
+            appClient.Post("api/auth/users", {body: req}),
+        deleteUser: (username: string) =>
+            appClient.Delete(`api/auth/user/${username}`),
     },
     apikeys: {
         getAll: () => appClient.Get<APIKey[]>("api/keys"),
@@ -402,7 +407,7 @@ export const APIClient = {
         getCount: () =>
             appClient.Get<{count: number}>("api/animeupdate/count"),
         getRecent: (limit = 5) =>
-            appClient.Get<RecentAnimeItem[]>("api/animeupdate/recent", { queryString: { limit } }),
+            appClient.Get<AnimeUpdateResponse>("api/animeupdate/recent", { queryString: { limit } }),
         // getByPlexId removed or will be retyped later if needed
     },
 

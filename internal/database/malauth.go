@@ -21,12 +21,12 @@ func NewMalAuthRepo(log zerolog.Logger, db *DB) domain.MalAuthRepo {
 	}
 }
 
-func (repo *MalAuthRepo) Store(ctx context.Context, ma *domain.MalAuth) error {
+func (repo *MalAuthRepo) Store(ctx context.Context, userID int, ma *domain.MalAuth) error {
 
 	queryBuilder := repo.db.squirrel.
 		Replace("malauth").
-		Columns("id", "client_id", "client_secret", "access_token", "token_iv").
-		Values(ma.Id, ma.Config.ClientID, ma.Config.ClientSecret, ma.AccessToken, ma.TokenIV).
+		Columns("id", "user_id", "client_id", "client_secret", "access_token", "token_iv").
+		Values(ma.Id, userID, ma.Config.ClientID, ma.Config.ClientSecret, ma.AccessToken, ma.TokenIV).
 		RunWith(repo.db.handler)
 
 	_, err := queryBuilder.ExecContext(ctx)
@@ -39,10 +39,15 @@ func (repo *MalAuthRepo) Store(ctx context.Context, ma *domain.MalAuth) error {
 }
 
 func (repo *MalAuthRepo) Get(ctx context.Context) (*domain.MalAuth, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Select("ma.client_id", "ma.client_secret", "ma.access_token", "ma.token_iv").
 		From("malauth ma").
-		Where(sq.Eq{"ma.id": 1}).
+		Where(sq.Eq{"ma.user_id": userID}).
 		RunWith(repo.db.handler)
 
 	query, args, err := queryBuilder.ToSql()
@@ -67,14 +72,19 @@ func (repo *MalAuthRepo) Get(ctx context.Context) (*domain.MalAuth, error) {
 		return nil, errors.Wrap(err, "error scanning row")
 	}
 
-	ma := domain.NewMalAuth(clientId, clientSecret, accessToken, tokenIV)
+	ma := domain.NewMalAuth(userID, clientId, clientSecret, accessToken, tokenIV)
 	return ma, nil
 }
 
 func (repo *MalAuthRepo) Delete(ctx context.Context) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Delete("malauth").
-		Where(sq.Eq{"id": 1})
+		Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {

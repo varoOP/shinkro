@@ -11,11 +11,11 @@ import (
 )
 
 type Service interface {
-	Store(ctx context.Context, ma *domain.MalAuth) error
-	Get(ctx context.Context) (*domain.MalAuth, error)
-	Delete(ctx context.Context) error
-	GetMalClient(ctx context.Context) (*mal.Client, error)
-	GetDecrypted(ctx context.Context) (*domain.MalAuth, error)
+	Store(ctx context.Context, userID int, ma *domain.MalAuth) error
+	Get(ctx context.Context, userID int) (*domain.MalAuth, error)
+	Delete(ctx context.Context, userID int) error
+	GetMalClient(ctx context.Context, userID int) (*mal.Client, error)
+	GetDecrypted(ctx context.Context, userID int) (*domain.MalAuth, error)
 }
 
 type service struct {
@@ -32,7 +32,7 @@ func NewService(config *domain.Config, log zerolog.Logger, repo domain.MalAuthRe
 	}
 }
 
-func (s *service) Store(ctx context.Context, ma *domain.MalAuth) error {
+func (s *service) Store(ctx context.Context, userID int, ma *domain.MalAuth) error {
 	et, err := s.config.Encrypt(ma.AccessToken, ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to encrypt access token")).Msg("")
@@ -54,19 +54,19 @@ func (s *service) Store(ctx context.Context, ma *domain.MalAuth) error {
 	ma.Config.ClientID = string(ecid)
 	ma.Config.ClientSecret = string(ecs)
 	ma.AccessToken = et
-	return s.repo.Store(ctx, ma)
+	return s.repo.Store(ctx, userID, ma)
 }
 
-func (s *service) Get(ctx context.Context) (*domain.MalAuth, error) {
+func (s *service) Get(ctx context.Context, userID int) (*domain.MalAuth, error) {
 	return s.repo.Get(ctx)
 }
 
-func (s *service) Delete(ctx context.Context) error {
+func (s *service) Delete(ctx context.Context, userID int) error {
 	return s.repo.Delete(ctx)
 }
 
-func (s *service) GetDecrypted(ctx context.Context) (*domain.MalAuth, error) {
-	ma, err := s.Get(ctx)
+func (s *service) GetDecrypted(ctx context.Context, userID int) (*domain.MalAuth, error) {
+	ma, err := s.Get(ctx, userID)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to get credentials from database")).Msg("")
 		return nil, err
@@ -89,8 +89,8 @@ func (s *service) GetDecrypted(ctx context.Context) (*domain.MalAuth, error) {
 	return ma, nil
 }
 
-func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
-	ma, err := s.GetDecrypted(ctx)
+func (s *service) GetMalClient(ctx context.Context, userID int) (*mal.Client, error) {
+	ma, err := s.GetDecrypted(ctx, userID)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to get credentials from database")).Msg("")
 		return nil, err
@@ -124,7 +124,7 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 		}
 
 		ma.AccessToken = t
-		err = s.Store(ctx, ma)
+		err = s.Store(ctx, userID, ma)
 		if err != nil {
 			s.log.Err(errors.Wrap(err, "failed to store credentials to database")).Msg("")
 			return nil, err

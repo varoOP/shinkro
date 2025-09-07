@@ -24,6 +24,7 @@ type PlexRepo interface {
 
 type Plex struct {
 	ID        int64             `json:"id"`
+	UserID    int               `json:"userID"`
 	Rating    float32           `json:"rating"`
 	TimeStamp time.Time         `json:"timestamp"`
 	Event     PlexEvent         `json:"event"`
@@ -420,6 +421,9 @@ func (g *GUID) PlexAgent(mediaType PlexMediaType) (PlexSupportedDBs, int, error)
 }
 
 type PlexHistoryRequest struct {
+	// User filter
+	UserID int `json:"userID,omitempty"`
+
 	// Pagination
 	Limit  int    `json:"limit"`
 	Offset int    `json:"offset,omitempty"` // For table pagination

@@ -10,6 +10,7 @@ type PlexSettingsRepo interface {
 }
 
 type PlexSettings struct {
+	UserID            int      `json:"user_id"`
 	Host              string   `json:"host"`
 	Port              int      `json:"port"`
 	TLS               bool     `json:"tls"`
@@ -22,8 +23,9 @@ type PlexSettings struct {
 	ClientID          string   `json:"client_id"`
 }
 
-func NewPlexSettings(host, plexUser, clientID string, token, tokenIV []byte, port int, animeLibs []string, pce, tls, tlsSkip bool) *PlexSettings {
+func NewPlexSettings(userID int, host, plexUser, clientID string, token, tokenIV []byte, port int, animeLibs []string, pce, tls, tlsSkip bool) *PlexSettings {
 	return &PlexSettings{
+		UserID:            userID,
 		Host:              host,
 		Port:              port,
 		TLS:               tls,

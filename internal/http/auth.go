@@ -16,8 +16,12 @@ import (
 type authService interface {
 	GetUserCount(ctx context.Context) (int, error)
 	Login(ctx context.Context, username, password string) (*domain.User, error)
+	FindByUsername(ctx context.Context, username string) (*domain.User, error)
+	FindAll(ctx context.Context) ([]*domain.User, error)
 	CreateUser(ctx context.Context, req domain.CreateUserRequest) error
+	CreateUserAdmin(ctx context.Context, req domain.CreateUserRequest) error
 	UpdateUser(ctx context.Context, req domain.UpdateUserRequest) error
+	Delete(ctx context.Context, username string) error
 }
 
 type authHandler struct {
@@ -57,6 +61,14 @@ func (h authHandler) Routes(r chi.Router) {
 		r.Post("/logout", h.logout)
 		r.Get("/validate", h.validate)
 		r.Patch("/user/{username}", h.updateUser)
+		
+		// Admin only routes
+		r.Group(func(r chi.Router) {
+			r.Use(h.server.RequireAdmin)
+			r.Get("/users", h.getUsers)
+			r.Post("/users", h.createUser)
+			r.Delete("/user/{username}", h.deleteUser)
+		})
 	})
 }
 
@@ -81,8 +93,18 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user details to store user_id in session
+	user, err := h.service.FindByUsername(r.Context(), data.Username)
+	if err != nil {
+		h.log.Error().Err(err).Msgf("Auth: Failed to find user: %s", data.Username)
+		h.encoder.StatusError(w, http.StatusInternalServerError, errors.New("could not find user"))
+		return
+	}
+
 	// Set user as authenticated
 	session.Values["authenticated"] = true
+	session.Values["username"] = data.Username
+	session.Values["user_id"] = user.ID
 	session.Values["created"] = time.Now().Unix()
 
 	// Set cookie options
@@ -185,7 +207,34 @@ func (h authHandler) onboardEligible(ctx context.Context) (int, error) {
 func (h authHandler) validate(w http.ResponseWriter, r *http.Request) {
 	// Session is injected by IsAuthenticated middleware using the typed key `sessionkey`
 	if v := r.Context().Value(sessionkey); v != nil {
-		if session, ok := v.(*sessions.Session); !ok || session == nil {
+		if session, ok := v.(*sessions.Session); ok && session != nil {
+			h.log.Debug().Msgf("found user session: %+v", session)
+			
+			// Get username from session
+			if username, ok := session.Values["username"].(string); ok && username != "" {
+				// Find user to get admin status
+				user, err := h.service.FindByUsername(r.Context(), username)
+				if err != nil {
+					h.log.Error().Err(err).Msgf("could not find user by username: %v", username)
+					h.encoder.StatusError(w, http.StatusInternalServerError, errors.New("could not validate user"))
+					return
+				}
+				
+				// Return user info without password
+				response := map[string]interface{}{
+					"username": user.Username,
+					"admin":    user.Admin,
+				}
+				h.encoder.StatusResponse(w, http.StatusOK, response)
+				return
+			} else {
+				// Username not found in session
+				h.log.Error().Msg("username not found in session")
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				return
+			}
+		} else {
+			// Session not valid
 			h.log.Error().Msg("session not authenticated")
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			return
@@ -211,4 +260,40 @@ func (h authHandler) updateUser(w http.ResponseWriter, r *http.Request) {
 
 	// send response as ok
 	h.encoder.StatusResponseMessage(w, http.StatusOK, "user successfully updated")
+}
+
+func (h authHandler) getUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.service.FindAll(r.Context())
+	if err != nil {
+		h.encoder.StatusError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, users)
+}
+
+func (h authHandler) createUser(w http.ResponseWriter, r *http.Request) {
+	var req domain.CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.encoder.StatusError(w, http.StatusBadRequest, errors.Wrap(err, "could not decode json"))
+		return
+	}
+
+	if err := h.service.CreateUserAdmin(r.Context(), req); err != nil {
+		h.encoder.StatusError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	h.encoder.StatusResponseMessage(w, http.StatusCreated, "user successfully created")
+}
+
+func (h authHandler) deleteUser(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+
+	if err := h.service.Delete(r.Context(), username); err != nil {
+		h.encoder.StatusError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	h.encoder.StatusResponseMessage(w, http.StatusOK, "user successfully deleted")
 }

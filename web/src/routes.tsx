@@ -105,7 +105,15 @@ export const AuthRoute = createRoute({
         }
         // Validate cookie/session; if invalid, reset and redirect before children mount
         try {
-            await APIClient.auth.validate();
+            const userInfo = await APIClient.auth.validate();
+            // Update auth context with user info if validate returns data
+            if (userInfo && typeof userInfo === 'object' && 'username' in userInfo) {
+                AuthContext.set({
+                    isLoggedIn: true,
+                    username: userInfo.username as string,
+                    admin: (userInfo as any).admin || false,
+                });
+            }
         } catch {
             AuthContext.reset();
             throw redirect({
@@ -203,6 +211,14 @@ export const SettingsMappingRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "mapping",
     pendingMs: 3000,
+    beforeLoad: () => {
+        const auth = AuthContext.get();
+        if (!auth.admin) {
+            throw redirect({
+                to: "/settings",
+            });
+        }
+    },
     component: MapSettings,
 });
 

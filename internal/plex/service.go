@@ -19,8 +19,17 @@ import (
 	"github.com/varoOP/shinkro/internal/plexstatus"
 )
 
+// getUserIDFromContext attempts to get userID from context
+// Returns error if not found
+func getUserIDFromContext(ctx context.Context) (int, error) {
+	if userID, ok := ctx.Value("userID").(int); ok {
+		return userID, nil
+	}
+	return 0, errors.New("userID not found in context")
+}
+
 type Service interface {
-	Store(ctx context.Context, plex *domain.Plex) error
+	Store(ctx context.Context, userID int, plex *domain.Plex) error
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
 	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
@@ -59,12 +68,14 @@ func (s *service) Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.
 	return s.repo.Get(ctx, req)
 }
 
-func (s *service) Store(ctx context.Context, plex *domain.Plex) error {
+func (s *service) Store(ctx context.Context, userID int, plex *domain.Plex) error {
 	return s.repo.Store(ctx, plex)
 }
 
 func (s *service) GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error) {
-	return s.plexettingsService.Get(ctx)
+	// For now, use default user ID 1 when getting plex settings
+	// This maintains backward compatibility
+	return s.plexettingsService.Get(ctx, 1)
 }
 
 func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error {
@@ -133,7 +144,13 @@ func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agen
 	case domain.HAMA, domain.MALAgent:
 		return p.Metadata.GUID.HamaMALAgent(*agent)
 	case domain.PlexAgent:
-		return s.plexettingsService.HandlePlexAgent(ctx, p)
+		// For Plex webhooks, we need to get userID from API key context
+		// If no userID is found, use default user ID 1
+		var userID int = 1
+		if ctxUserID, ok := ctx.Value("api_user_id").(int); ok {
+			userID = ctxUserID
+		}
+		return s.plexettingsService.HandlePlexAgent(ctx, userID, p)
 	}
 	return "", 0, errors.New("unknown agent")
 }

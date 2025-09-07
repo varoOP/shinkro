@@ -17,11 +17,11 @@ import (
 )
 
 type plexsettingsService interface {
-	Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
-	Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error)
-	Get(ctx context.Context) (*domain.PlexSettings, error)
-	Delete(ctx context.Context) error
-	GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex.Client, error)
+	Store(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error)
+	Update(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error)
+	Get(ctx context.Context, userID int) (*domain.PlexSettings, error)
+	Delete(ctx context.Context, userID int) error
+	GetClient(ctx context.Context, userID int, ps *domain.PlexSettings) (*plex.Client, error)
 }
 
 type plexsettingsHandler struct {
@@ -49,7 +49,16 @@ func (h plexsettingsHandler) Routes(r chi.Router) {
 }
 
 func (h plexsettingsHandler) getPlexSettings(w http.ResponseWriter, r *http.Request) {
-	ps, err := h.service.Get(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ps, err := h.service.Get(r.Context(), userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		h.encoder.NoContent(w)
 		return
@@ -65,7 +74,16 @@ func (h plexsettingsHandler) getPlexSettings(w http.ResponseWriter, r *http.Requ
 }
 
 func (h plexsettingsHandler) deletePlexSettings(w http.ResponseWriter, r *http.Request) {
-	err := h.service.Delete(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	err = h.service.Delete(r.Context(), userID)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -81,7 +99,16 @@ func (h plexsettingsHandler) putPlexSettings(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ps, err := h.service.Update(r.Context(), data)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ps, err := h.service.Update(r.Context(), userID, data)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -100,7 +127,16 @@ func (h plexsettingsHandler) test(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pc, err := h.service.GetClient(r.Context(), &ps)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context(), userID, &ps)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "PLEX_CLIENT_ERROR",
@@ -122,7 +158,16 @@ func (h plexsettingsHandler) test(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h plexsettingsHandler) testToken(w http.ResponseWriter, r *http.Request) {
-	ps, err := h.service.Get(r.Context())
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ps, err := h.service.Get(r.Context(), userID)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]interface{}{
 			"code":    "PLEX_TOKEN_NOT_FOUND",
@@ -131,7 +176,7 @@ func (h plexsettingsHandler) testToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pc, err := h.service.GetClient(r.Context(), ps)
+	pc, err := h.service.GetClient(r.Context(), userID, ps)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
 			"code":    "PLEX_CLIENT_ERROR",
@@ -304,7 +349,16 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 		TokenIV:  tokenIV,
 	}
 
-	_, err = h.service.Store(r.Context(), p)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	_, err = h.service.Store(r.Context(), userID, p)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -326,7 +380,16 @@ func (h plexsettingsHandler) getServers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	pc, err := h.service.GetClient(r.Context(), &ps)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context(), userID, &ps)
 	if err != nil {
 		h.encoder.Error(w, err)
 		return
@@ -351,7 +414,16 @@ func (h plexsettingsHandler) getLibraries(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	pc, err := h.service.GetClient(r.Context(), &ps)
+	userID, err := getUserIDFromSession(r)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusUnauthorized, map[string]string{
+			"code":    "SESSION_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	pc, err := h.service.GetClient(r.Context(), userID, &ps)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]string{
 			"code":    "PLEX_CLIENT_ERROR",

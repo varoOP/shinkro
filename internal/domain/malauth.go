@@ -8,8 +8,8 @@ import (
 
 type MalAuthRepo interface {
 	Store(ctx context.Context, userID int, ma *MalAuth) error
-	Get(ctx context.Context, userID int) (*MalAuth, error)
-	Delete(ctx context.Context, userID int) error
+	Get(ctx context.Context) (*MalAuth, error)
+	Delete(ctx context.Context) error
 }
 
 type MalAuth struct {

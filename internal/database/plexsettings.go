@@ -23,7 +23,11 @@ func NewPlexSettingsRepo(log zerolog.Logger, db *DB) domain.PlexSettingsRepo {
 	}
 }
 
-func (repo *PlexSettingsRepo) Store(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+func (repo *PlexSettingsRepo) Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	queryBuilder := repo.db.squirrel.
 		Replace("plex_settings").
@@ -31,7 +35,7 @@ func (repo *PlexSettingsRepo) Store(ctx context.Context, userID int, ps domain.P
 		Values(userID, ps.Host, ps.Port, ps.TLS, ps.TLSSkip, ps.Token, ps.TokenIV, ps.PlexUser, pq.Array(ps.AnimeLibraries), ps.PlexClientEnabled, ps.ClientID).
 		RunWith(repo.db.handler)
 
-	_, err := queryBuilder.ExecContext(ctx)
+	_, err = queryBuilder.ExecContext(ctx)
 	if err != nil {
 		repo.log.Err(err).Msg("error executing query")
 		return nil, err
@@ -41,7 +45,12 @@ func (repo *PlexSettingsRepo) Store(ctx context.Context, userID int, ps domain.P
 	return &ps, nil
 }
 
-func (repo *PlexSettingsRepo) Update(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+func (repo *PlexSettingsRepo) Update(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Update("plex_settings").
 		Where(sq.Eq{"user_id": userID})
@@ -93,7 +102,12 @@ func (repo *PlexSettingsRepo) Update(ctx context.Context, userID int, ps domain.
 	return &ps, nil
 }
 
-func (repo *PlexSettingsRepo) Get(ctx context.Context, userID int) (*domain.PlexSettings, error) {
+func (repo *PlexSettingsRepo) Get(ctx context.Context) (*domain.PlexSettings, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Select("ps.host", "ps.port", "ps.tls", "ps.tls_skip_verify", "ps.token", "ps.token_iv", "ps.username", "ps.anime_libraries", "ps.plex_client_enabled", "client_id").
 		From("plex_settings ps").
@@ -130,7 +144,12 @@ func (repo *PlexSettingsRepo) Get(ctx context.Context, userID int) (*domain.Plex
 	return ps, nil
 }
 
-func (repo *PlexSettingsRepo) Delete(ctx context.Context, userID int) error {
+func (repo *PlexSettingsRepo) Delete(ctx context.Context) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	queryBuilder := repo.db.squirrel.Delete("plex_settings").Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()

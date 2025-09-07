@@ -59,11 +59,15 @@ func (repo *AnimeUpdateRepo) GetByID(ctx context.Context, req *domain.GetAnimeUp
 	return nil, nil
 }
 
-func (repo *AnimeUpdateRepo) Count(ctx context.Context, userID int) (int, error) {
-	queryBuilder := repo.db.squirrel.
-		Select("count(*)").
-		From("anime_update").
-		Where(sq.Eq{"user_id": userID})
+func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
+       userID, err := domain.GetUserIDFromContext(ctx)
+       if err != nil {
+	       return 0, err
+       }
+       queryBuilder := repo.db.squirrel.
+	       Select("count(*)").
+	       From("anime_update").
+	       Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -83,7 +87,12 @@ func (repo *AnimeUpdateRepo) Count(ctx context.Context, userID int) (int, error)
 	return count, nil
 }
 
-func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, userID int, limit int) ([]*domain.AnimeUpdate, error) {
+func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	latest := repo.db.squirrel.
 		Select("mal_id, MAX(time_stamp) AS max_ts").
 		From("anime_update").

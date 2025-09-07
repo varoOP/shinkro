@@ -24,7 +24,11 @@ func NewPlexRepo(log zerolog.Logger, db *DB) domain.PlexRepo {
 	}
 }
 
-func (repo *PlexRepo) Store(ctx context.Context, userID int, r *domain.Plex) error {
+func (repo *PlexRepo) Store(ctx context.Context, r *domain.Plex) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
 	r.UserID = userID
 
 	guids, err := json.Marshal(r.Metadata.GUID.GUIDS)
@@ -107,12 +111,16 @@ func (repo *PlexRepo) Delete(ctx context.Context, req *domain.DeletePlexRequest)
 	return nil
 }
 
-func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context, userID int) (int, error) {
-	queryBuilder := repo.db.squirrel.
-		Select("count(*)").
-		From("plex_payload").
-		Where(sq.Eq{"event": "media.scrobble"}).
-		Where(sq.Eq{"user_id": userID})
+func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context) (int, error) {
+       userID, err := domain.GetUserIDFromContext(ctx)
+       if err != nil {
+	       return 0, err
+       }
+       queryBuilder := repo.db.squirrel.
+	       Select("count(*)").
+	       From("plex_payload").
+	       Where(sq.Eq{"event": "media.scrobble"}).
+	       Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -132,12 +140,16 @@ func (repo *PlexRepo) CountScrobbleEvents(ctx context.Context, userID int) (int,
 	return count, nil
 }
 
-func (repo *PlexRepo) CountRateEvents(ctx context.Context, userID int) (int, error) {
-	queryBuilder := repo.db.squirrel.
-		Select("count(*)").
-		From("plex_payload").
-		Where(sq.Eq{"event": "media.rate"}).
-		Where(sq.Eq{"user_id": userID})
+func (repo *PlexRepo) CountRateEvents(ctx context.Context) (int, error) {
+       userID, err := domain.GetUserIDFromContext(ctx)
+       if err != nil {
+	       return 0, err
+       }
+       queryBuilder := repo.db.squirrel.
+	       Select("count(*)").
+	       From("plex_payload").
+	       Where(sq.Eq{"event": "media.rate"}).
+	       Where(sq.Eq{"user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -157,7 +169,12 @@ func (repo *PlexRepo) CountRateEvents(ctx context.Context, userID int) (int, err
 	return count, nil
 }
 
-func (repo *PlexRepo) GetWithCursor(ctx context.Context, userID int, limit int, cursor *domain.PlexCursor) ([]*domain.Plex, error) {
+func (repo *PlexRepo) GetWithCursor(ctx context.Context, limit int, cursor *domain.PlexCursor) ([]*domain.Plex, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Select("id, user_id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
 		From("plex_payload").
@@ -200,17 +217,22 @@ func (repo *PlexRepo) GetWithCursor(ctx context.Context, userID int, limit int, 
 }
 
 func (repo *PlexRepo) GetWithOffset(ctx context.Context, req *domain.PlexHistoryRequest) ([]*domain.Plex, int, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	
 	// Build base query for counting
 	countQueryBuilder := repo.db.squirrel.
 		Select("count(*)").
 		From("plex_payload").
-		Where("user_id = ?", req.UserID)
+		Where("user_id = ?", userID)
 
 	// Build base query for data
 	queryBuilder := repo.db.squirrel.
 		Select("id, user_id, rating, event, source, account_title, guid_string, guids, grand_parent_key, grand_parent_title, metadata_index, library_section_title, parent_index, title, type, time_stamp").
 		From("plex_payload").
-		Where("user_id = ?", req.UserID)
+		Where("user_id = ?", userID)
 
 	// Apply filters
 	if req.Search != "" {

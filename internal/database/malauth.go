@@ -38,7 +38,12 @@ func (repo *MalAuthRepo) Store(ctx context.Context, userID int, ma *domain.MalAu
 	return nil
 }
 
-func (repo *MalAuthRepo) Get(ctx context.Context, userID int) (*domain.MalAuth, error) {
+func (repo *MalAuthRepo) Get(ctx context.Context) (*domain.MalAuth, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Select("ma.client_id", "ma.client_secret", "ma.access_token", "ma.token_iv").
 		From("malauth ma").
@@ -71,7 +76,12 @@ func (repo *MalAuthRepo) Get(ctx context.Context, userID int) (*domain.MalAuth, 
 	return ma, nil
 }
 
-func (repo *MalAuthRepo) Delete(ctx context.Context, userID int) error {
+func (repo *MalAuthRepo) Delete(ctx context.Context) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Delete("malauth").
 		Where(sq.Eq{"user_id": userID})

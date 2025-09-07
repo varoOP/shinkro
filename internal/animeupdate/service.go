@@ -12,9 +12,9 @@ import (
 )
 
 type Service interface {
-	Store(ctx context.Context, userID int, animeupdate *domain.AnimeUpdate) error
+	Store(ctx context.Context, animeupdate *domain.AnimeUpdate) error
 	GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error)
-	UpdateAnimeList(ctx context.Context, userID int, anime *domain.AnimeUpdate, event domain.PlexEvent) error
+	UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
@@ -39,7 +39,11 @@ func NewService(log zerolog.Logger, repo domain.AnimeUpdateRepo, animeSvc anime.
 	}
 }
 
-func (s *service) Store(ctx context.Context, userID int, animeupdate *domain.AnimeUpdate) error {
+func (s *service) Store(ctx context.Context, animeupdate *domain.AnimeUpdate) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
 	return s.repo.Store(ctx, userID, animeupdate)
 }
 
@@ -47,7 +51,12 @@ func (s *service) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest
 	return s.repo.GetByID(ctx, req)
 }
 
-func (s *service) UpdateAnimeList(ctx context.Context, userID int, anime *domain.AnimeUpdate, event domain.PlexEvent) error {
+func (s *service) UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	switch event {
 	case domain.PlexRateEvent:
 		return s.handleRateEvent(ctx, userID, anime)
@@ -98,7 +107,7 @@ func (s *service) updateAndStore(ctx context.Context, userID int, anime *domain.
 		return err
 	}
 	s.log.Info().Interface("status", anime.ListStatus).Msg("MyAnimeList Updated Successfully")
-	return s.Store(ctx, userID, anime)
+	return s.Store(ctx, anime)
 }
 
 func (s *service) updateFromDBAndStore(ctx context.Context, userID int, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error) error {
@@ -144,19 +153,11 @@ func (s *service) convertAniDBToTVDB(ctx context.Context, anime *domain.AnimeUpd
 }
 
 func (s *service) Count(ctx context.Context) (int, error) {
-	userID, err := domain.GetUserIDFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return s.repo.Count(ctx, userID)
+	return s.repo.Count(ctx)
 }
 
 func (s *service) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
-	userID, err := domain.GetUserIDFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s.repo.GetRecentUnique(ctx, userID, limit)
+	return s.repo.GetRecentUnique(ctx, limit)
 }
 
 func (s *service) GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error) {

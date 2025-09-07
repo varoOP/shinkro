@@ -39,7 +39,12 @@ func (repo *MappingRepo) Store(ctx context.Context, userID int, m *domain.MapSet
 	return nil
 }
 
-func (repo *MappingRepo) Get(ctx context.Context, userID int) (*domain.MapSettings, error) {
+func (repo *MappingRepo) Get(ctx context.Context) (*domain.MapSettings, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := repo.db.squirrel.
 		Select("m.user_id", "m.tvdb_enabled", "m.tmdb_enabled", "m.tvdb_path", "m.tmdb_path").
 		From("mapping_settings m").

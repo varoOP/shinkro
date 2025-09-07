@@ -3,10 +3,10 @@ package domain
 import "context"
 
 type PlexSettingsRepo interface {
-	Store(ctx context.Context, userID int, ps PlexSettings) (*PlexSettings, error)
-	Update(ctx context.Context, userID int, ps PlexSettings) (*PlexSettings, error)
-	Get(ctx context.Context, userID int) (*PlexSettings, error)
-	Delete(ctx context.Context, userID int) error
+	Store(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
+	Update(ctx context.Context, ps PlexSettings) (*PlexSettings, error)
+	Get(ctx context.Context) (*PlexSettings, error)
+	Delete(ctx context.Context) error
 }
 
 type PlexSettings struct {

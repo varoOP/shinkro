@@ -50,7 +50,7 @@ func (s *service) Find(ctx context.Context, params domain.NotificationQueryParam
 }
 
 func (s *service) FindByID(ctx context.Context, userID, id int) (*domain.Notification, error) {
-	notification, err := s.repo.FindByID(ctx, userID, id)
+	notification, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		s.log.Error().Err(err).Msgf("could not find notification by id: %v", id)
 		return nil, err

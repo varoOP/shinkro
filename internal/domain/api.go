@@ -7,8 +7,8 @@ import (
 
 type APIRepo interface {
 	Store(ctx context.Context, userID int, key *APIKey) error
-	Delete(ctx context.Context, userID int, key string) error
-	GetAllAPIKeys(ctx context.Context, userID int) ([]APIKey, error)
+	Delete(ctx context.Context, key string) error
+	GetAllAPIKeys(ctx context.Context) ([]APIKey, error)
 	GetKey(ctx context.Context, key string) (*APIKey, error)
 	GetUserIDByAPIKey(ctx context.Context, key string) (int, error)
 }

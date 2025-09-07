@@ -53,7 +53,12 @@ func (r *APIRepo) Store(ctx context.Context, userID int, key *domain.APIKey) err
 	return nil
 }
 
-func (r *APIRepo) Delete(ctx context.Context, userID int, key string) error {
+func (r *APIRepo) Delete(ctx context.Context, key string) error {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	
 	queryBuilder := r.db.squirrel.Delete("api_key").Where(sq.Eq{"key": key, "user_id": userID})
 
 	query, args, err := queryBuilder.ToSql()
@@ -71,7 +76,12 @@ func (r *APIRepo) Delete(ctx context.Context, userID int, key string) error {
 	return nil
 }
 
-func (r *APIRepo) GetAllAPIKeys(ctx context.Context, userID int) ([]domain.APIKey, error) {
+func (r *APIRepo) GetAllAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := r.db.squirrel.
 		Select("user_id", "name", "key", "scopes", "created_at").
 		From("api_key").

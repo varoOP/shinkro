@@ -11,7 +11,7 @@ import (
 
 type MappingRepo interface {
 	Store(ctx context.Context, userID int, m *MapSettings) error
-	Get(ctx context.Context, userID int) (*MapSettings, error)
+	Get(ctx context.Context) (*MapSettings, error)
 }
 
 type Mapping struct {

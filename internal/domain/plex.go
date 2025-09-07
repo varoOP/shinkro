@@ -12,13 +12,13 @@ import (
 )
 
 type PlexRepo interface {
-	Store(ctx context.Context, userID int, plex *Plex) error
+	Store(ctx context.Context, plex *Plex) error
 	FindAll(ctx context.Context) ([]*Plex, error)
 	Get(ctx context.Context, req *GetPlexRequest) (*Plex, error)
 	Delete(ctx context.Context, req *DeletePlexRequest) error
-	CountScrobbleEvents(ctx context.Context, userID int) (int, error)
-	CountRateEvents(ctx context.Context, userID int) (int, error)
-	GetWithCursor(ctx context.Context, userID int, limit int, cursor *PlexCursor) ([]*Plex, error)
+	CountScrobbleEvents(ctx context.Context) (int, error)
+	CountRateEvents(ctx context.Context) (int, error)
+	GetWithCursor(ctx context.Context, limit int, cursor *PlexCursor) ([]*Plex, error)
 	GetWithOffset(ctx context.Context, req *PlexHistoryRequest) ([]*Plex, int, error)
 }
 

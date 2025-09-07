@@ -41,24 +41,24 @@ func (s *service) Store(ctx context.Context, userID int, ps domain.PlexSettings)
 	}
 
 	ps.Token = eToken
-	return s.repo.Store(ctx, userID, ps)
+	return s.repo.Store(ctx, ps)
 }
 
 func (s *service) Update(ctx context.Context, userID int, ps domain.PlexSettings) (*domain.PlexSettings, error) {
-	return s.repo.Update(ctx, userID, ps)
+	return s.repo.Update(ctx, ps)
 }
 
 func (s *service) Get(ctx context.Context, userID int) (*domain.PlexSettings, error) {
-	return s.repo.Get(ctx, userID)
+	return s.repo.Get(ctx)
 }
 
 func (s *service) Delete(ctx context.Context, userID int) error {
-	return s.repo.Delete(ctx, userID)
+	return s.repo.Delete(ctx)
 }
 
 func (s *service) GetClient(ctx context.Context, userID int, ps *domain.PlexSettings) (*plex.Client, error) {
 	if len(ps.TokenIV) == 0 {
-		tempPs, err := s.repo.Get(ctx, userID)
+		tempPs, err := s.repo.Get(ctx)
 		if err != nil {
 			s.log.Error().Err(err).Msg("error getting plex settings")
 			return nil, err
@@ -95,7 +95,7 @@ func (s *service) GetClient(ctx context.Context, userID int, ps *domain.PlexSett
 
 func (s *service) HandlePlexAgent(ctx context.Context, userID int, p *domain.Plex) (domain.PlexSupportedDBs, int, error) {
 	if p.Metadata.Type == domain.PlexEpisode {
-		ps, err := s.repo.Get(ctx, userID)
+		ps, err := s.repo.Get(ctx)
 		if err != nil {
 			return "", 0, err
 		}

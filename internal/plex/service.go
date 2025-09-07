@@ -69,7 +69,7 @@ func (s *service) Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.
 }
 
 func (s *service) Store(ctx context.Context, userID int, plex *domain.Plex) error {
-	return s.repo.Store(ctx, userID, plex)
+	return s.repo.Store(ctx, plex)
 }
 
 func (s *service) GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error) {
@@ -93,16 +93,7 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *dom
 		return err
 	}
 
-	// Try to get userID from context (API key or session)
-	// For webhooks without user context, we'll need a default user approach
-	userID, err := getUserIDFromContext(ctx)
-	if err != nil {
-		// For webhooks without user context, use default user ID 1
-		// This could be made configurable in the future
-		userID = 1
-	}
-
-	err = s.animeUpdateService.UpdateAnimeList(ctx, userID, a, plex.Event)
+	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
 	if err != nil {
 		s.plexStatusService.StoreError(ctx, plex, err.Error())
 		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
@@ -165,19 +156,11 @@ func (s *service) getSourceIDFromAgent(ctx context.Context, p *domain.Plex, agen
 }
 
 func (s *service) CountScrobbleEvents(ctx context.Context) (int, error) {
-	userID, err := domain.GetUserIDFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return s.repo.CountScrobbleEvents(ctx, userID)
+	return s.repo.CountScrobbleEvents(ctx)
 }
 
 func (s *service) CountRateEvents(ctx context.Context) (int, error) {
-	userID, err := domain.GetUserIDFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return s.repo.CountRateEvents(ctx, userID)
+	return s.repo.CountRateEvents(ctx)
 }
 
 func (s *service) GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error) {
@@ -292,7 +275,7 @@ func (s *service) getPlexWithCursor(ctx context.Context, req *domain.PlexHistory
 			cursor = decoded
 		}
 	}
-	return s.repo.GetWithCursor(ctx, req.UserID, req.Limit, cursor)
+	return s.repo.GetWithCursor(ctx, req.Limit, cursor)
 }
 
 func (s *service) getPlexWithOffset(ctx context.Context, req *domain.PlexHistoryRequest) ([]*domain.Plex, int, error) {

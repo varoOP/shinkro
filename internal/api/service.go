@@ -53,7 +53,7 @@ func (s *service) List(ctx context.Context) ([]domain.APIKey, error) {
 		return keys, nil
 	}
 
-	return s.repo.GetAllAPIKeys(ctx, userID)
+	return s.repo.GetAllAPIKeys(ctx)
 }
 
 func (s *service) Store(ctx context.Context, apiKey *domain.APIKey) error {
@@ -77,17 +77,12 @@ func (s *service) Store(ctx context.Context, apiKey *domain.APIKey) error {
 }
 
 func (s *service) Delete(ctx context.Context, key string) error {
-	userID, err := domain.GetUserIDFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	
-	_, err = s.repo.GetKey(ctx, key)
+	_, err := s.repo.GetKey(ctx, key)
 	if err != nil {
 		return err
 	}
 
-	err = s.repo.Delete(ctx, userID, key)
+	err = s.repo.Delete(ctx, key)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("could not delete api key: %s", key))
 	}

@@ -11,8 +11,8 @@ import (
 type AnimeUpdateRepo interface {
 	Store(ctx context.Context, userID int, animeUpdate *AnimeUpdate) error
 	GetByID(ctx context.Context, req *GetAnimeUpdateRequest) (*AnimeUpdate, error)
-	Count(ctx context.Context, userID int) (int, error)
-	GetRecentUnique(ctx context.Context, userID int, limit int) ([]*AnimeUpdate, error)
+	Count(ctx context.Context) (int, error)
+	GetRecentUnique(ctx context.Context, limit int) ([]*AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*AnimeUpdate, error)
 	GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*AnimeUpdate, error)
 }

@@ -58,11 +58,11 @@ func (s *service) Store(ctx context.Context, userID int, ma *domain.MalAuth) err
 }
 
 func (s *service) Get(ctx context.Context, userID int) (*domain.MalAuth, error) {
-	return s.repo.Get(ctx, userID)
+	return s.repo.Get(ctx)
 }
 
 func (s *service) Delete(ctx context.Context, userID int) error {
-	return s.repo.Delete(ctx, userID)
+	return s.repo.Delete(ctx)
 }
 
 func (s *service) GetDecrypted(ctx context.Context, userID int) (*domain.MalAuth, error) {

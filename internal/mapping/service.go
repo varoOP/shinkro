@@ -57,11 +57,7 @@ func (s *service) Store(ctx context.Context, m *domain.MapSettings) error {
 }
 
 func (s *service) Get(ctx context.Context) (*domain.MapSettings, error) {
-	userID, err := domain.GetUserIDFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s.repo.Get(ctx, userID)
+	return s.repo.Get(ctx)
 }
 
 // NewMap bypasses cache and always loads fresh mappings
@@ -71,7 +67,7 @@ func (s *service) NewMap(ctx context.Context, userID int) (*domain.AnimeMap, err
 
 // loadMap encapsulates loading logic from repository
 func (s *service) loadMap(ctx context.Context, userID int) (*domain.AnimeMap, error) {
-	settings, err := s.repo.Get(ctx, userID)
+	settings, err := s.repo.Get(ctx)
 	if err != nil {
 		return nil, err
 	}

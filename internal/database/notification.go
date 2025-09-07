@@ -69,7 +69,12 @@ func (r *NotificationRepo) Find(ctx context.Context, params domain.NotificationQ
 	return notifications, totalCount, nil
 }
 
-func (r *NotificationRepo) List(ctx context.Context, userID int) ([]domain.Notification, error) {
+func (r *NotificationRepo) List(ctx context.Context) ([]domain.Notification, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	rows, err := r.db.handler.QueryContext(ctx, "SELECT id, user_id, name, type, enabled, events, token, api_key, webhook, title, icon, host, username, password, channel, targets, devices, priority, topic, created_at, updated_at FROM notification WHERE user_id = $1 ORDER BY name ASC", userID)
 	if err != nil {
 		return nil, errors.Wrap(err, "error executing query")
@@ -149,7 +154,12 @@ func (r *NotificationRepo) ListAll(ctx context.Context) ([]domain.Notification, 
 	return notifications, nil
 }
 
-func (r *NotificationRepo) FindByID(ctx context.Context, userID int, id int) (*domain.Notification, error) {
+func (r *NotificationRepo) FindByID(ctx context.Context, id int) (*domain.Notification, error) {
+	userID, err := domain.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
 	queryBuilder := r.db.squirrel.
 		Select(
 			"id",

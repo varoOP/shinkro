@@ -2,9 +2,10 @@ import { Container, Paper, Tabs } from "@mantine/core";
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { FaCog, FaUserCog, FaKey, FaBell, FaMap } from "react-icons/fa";
 import { BsStack } from "react-icons/bs";
+import { baseUrl } from "@utils";
 
 export const Settings = () => {
-    const pathname = useRouterState().location.pathname;
+    const pathname = useRouterState().location.pathname.replace(baseUrl(), '/');
     const navigate = useNavigate();
     
     // Determine active tab based on current path

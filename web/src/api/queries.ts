@@ -10,6 +10,7 @@ import {
     LogKeys,
     PlexKeys,
 } from "@api/query_keys";
+import { baseUrl } from "@utils";
 
 export const ConfigQueryOptions = (enabled: boolean = true) =>
     queryOptions({
@@ -60,7 +61,7 @@ export const LogContentQueryOptions = (enabled: boolean = true) =>
     queryOptions({
         queryKey: LogKeys.content(),
         queryFn: async () => {
-            const response = await fetch(`${window.location.origin}/api/fs/logs/shinkro.log`);
+            const response = await fetch(`${window.location.origin}${baseUrl()}api/fs/logs/shinkro.log`);
             if (!response.ok) throw new Error("Failed to fetch log");
             return response.text();
         },

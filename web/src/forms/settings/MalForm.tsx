@@ -5,7 +5,7 @@ import {useMutation} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient.ts";
 import {displayNotification} from "@components/notifications";
 import {useState} from "react";
-import {CopyTextToClipboard} from "@utils/index";
+import {baseUrl, CopyTextToClipboard} from "@utils/index";
 
 interface Props {
     opened: boolean;
@@ -17,7 +17,7 @@ interface Props {
 export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
     const [copied, setCopied] = useState(false);
     const [copyError, setCopyError] = useState(false);
-    const appRedirectURL = `${window.location.origin}${window.APP.baseUrl}malauth/callback`
+    const appRedirectURL = `${window.location.origin}${baseUrl()}malauth/callback`
 
     const form = useForm<MalAuth>({
         initialValues: {

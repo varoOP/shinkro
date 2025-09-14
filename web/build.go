@@ -113,7 +113,7 @@ func fsFile(w http.ResponseWriter, r *http.Request, file string, filesystem fs.F
 	http.ServeContent(w, r, file, stat.ModTime(), reader)
 }
 
-var validRoutes = []string{"/", "onboard", "login", "logout", "settings"}
+var validRoutes = []string{"/", "onboard", "login", "logout", "logs", "settings"}
 
 func validRoute(route string) bool {
 	for _, valid := range validRoutes {

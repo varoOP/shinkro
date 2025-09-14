@@ -45,6 +45,26 @@ export function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(" ");
 }
 
+// Normalize pathname by removing baseUrl prefix
+export function normalizePathname(pathname: string, baseUrl: string): string {
+    // If baseUrl is just "/", no normalization needed
+    if (baseUrl === "/") {
+        return pathname;
+    }
+    
+    // Remove trailing slash from baseUrl for comparison
+    const basePath = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+    
+    // If pathname starts with basePath, remove it and ensure leading slash
+    if (pathname.startsWith(basePath)) {
+        const remaining = pathname.slice(basePath.length);
+        return remaining.startsWith("/") ? remaining : `/${remaining}`;
+    }
+    
+    // If no match, return original pathname
+    return pathname;
+}
+
 // column widths for inputs etc
 export type COL_WIDTHS = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 

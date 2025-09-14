@@ -2,20 +2,22 @@ import { Container, Paper, Tabs } from "@mantine/core";
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { FaCog, FaUserCog, FaKey, FaBell, FaMap } from "react-icons/fa";
 import { BsStack } from "react-icons/bs";
-import { baseUrl } from "@utils";
+import { baseUrl, normalizePathname } from "@utils";
 
 export const Settings = () => {
-    const pathname = useRouterState().location.pathname.replace(baseUrl(), '/');
+    const fullPathname = useRouterState().location.pathname;
     const navigate = useNavigate();
     
-    // Determine active tab based on current path
+    const normalizedPathname = normalizePathname(fullPathname, baseUrl());
+    
+    // Determine active tab based on normalized path
     const getActiveTab = () => {
-        if (pathname === '/settings') return 'application';
-        if (pathname === '/settings/user') return 'user';
-        if (pathname === '/settings/api') return 'api';
-        if (pathname === '/settings/mapping') return 'mapping';
-        if (pathname === '/settings/notifications') return 'notifications';
-        if (pathname === '/settings/logs') return 'logs';
+        if (normalizedPathname === '/settings') return 'application';
+        if (normalizedPathname === '/settings/user') return 'user';
+        if (normalizedPathname === '/settings/api') return 'api';
+        if (normalizedPathname === '/settings/mapping') return 'mapping';
+        if (normalizedPathname === '/settings/notifications') return 'notifications';
+        if (normalizedPathname === '/settings/logs') return 'logs';
         return 'application';
     };
 
@@ -40,7 +42,7 @@ export const Settings = () => {
     return (
         <Container size={1200} px="md" component="main">
             <Paper mt="md" withBorder p={"md"} h={"100%"} mih={"80vh"}>
-                {pathname === '/settings' || (pathname.startsWith('/settings/') && !pathname.includes('/plex') && !pathname.includes('/mal')) ? (
+                {normalizedPathname === '/settings' || (normalizedPathname.startsWith('/settings/') && !normalizedPathname.includes('/plex') && !normalizedPathname.includes('/mal')) ? (
                     <Tabs value={getActiveTab()} onChange={handleTabChange} variant="pills">
                         <Tabs.List grow>
                             <Tabs.Tab value="application" leftSection={<FaCog size={14} />}>

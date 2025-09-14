@@ -18,11 +18,13 @@ import {ExternalLink} from "@components/ExternalLink";
 import {NAV_ROUTES} from "./navigation";
 import classes from "./Layout.module.css";
 import { Text } from "@mantine/core";
+import { baseUrl, normalizePathname } from "@utils";
 
 export const Layout = () => {
     const [opened, {toggle}] = useDisclosure();
     const navigate = useNavigate();
-    const pathname = useRouterState().location.pathname;
+    const fullPathname = useRouterState().location.pathname;
+    const pathname = normalizePathname(fullPathname, baseUrl());
 
     const {isError: isConfigError, error: configError, data: config} = useQuery(ConfigQueryOptions(true));
     const { data: latestRelease } = useQuery(latestReleaseQueryOptions());

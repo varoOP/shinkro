@@ -30,8 +30,7 @@ func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest)
 		Select("a.mal_id", "a.title", "a.en_title", "a.anidb_id", "a.tvdb_id", "a.tmdb_id", "a.type", "a.releaseDate").
 		From("anime a").
 		Where(sq.Eq{id: req.Id}).
-		OrderBy("CASE WHEN a.tvdb_id > 0 THEN 0 ELSE 1 END", "a.mal_id DESC").
-		Limit(1)
+		OrderBy("CASE WHEN a.tvdb_id > 0 THEN 0 ELSE 1 END", "a.mal_id DESC")
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -40,30 +39,47 @@ func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest)
 
 	repo.log.Trace().Str("database", "anime.getByTVDBID").Msgf("query: '%s', args: '%v'", query, args)
 
-	row := repo.db.handler.QueryRowContext(ctx, query, args...)
-
-	if err := row.Err(); err != nil {
-		return nil, errors.Wrap(err, "error rows find anime")
+	rows, err := repo.db.handler.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error executing query")
 	}
+	defer rows.Close()
 
-	var anime domain.Anime
-	var title, enTitle, animeType, releaseDate sql.NullString
-	var anidbid, tvdbid, tmdbid sql.NullInt32
+	var results []domain.Anime
+	for rows.Next() {
+		var anime domain.Anime
+		var title, enTitle, animeType, releaseDate sql.NullString
+		var anidbid, tvdbid, tmdbid sql.NullInt32
 
-	if err := row.Scan(&anime.MALId, &title, &enTitle, &anidbid, &tvdbid, &tmdbid, &animeType, &releaseDate); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, err
+		if err := rows.Scan(&anime.MALId, &title, &enTitle, &anidbid, &tvdbid, &tmdbid, &animeType, &releaseDate); err != nil {
+			return nil, errors.Wrap(err, "error scanning row")
 		}
-		return nil, errors.Wrap(err, "error scanning row")
+
+		anime.MainTitle = title.String
+		anime.EnglishTitle = enTitle.String
+		anime.AnimeType = animeType.String
+		anime.ReleaseDate = releaseDate.String
+		anime.AniDBId = int(anidbid.Int32)
+		anime.TVDBId = int(tvdbid.Int32)
+		anime.TMDBId = int(tmdbid.Int32)
+
+		results = append(results, anime)
 	}
 
-	anime.MainTitle = title.String
-	anime.EnglishTitle = enTitle.String
-	anime.AnimeType = animeType.String
-	anime.ReleaseDate = releaseDate.String
-	anime.AniDBId = int(anidbid.Int32)
-	anime.TVDBId = int(tvdbid.Int32)
-	anime.TMDBId = int(tmdbid.Int32)
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(err, "error iterating rows")
+	}
+
+	if len(results) == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	anime := results[0]
+
+	if len(results) > 1 {
+		anime.MALId = 0
+		repo.log.Debug().Int("tvdbId", req.Id).Int("rowCount", len(results)).Msg("Multiple rows found, setting MAL ID to 0")
+	}
 
 	return &anime, nil
 }

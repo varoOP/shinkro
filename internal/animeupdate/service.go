@@ -5,6 +5,7 @@ import (
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/rs/zerolog"
+	"github.com/pkg/errors"
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/malauth"
@@ -110,6 +111,11 @@ func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeU
 	animeFromDB, err := s.animeService.GetByID(ctx, req)
 	if err != nil {
 		return err
+	}
+
+	s.log.Debug().Int("malId", animeFromDB.MALId).Msg("Anime from DB")
+	if animeFromDB.MALId == 0 {
+		return errors.New("Anime not found in database, update mapping")
 	}
 
 	anime.MALId = animeFromDB.MALId

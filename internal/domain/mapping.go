@@ -105,6 +105,8 @@ func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
 
 func (s *AnimeTVShows) findMatchingAnime(tvdbid, tvdbseason int) []AnimeTV {
 	var matchingAnime []AnimeTV
+	var mappedAnime []AnimeTV
+	
 	for _, anime := range s.Anime {
 		if tvdbid != anime.Tvdbid {
 			continue
@@ -117,7 +119,18 @@ func (s *AnimeTVShows) findMatchingAnime(tvdbid, tvdbseason int) []AnimeTV {
 
 		matchingMappedAnime := s.findMatchingMappedAnime(anime, tvdbseason)
 		if matchingMappedAnime != nil {
-			return []AnimeTV{*matchingMappedAnime}
+			mappedAnime = append(mappedAnime, *matchingMappedAnime)
+		}
+	}
+
+	if len(mappedAnime) > 0 {
+		if len(mappedAnime) == 1 && len(matchingAnime) > 0 {
+			var allCandidates []AnimeTV
+			allCandidates = append(allCandidates, matchingAnime...)
+			allCandidates = append(allCandidates, mappedAnime...)
+			return allCandidates
+		} else {
+			return mappedAnime
 		}
 	}
 
@@ -142,12 +155,24 @@ func (s *AnimeTVShows) findMatchingMappedAnime(anime AnimeTV, tvdbseason int) *A
 
 func (s *AnimeTVShows) findBestMatchingAnime(ep int, candidates []AnimeTV) AnimeTV {
 	var anime AnimeTV
-	largestStart := 0
+	largestStart := -1
+	var fallbackAnime AnimeTV
+	largestFallbackStart := -1
+	
 	for _, v := range candidates {
-		if ep >= v.Start && v.Start >= largestStart {
+		if ep >= v.Start && v.Start > largestStart {
 			largestStart = v.Start
 			anime = v
 		}
+		
+		if v.Start > largestFallbackStart {
+			largestFallbackStart = v.Start
+			fallbackAnime = v
+		}
+	}
+
+	if anime.Malid == 0 {
+		anime = fallbackAnime
 	}
 
 	return anime

@@ -32,9 +32,12 @@ type AnimeMap struct {
 }
 
 type AnimeMapDetails struct {
-	Malid      int
-	Start      int
-	UseMapping bool
+	Malid            int
+	Start            int
+	UseMapping       bool
+	MappingType      string      // "explicit" or "range" (default)
+	ExplicitEpisodes map[int]int // tvdbEp -> malEp for explicit mappings
+	SkipMalEpisodes  []int       // MAL episodes to skip for range mappings
 }
 
 type AnimeTVShows struct {
@@ -50,11 +53,18 @@ type AnimeTV struct {
 	Start        int            `yaml:"start" json:"start"`
 	UseMapping   bool           `yaml:"useMapping" json:"useMapping"`
 	AnimeMapping []AnimeMapping `yaml:"animeMapping" json:"animeMapping"`
+	// Temporary fields for mapping data (populated during lookup)
+	MappingType      string      `yaml:"-" json:"-"` // Not serialized
+	ExplicitEpisodes map[int]int `yaml:"-" json:"-"` // Not serialized
+	SkipMalEpisodes  []int       `yaml:"-" json:"-"` // Not serialized
 }
 
 type AnimeMapping struct {
-	TvdbSeason int `yaml:"tvdbseason" json:"tvdbseason"`
-	Start      int `yaml:"start" json:"start"`
+	TvdbSeason       int         `yaml:"tvdbseason" json:"tvdbseason"`
+	Start            int         `yaml:"start" json:"start"`
+	MappingType      string      `yaml:"mappingType,omitempty" json:"mappingType,omitempty"`           // "explicit" or "range" (default)
+	ExplicitEpisodes map[int]int `yaml:"explicitEpisodes,omitempty" json:"explicitEpisodes,omitempty"` // tvdbEp -> malEp
+	SkipMalEpisodes  []int       `yaml:"skipMalEpisodes,omitempty" json:"skipMalEpisodes,omitempty"`   // MAL episodes to skip
 }
 
 type AnimeMovies struct {
@@ -106,7 +116,7 @@ func (am *AnimeMovies) CheckMap(tmdbid int) (bool, *AnimeMovie) {
 func (s *AnimeTVShows) findMatchingAnime(tvdbid, tvdbseason int) []AnimeTV {
 	var matchingAnime []AnimeTV
 	var mappedAnime []AnimeTV
-	
+
 	for _, anime := range s.Anime {
 		if tvdbid != anime.Tvdbid {
 			continue
@@ -146,6 +156,10 @@ func (s *AnimeTVShows) findMatchingMappedAnime(anime AnimeTV, tvdbseason int) *A
 		if tvdbseason == animeMap.TvdbSeason {
 			anime.TvdbSeason = animeMap.TvdbSeason
 			anime.Start = animeMap.Start
+			// Store mapping data for later use
+			anime.MappingType = animeMap.MappingType
+			anime.ExplicitEpisodes = animeMap.ExplicitEpisodes
+			anime.SkipMalEpisodes = animeMap.SkipMalEpisodes
 			return &anime
 		}
 	}
@@ -158,13 +172,13 @@ func (s *AnimeTVShows) findBestMatchingAnime(ep int, candidates []AnimeTV) Anime
 	largestStart := -1
 	var fallbackAnime AnimeTV
 	largestFallbackStart := -1
-	
+
 	for _, v := range candidates {
 		if ep >= v.Start && v.Start > largestStart {
 			largestStart = v.Start
 			anime = v
 		}
-		
+
 		if v.Start > largestFallbackStart {
 			largestFallbackStart = v.Start
 			fallbackAnime = v
@@ -182,7 +196,39 @@ func (ad *AnimeMapDetails) CalculateEpNum(oldEpNum int) int {
 	if ad.Start == 0 {
 		ad.Start = 1
 	}
-	
+
+	// Handle explicit episode mappings
+	if ad.MappingType == "explicit" && ad.ExplicitEpisodes != nil {
+		if malEp, found := ad.ExplicitEpisodes[oldEpNum]; found {
+			return malEp
+		}
+		// Explicit mapping but episode not found - fall through to default behavior
+	}
+
+	// Handle range mappings with skip logic
+	if len(ad.SkipMalEpisodes) > 0 {
+		position := oldEpNum
+		malEp := ad.Start - 1 // Start one before, so first iteration increments to Start
+		count := 0
+
+		for count < position {
+			malEp++
+			// Check if this MAL episode should be skipped
+			shouldSkip := false
+			for _, skip := range ad.SkipMalEpisodes {
+				if malEp == skip {
+					shouldSkip = true
+					break
+				}
+			}
+			if !shouldSkip {
+				count++
+			}
+		}
+		return malEp
+	}
+
+	// Default range mapping (no skips)
 	if ad.UseMapping {
 		return ad.Start + oldEpNum - 1
 	}

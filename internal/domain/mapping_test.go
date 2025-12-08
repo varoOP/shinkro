@@ -174,6 +174,74 @@ func TestMappingCheckMap(t *testing.T) {
 			want2:      21,
 			want3:      196,
 		},
+		{
+			name: "Monogatari S3-1",
+			animeMap: &AnimeTVShows{
+				Anime: []AnimeTV{
+					{
+						Malid:      17074,
+						Tvdbid:     102261,
+						TvdbSeason: 0,
+						Start:      0,
+						UseMapping: true,
+						AnimeMapping: []AnimeMapping{
+							{
+								TvdbSeason:       0,
+								Start:            0,
+								MappingType:      "explicit",
+								ExplicitEpisodes: map[int]int{7: 6, 8: 11, 9: 16},
+							},
+							{
+								TvdbSeason:      3,
+								Start:           1,
+								MappingType:     "range",
+								SkipMalEpisodes: []int{6, 11, 16},
+							},
+						},
+					},
+				},
+			},
+			tvdbid:     102261,
+			tvdbseason: 0,
+			ep:         7,
+			want1:      true,
+			want2:      17074,
+			want3:      0,
+		},
+		{
+			name: "Monogatari S3-2",
+			animeMap: &AnimeTVShows{
+				Anime: []AnimeTV{
+					{
+						Malid:      17074,
+						Tvdbid:     102261,
+						TvdbSeason: 0,
+						Start:      0,
+						UseMapping: true,
+						AnimeMapping: []AnimeMapping{
+							{
+								TvdbSeason:       0,
+								Start:            0,
+								MappingType:      "explicit",
+								ExplicitEpisodes: map[int]int{7: 6, 8: 11, 9: 16},
+							},
+							{
+								TvdbSeason:      3,
+								Start:           1,
+								MappingType:     "range",
+								SkipMalEpisodes: []int{6, 11, 16},
+							},
+						},
+					},
+				},
+			},
+			tvdbid:     102261,
+			tvdbseason: 3,
+			ep:         23,
+			want1:      true,
+			want2:      17074,
+			want3:      1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -182,6 +250,47 @@ func TestMappingCheckMap(t *testing.T) {
 			assert.Equal(t, tt.want1, got1)
 			assert.Equal(t, tt.want2, got2.Malid)
 			assert.Equal(t, tt.want3, got2.Start)
+		})
+	}
+}
+
+func TestCalculateEpNumWithExplicitAndSkips(t *testing.T) {
+	tests := []struct {
+		name        string
+		details     *AnimeMapDetails
+		tvdbEpisode int
+		expectedMal int
+	}{
+		{
+			name: "Monogatari S3-1",
+			details: &AnimeMapDetails{
+				Malid:            17074,
+				Start:            0,
+				UseMapping:       true,
+				MappingType:      "explicit",
+				ExplicitEpisodes: map[int]int{7: 6, 8: 11, 9: 16},
+			},
+			tvdbEpisode: 7,
+			expectedMal: 6,
+		},
+		{
+			name: "Monogatari S3-2",
+			details: &AnimeMapDetails{
+				Malid:           17074,
+				Start:           1,
+				UseMapping:      true,
+				MappingType:     "range",
+				SkipMalEpisodes: []int{6, 11, 16},
+			},
+			tvdbEpisode: 23,
+			expectedMal: 26,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualMal := tt.details.CalculateEpNum(tt.tvdbEpisode)
+			assert.Equal(t, tt.expectedMal, actualMal)
 		})
 	}
 }

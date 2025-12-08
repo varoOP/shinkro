@@ -98,6 +98,12 @@ func (s Server) Handler() http.Handler {
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Use(hlog.NewHandler(s.log))
+
+	// Public health check endpoint (no authentication required)
+	apiRouter.Route("/healthz", func(r chi.Router) {
+		r.Get("/liveness", LivenessHandler)
+	})
+
 	apiRouter.Route("/auth", newAuthHandler(encoder, s.log, s, s.config.Config, s.cookieStore, s.authService).Routes)
 
 	apiRouter.Group(func(r chi.Router) {

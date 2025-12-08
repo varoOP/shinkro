@@ -196,11 +196,10 @@ export const PlexSettings = ({
 
     useEffect(() => {
         if (selectedServer) {
+            // Auto-populate from selected server, but allow manual editing
             form.setFieldValue("host", selectedServer.connections[0].address);
             form.setFieldValue("port", selectedServer.connections[0].port);
             form.setFieldValue("tls", selectedServer.connections[0].protocol === "https");
-
-            void loadLibrariesForServer();
         }
     }, [selectedServer]);
 
@@ -253,10 +252,20 @@ export const PlexSettings = ({
 
 
     const loadLibrariesForServer = async () => {
-        if (!selectedServer?.connections || selectedServer?.connections.length === 0) {
+        const values = form.getValues();
+        if (!values.host || !values.port) {
             displayNotification({
-                title: "Invalid Server Data",
-                message: "Selected server does not have any connections.",
+                title: "Missing Information",
+                message: "Please enter host and port before loading libraries.",
+                type: "error",
+            });
+            return;
+        }
+
+        if (!values.client_id) {
+            displayNotification({
+                title: "Not Authenticated",
+                message: "Please authenticate with Plex first.",
                 type: "error",
             });
             return;
@@ -264,13 +273,18 @@ export const PlexSettings = ({
 
         try {
             setLoadingLibraries(true);
-            const response = await APIClient.plex.libraries(form.getValues());
+            const response = await APIClient.plex.libraries(values);
             setLibraries(response.MediaContainer.Directory || []);
+            displayNotification({
+                title: "Libraries Loaded",
+                message: "Successfully loaded libraries from Plex server.",
+                type: "success",
+            });
         } catch (err) {
             const error = err as Error;
             displayNotification({
-                title: "Failed to Load Libraries, Choose different Host and Port",
-                message: error.message || "Could not load libraries.",
+                title: "Failed to Load Libraries",
+                message: error.message || "Could not load libraries. Please check your host, port, and TLS settings.",
                 type: "error",
             });
         } finally {
@@ -329,15 +343,11 @@ export const PlexSettings = ({
         mutation.mutate(values);
     };
 
-    const handHostChange = (value: string | null) => {
-        form.setFieldValue("host", value || "");
-        const conn = selectedServer?.connections.find(conn => conn.address === value);
-        form.setFieldValue("port", conn?.port || 0);
-        form.setFieldValue("tls", conn?.protocol === "https");
-    }
-
     const portInput = form.getInputProps("port", {type: "input"});
     const hostInput = form.getInputProps("host", {type: "input"});
+    
+    // Check if we can load libraries (authenticated and host/port filled)
+    const canLoadLibraries = authenticated && form.getValues().host && form.getValues().port && form.getValues().client_id;
     return (
         <Modal opened={opened} onClose={onClose} title="Plex Settings">
             <form onSubmit={form.onSubmit(handleFormSubmit)}>
@@ -363,38 +373,23 @@ export const PlexSettings = ({
                             <TfiReload/>
                         </Button>
                     </Group>
-                    <Select
+                    <TextInput
                         label="Host"
-                        placeholder="Select host after selecting server"
-                        data={
-                            selectedServer
-                                ? Array.from(new Set(selectedServer.connections.map((conn) => conn.address)))
-                                : [form.getValues().host]
-                        }
-                        value={form.getValues().host}
-                        disabled={!selectedServer || loadingServers}
-                        error={hostInput.error}
-                        onChange={handHostChange}
+                        placeholder="Enter Plex server host (e.g., 192.168.1.100 or plex.example.com)"
+                        {...hostInput}
+                        disabled={loadingServers}
                     />
-                    <Select
+                    <TextInput
                         label="Port"
-                        placeholder="Select Port after selecting Host"
-                        data={
-                            selectedServer && form.getValues().host
-                                ? Array.from(
-                                    new Set(
-                                        selectedServer.connections
-                                            .filter(conn => conn.address === form.getValues().host)
-                                            .map(conn => String(conn.port))
-                                    )
-                                )
-                                : [form.getValues().port === 0 ? "" : String(form.getValues().port)]
-                        }
-                        value={String(form.getValues().port)}
-                        onChange={(value: string | null) => {
-                            form.setFieldValue("port", value ? parseInt(value) : 0);
+                        placeholder="Enter Plex server port (e.g., 32400)"
+                        type="number"
+                        value={form.getValues().port || ""}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const value = e.target.value;
+                            form.setFieldValue("port", value ? parseInt(value, 10) : 0);
                         }}
-                        disabled={!selectedServer || loadingServers}
+                        onBlur={portInput.onBlur}
+                        disabled={loadingServers}
                         error={portInput.error}
                     />
                     <Group align="flex-end" justify="flex-start">
@@ -420,7 +415,7 @@ export const PlexSettings = ({
                                      {...form.getInputProps("anime_libs", {type: "input"})}
                         />
                         <Button onClick={loadLibrariesForServer} loading={loadingLibraries}
-                                disabled={loadingLibraries || polling || loadingServers || !selectedServer}>
+                                disabled={loadingLibraries || polling || loadingServers || !canLoadLibraries}>
                             <TfiReload/>
                         </Button>
                     </Group>

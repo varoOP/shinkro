@@ -159,7 +159,14 @@ func (s *service) checkMap(m *domain.AnimeMap, anime *domain.AnimeUpdate) (*doma
 	case domain.PlexEpisode:
 		if inMap, ep := m.AnimeTVShows.CheckMap(anime.SourceId, anime.SeasonNum, anime.EpisodeNum); inMap {
 			s.log.Debug().Msg("found anime episode in map")
-			return &domain.AnimeMapDetails{Malid: ep.Malid, Start: ep.Start, UseMapping: ep.UseMapping}, true
+			return &domain.AnimeMapDetails{
+				Malid:           ep.Malid,
+				Start:           ep.Start,
+				UseMapping:      ep.UseMapping,
+				MappingType:     ep.MappingType,
+				ExplicitEpisodes: ep.ExplicitEpisodes,
+				SkipMalEpisodes: ep.SkipMalEpisodes,
+			}, true
 		}
 	}
 	return nil, false

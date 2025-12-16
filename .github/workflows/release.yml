@@ -25,12 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -39,7 +39,7 @@ jobs:
 
       # It can not be done before enable corepack
       - name: Set up cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
@@ -53,7 +53,7 @@ jobs:
         run: CI= pnpm run build
 
       - name: Upload web production build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web-dist
           path: web/dist
@@ -63,7 +63,7 @@ jobs:
     needs: web
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -74,7 +74,7 @@ jobs:
           cache: true
 
       - name: Download web production build
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: web/dist
@@ -89,7 +89,7 @@ jobs:
     needs: web
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -100,7 +100,7 @@ jobs:
           cache: true
 
       - name: Download web production build
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: web/dist
@@ -115,7 +115,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: shinkro
           path: |
@@ -129,7 +129,7 @@ jobs:
     needs: web
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -140,7 +140,7 @@ jobs:
           cache: true
 
       - name: Download web production build
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: web/dist
@@ -155,7 +155,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: shinkro
           path: |
@@ -168,12 +168,12 @@ jobs:
     needs: web
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download web production build
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: web/dist

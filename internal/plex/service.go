@@ -120,17 +120,17 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 		return err
 	}
 
+	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
+	if err != nil {
+		return err
+	}
+
 	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
 		PlexID:      plex.ID,
 		Plex:        plex,
 		AnimeUpdate: a,
 		Timestamp:   time.Now(),
 	})
-
-	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
-	if err != nil {
-		return err
-	}
 
 	return nil
 }

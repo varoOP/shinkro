@@ -51,6 +51,8 @@ func (s *service) Store(ctx context.Context, m *domain.MapSettings) error {
 	s.cachedMap = nil
 	s.mu.Unlock()
 
+	s.log.Debug().Msg("mapping settings updated, cache invalidated")
+
 	return nil
 }
 
@@ -129,6 +131,9 @@ func (s *service) reloadMap(ctx context.Context) (*domain.AnimeMap, error) {
 	s.mu.Lock()
 	s.cachedMap = m
 	s.mu.Unlock()
+
+	s.log.Debug().Msg("reloaded map")
+
 	return m, nil
 }
 

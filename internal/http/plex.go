@@ -14,9 +14,9 @@ import (
 type plexService interface {
 	Store(ctx context.Context, plex *domain.Plex) error
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
-	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
+	ProcessPlex(ctx context.Context, plex *domain.Plex) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
-	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) (domain.PlexSupportedAgents, error)
+	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
@@ -82,7 +82,7 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, err := h.service.CheckPlex(r.Context(), plex, plexSettings)
+	err = h.service.CheckPlex(r.Context(), plex, plexSettings)
 	if err != nil {
 		log := hlog.FromRequest(r)
 		log.Debug().Err(err).Msg("Plex payload not sent for processing")
@@ -102,7 +102,7 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.ProcessPlex(r.Context(), plex, &agent)
+	err = h.service.ProcessPlex(r.Context(), plex)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
 			"code":    "INTERNAL_SERVER_ERROR",

@@ -75,10 +75,11 @@ const (
 type NotificationEvent string
 
 const (
-	NotificationEventAppUpdateAvailable NotificationEvent = "APP_UPDATE_AVAILABLE"
-	NotificationEventSuccess            NotificationEvent = "SUCCESS"
-	NotificationEventError              NotificationEvent = "ERROR"
-	NotificationEventTest               NotificationEvent = "TEST"
+	NotificationEventAppUpdateAvailable  NotificationEvent = "APP_UPDATE_AVAILABLE"
+	NotificationEventSuccess             NotificationEvent = "SUCCESS"
+	NotificationEventPlexProcessingError NotificationEvent = "PLEX_PROCESSING_ERROR"
+	NotificationEventAnimeUpdateError    NotificationEvent = "ANIME_UPDATE_ERROR"
+	NotificationEventTest                NotificationEvent = "TEST"
 )
 
 type NotificationEventArr []NotificationEvent

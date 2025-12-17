@@ -12,11 +12,20 @@ type PlexStatusRepo interface {
 }
 
 type PlexStatus struct {
-	ID        int64     `json:"id"`
-	Title     string    `json:"title"`
-	Event     string    `json:"event"`
-	Success   bool      `json:"success"`
-	ErrorMsg  string    `json:"errorMsg"`
-	PlexID    int64     `json:"plexID"`
-	TimeStamp time.Time `json:"timestamp"`
+	ID        int64            `json:"id"`
+	Title     string           `json:"title"`
+	Event     string           `json:"event"`
+	Success   bool             `json:"success"`
+	ErrorType PlexErrorType    `json:"errorType,omitempty"`
+	ErrorMsg  string           `json:"errorMsg"`
+	PlexID    int64            `json:"plexID"`
+	TimeStamp time.Time        `json:"timestamp"`
 }
+
+type PlexErrorType string
+
+const (
+	PlexErrorAgentNotSupported PlexErrorType = "AGENT_NOT_SUPPORTED"
+	PlexErrorExtractionFailed   PlexErrorType = "EXTRACTION_FAILED"
+	PlexErrorUnknown            PlexErrorType = "UNKNOWN_ERROR"
+)

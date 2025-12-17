@@ -116,6 +116,12 @@ func (s *gotifySender) isEnabledEvent(event domain.NotificationEvent) bool {
 		if e == string(event) {
 			return true
 		}
+		// Backward compatibility: "ERROR" matches both error types
+		if e == "ERROR" {
+			if event == domain.NotificationEventPlexProcessingError || event == domain.NotificationEventAnimeUpdateError {
+				return true
+			}
+		}
 	}
 
 	return false

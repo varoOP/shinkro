@@ -25,8 +25,8 @@ func NewPlexStatusRepo(log zerolog.Logger, db *DB) *PlexStatusRepo {
 func (repo *PlexStatusRepo) Store(ctx context.Context, ps domain.PlexStatus) error {
 	queryBuilder := repo.db.squirrel.
 		Insert("plex_status").
-		Columns("title", "event", "success", "error_msg", "plex_id").
-		Values(ps.Title, ps.Event, ps.Success, ps.ErrorMsg, ps.PlexID).
+		Columns("title", "event", "success", "error_type", "error_msg", "plex_id").
+		Values(ps.Title, ps.Event, ps.Success, ps.ErrorType, ps.ErrorMsg, ps.PlexID).
 		Suffix("RETURNING id").RunWith(repo.db.handler)
 
 	var retID int64
@@ -43,7 +43,7 @@ func (repo *PlexStatusRepo) Store(ctx context.Context, ps domain.PlexStatus) err
 
 func (repo *PlexStatusRepo) GetByPlexID(ctx context.Context, plexID int64) (*domain.PlexStatus, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("id", "title", "event", "success", "error_msg", "plex_id", "time_stamp").
+		Select("id", "title", "event", "success", "error_type", "error_msg", "plex_id", "time_stamp").
 		From("plex_status").
 		Where(sq.Eq{"plex_id": plexID})
 
@@ -61,11 +61,16 @@ func (repo *PlexStatusRepo) GetByPlexID(ctx context.Context, plexID int64) (*dom
 	}
 
 	var ps domain.PlexStatus
-	if err := row.Scan(&ps.ID, &ps.Title, &ps.Event, &ps.Success, &ps.ErrorMsg, &ps.PlexID, &ps.TimeStamp); err != nil {
+	var errorType sql.NullString
+	if err := row.Scan(&ps.ID, &ps.Title, &ps.Event, &ps.Success, &errorType, &ps.ErrorMsg, &ps.PlexID, &ps.TimeStamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
 		return nil, errors.Wrap(err, "error scanning row")
+	}
+
+	if errorType.Valid {
+		ps.ErrorType = domain.PlexErrorType(errorType.String)
 	}
 
 	return &ps, nil
@@ -77,7 +82,7 @@ func (repo *PlexStatusRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) (
 	}
 
 	queryBuilder := repo.db.squirrel.
-		Select("id", "title", "event", "success", "error_msg", "plex_id", "time_stamp").
+		Select("id", "title", "event", "success", "error_type", "error_msg", "plex_id", "time_stamp").
 		From("plex_status").
 		Where(sq.Eq{"plex_id": plexIDs}).
 		OrderBy("time_stamp DESC")
@@ -98,8 +103,12 @@ func (repo *PlexStatusRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) (
 	var statuses []domain.PlexStatus
 	for rows.Next() {
 		var ps domain.PlexStatus
-		if err := rows.Scan(&ps.ID, &ps.Title, &ps.Event, &ps.Success, &ps.ErrorMsg, &ps.PlexID, &ps.TimeStamp); err != nil {
+		var errorType sql.NullString
+		if err := rows.Scan(&ps.ID, &ps.Title, &ps.Event, &ps.Success, &errorType, &ps.ErrorMsg, &ps.PlexID, &ps.TimeStamp); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
+		}
+		if errorType.Valid {
+			ps.ErrorType = domain.PlexErrorType(errorType.String)
 		}
 		statuses = append(statuses, ps)
 	}

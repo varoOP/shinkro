@@ -92,6 +92,7 @@ func parsePlexPayload(next http.Handler) http.Handler {
 
 		payload, err := parsePayloadBySourceType(w, r, sourceType)
 		if err != nil {
+			log.Debug().Err(err).Msg("could not parse payload")
 			return
 		}
 

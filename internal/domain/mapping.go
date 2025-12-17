@@ -1,13 +1,6 @@
 package domain
 
-import (
-	"context"
-	"io"
-	"net/http"
-	"os"
-
-	"gopkg.in/yaml.v3"
-)
+import "context"
 
 type MappingRepo interface {
 	Store(ctx context.Context, m *MapSettings) error
@@ -245,117 +238,11 @@ func NewMapSettings(tvdb, tmdb bool, tvdbPath, tmdbPath string) *MapSettings {
 	}
 }
 
-func (ms *MapSettings) LocalMapsExist() (bool, bool) {
-	tvdb, tmdb := false, false
-
-	if fileExists(ms.CustomMapTVDBPath) && ms.TVDBEnabled {
-		tvdb = true
-	}
-
-	if fileExists(ms.CustomMapTMDBPath) && ms.TMDBEnabled {
-		tmdb = true
-	}
-
+// ShouldLoadLocal returns whether local maps should be loaded based on settings.
+// Actual file existence check should be done by the service layer.
+func (ms *MapSettings) ShouldLoadLocal() (bool, bool) {
+	tvdb := ms.TVDBEnabled && ms.CustomMapTVDBPath != ""
+	tmdb := ms.TMDBEnabled && ms.CustomMapTMDBPath != ""
 	return tvdb, tmdb
 }
 
-func (m *Mapping) LoadCommunityMaps(ctx context.Context, tvdb, tmdb bool) error {
-	if !tvdb {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(CommunityMapTVDB), nil)
-		if err != nil {
-			return err
-		}
-
-		respTVDB, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
-		}
-
-		err = readYamlHTTP(respTVDB, m.AnimeMap.AnimeTVShows)
-		if err != nil {
-			return err
-		}
-	}
-
-	if !tmdb {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(CommunityMapTMDB), nil)
-		if err != nil {
-			return err
-		}
-
-		respTMDB, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
-		}
-
-		err = readYamlHTTP(respTMDB, m.AnimeMap.AnimeMovies)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m *Mapping) LoadLocalMaps(tvdb, tmdb bool) error {
-	if tvdb {
-		fTVDB, err := os.Open(m.MapSettings.CustomMapTVDBPath)
-		if err != nil {
-			return err
-		}
-
-		err = readYamlFile(fTVDB, m.AnimeMap.AnimeTVShows)
-		if err != nil {
-			return err
-		}
-	}
-
-	if tmdb {
-		fTMDB, err := os.Open(m.MapSettings.CustomMapTMDBPath)
-		if err != nil {
-			return err
-		}
-
-		err = readYamlFile(fTMDB, m.AnimeMap.AnimeMovies)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func fileExists(path string) bool {
-	_, err := os.Open(path)
-	return err == nil
-}
-
-func readYamlHTTP(resp *http.Response, mapping interface{}) error {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	err = yaml.Unmarshal(body, mapping)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func readYamlFile(f *os.File, mapping interface{}) error {
-	defer f.Close()
-	body, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(body, mapping)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

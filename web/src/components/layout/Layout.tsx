@@ -106,7 +106,7 @@ export const Layout = () => {
             <AppShell.Header className={classes.header}>
                 <Group h="100%" px={"md"} align="center" gap={0}>
                     <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" mr={"xs"}/>
-                    <Image src={Logo} height={60}/>
+                    <Image src={Logo} height={60} width={60} fit="contain"/>
                     <Flex align="flex-end" gap={"xs"} ml={"xs"}>
                         <Title order={3}>shinkro</Title>
                         <Code fw={700} className={classes.code}>

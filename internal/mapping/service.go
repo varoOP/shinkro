@@ -3,16 +3,19 @@ package mapping
 import (
 	"context"
 	"fmt"
-	"github.com/santhosh-tekuri/jsonschema/v5"
-	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
-	"gopkg.in/yaml.v3"
+	"io"
+	"net/http"
 	"os"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/santhosh-tekuri/jsonschema/v5"
+	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
+	"gopkg.in/yaml.v3"
 
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/sharedhttp"
 )
 
 type Service interface {
@@ -67,26 +70,32 @@ func (s *service) loadMap(ctx context.Context) (*domain.AnimeMap, error) {
 		return nil, err
 	}
 
-	mapping := &domain.Mapping{
-		AnimeMap: &domain.AnimeMap{
-			AnimeTVShows: &domain.AnimeTVShows{},
-			AnimeMovies:  &domain.AnimeMovies{},
-		},
-		MapSettings: settings,
+	animeMap := &domain.AnimeMap{
+		AnimeTVShows: &domain.AnimeTVShows{},
+		AnimeMovies:  &domain.AnimeMovies{},
 	}
 
-	localTVDB, localTMDB := mapping.MapSettings.LocalMapsExist()
-	if localTVDB || localTMDB {
-		if err := mapping.LoadLocalMaps(localTVDB, localTMDB); err != nil {
+	shouldLoadLocalTVDB, shouldLoadLocalTMDB := settings.ShouldLoadLocal()
+	localTVDBExists, localTMDBExists := s.checkLocalMapsExist(settings)
+	
+	// Load local maps if they exist and should be loaded
+	if (shouldLoadLocalTVDB && localTVDBExists) || (shouldLoadLocalTMDB && localTMDBExists) {
+		if err := s.loadLocalMaps(settings, animeMap, shouldLoadLocalTVDB && localTVDBExists, shouldLoadLocalTMDB && localTMDBExists); err != nil {
 			return nil, err
 		}
 	}
-	if !localTVDB || !localTMDB {
-		if err := mapping.LoadCommunityMaps(ctx, localTVDB, localTMDB); err != nil {
+
+	// Load community maps for any that weren't loaded locally
+	needsTVDB := !(shouldLoadLocalTVDB && localTVDBExists)
+	needsTMDB := !(shouldLoadLocalTMDB && localTMDBExists)
+	
+	if needsTVDB || needsTMDB {
+		if err := s.loadCommunityMaps(ctx, animeMap, needsTVDB, needsTMDB); err != nil {
 			return nil, err
 		}
 	}
-	return mapping.AnimeMap, nil
+
+	return animeMap, nil
 }
 
 // getCachedMap returns cached map or loads it if absent
@@ -209,6 +218,100 @@ func (s *service) ValidateMap(ctx context.Context, yamlPath string, isTVDB bool)
 	}
 
 	return nil
+}
+
+// loadCommunityMaps loads mapping data from remote URLs (GitHub)
+func (s *service) loadCommunityMaps(ctx context.Context, animeMap *domain.AnimeMap, loadTVDB, loadTMDB bool) error {
+	if loadTVDB {
+		if err := s.loadYamlFromURL(ctx, string(domain.CommunityMapTVDB), animeMap.AnimeTVShows); err != nil {
+			return errors.Wrap(err, "failed to load TVDB community map")
+		}
+	}
+
+	if loadTMDB {
+		if err := s.loadYamlFromURL(ctx, string(domain.CommunityMapTMDB), animeMap.AnimeMovies); err != nil {
+			return errors.Wrap(err, "failed to load TMDB community map")
+		}
+	}
+
+	return nil
+}
+
+// loadLocalMaps loads mapping data from local files
+func (s *service) loadLocalMaps(settings *domain.MapSettings, animeMap *domain.AnimeMap, loadTVDB, loadTMDB bool) error {
+	if loadTVDB {
+		if err := s.loadYamlFromFile(settings.CustomMapTVDBPath, animeMap.AnimeTVShows); err != nil {
+			return errors.Wrapf(err, "failed to load local TVDB map from %s", settings.CustomMapTVDBPath)
+		}
+	}
+
+	if loadTMDB {
+		if err := s.loadYamlFromFile(settings.CustomMapTMDBPath, animeMap.AnimeMovies); err != nil {
+			return errors.Wrapf(err, "failed to load local TMDB map from %s", settings.CustomMapTMDBPath)
+		}
+	}
+
+	return nil
+}
+
+// loadYamlFromURL fetches YAML data from a URL and unmarshals it
+func (s *service) loadYamlFromURL(ctx context.Context, url string, target interface{}) error {
+	client := &http.Client{Transport: sharedhttp.Transport}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", sharedhttp.UserAgent)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if err := yaml.Unmarshal(body, target); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// loadYamlFromFile reads YAML data from a file and unmarshals it
+func (s *service) loadYamlFromFile(filePath string, target interface{}) error {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	body, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	if err := yaml.Unmarshal(body, target); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// fileExists checks if a file exists
+func (s *service) fileExists(path string) bool {
+	_, err := os.Open(path)
+	return err == nil
+}
+
+// checkLocalMapsExist checks which local map files actually exist
+func (s *service) checkLocalMapsExist(settings *domain.MapSettings) (bool, bool) {
+	tvdbExists := s.fileExists(settings.CustomMapTVDBPath)
+	tmdbExists := s.fileExists(settings.CustomMapTMDBPath)
+	return tvdbExists, tmdbExists
 }
 
 func toJSONCompatible(v interface{}) interface{} {

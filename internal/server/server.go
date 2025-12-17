@@ -37,7 +37,7 @@ func NewServer(log zerolog.Logger, config *domain.Config, animeSvc anime.Service
 }
 
 func (s *Server) Start() error {
-	err := s.animeService.UpdateAnime()
+	err := s.animeService.UpdateAnime(context.Background())
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (s *Server) Start() error {
 
 	c := cron.New(cron.WithLocation(time.UTC))
 	_, err = c.AddFunc("0 1 * * MON", func() {
-		s.animeService.UpdateAnime()
+		s.animeService.UpdateAnime(context.Background())
 	})
 
 	if err != nil {

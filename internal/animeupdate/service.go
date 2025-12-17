@@ -59,17 +59,17 @@ func (s *service) UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate
 }
 
 func (s *service) handleRateEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-	return s.handleEvent(ctx, anime, anime.UpdateRating, false)
+	return s.handleEvent(ctx, anime, false)
 }
 
 func (s *service) handleScrobbleEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-	return s.handleEvent(ctx, anime, anime.UpdateWatchStatus, true)
+	return s.handleEvent(ctx, anime, true)
 }
 
-func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error, isScrobble bool) error {
+func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) error {
 	if anime.SourceDB == domain.MAL {
 		anime.MALId = anime.SourceId
-		return s.updateAndStore(ctx, anime, updateFunc)
+		return s.updateAndStore(ctx, anime, isScrobble)
 	}
 
 	convertedAnime := s.convertAniDBToTVDB(ctx, anime)
@@ -79,30 +79,43 @@ func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, up
 		if isScrobble {
 			anime.EpisodeNum = animeMap.CalculateEpNum(anime.EpisodeNum)
 		}
-		return s.updateAndStore(ctx, anime, updateFunc)
+		return s.updateAndStore(ctx, anime, isScrobble)
 	}
 
 	if anime.SeasonNum == 1 {
-		return s.updateFromDBAndStore(ctx, anime, updateFunc)
+		return s.updateFromDBAndStore(ctx, anime, isScrobble)
 	}
 
 	return err
 }
 
-func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error) error {
+func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) error {
 	client, err := s.malauthService.GetMalClient(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := updateFunc(ctx, client); err != nil {
+	// Fetch current anime list details from MAL API
+	if err := s.fetchAnimeDetails(ctx, client, anime); err != nil {
 		return err
 	}
+
+	// Update MAL based on event type
+	if isScrobble {
+		if err := s.updateWatchStatus(ctx, client, anime); err != nil {
+			return err
+		}
+	} else {
+		if err := s.updateRating(ctx, client, anime); err != nil {
+			return err
+		}
+	}
+
 	s.log.Info().Interface("status", anime.ListStatus).Msg("MyAnimeList Updated Successfully")
 	return s.Store(ctx, anime)
 }
 
-func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeUpdate, updateFunc func(context.Context, *mal.Client) error) error {
+func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) error {
 	req := &domain.GetAnimeRequest{
 		IDtype: anime.SourceDB,
 		Id:     anime.SourceId,
@@ -119,7 +132,54 @@ func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeU
 	}
 
 	anime.MALId = animeFromDB.MALId
-	return s.updateAndStore(ctx, anime, updateFunc)
+	return s.updateAndStore(ctx, anime, isScrobble)
+}
+
+// fetchAnimeDetails calls MAL API to get current anime list details
+func (s *service) fetchAnimeDetails(ctx context.Context, client *mal.Client, anime *domain.AnimeUpdate) error {
+	aa, _, err := client.Anime.Details(ctx, anime.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
+	if err != nil {
+		return err
+	}
+
+	details := domain.BuildListDetailsFromMALResponse(
+		aa.MyListStatus.Status,
+		aa.MyListStatus.NumTimesRewatched,
+		aa.NumEpisodes,
+		aa.MyListStatus.NumEpisodesWatched,
+		aa.Title,
+		aa.MainPicture.Medium,
+	)
+	anime.UpdateListDetails(details)
+
+	return nil
+}
+
+// updateRating calls MAL API to update rating and updates domain with result
+func (s *service) updateRating(ctx context.Context, client *mal.Client, anime *domain.AnimeUpdate) error {
+	l, _, err := client.Anime.UpdateMyListStatus(ctx, anime.MALId, mal.Score(anime.Plex.Rating))
+	if err != nil {
+		return err
+	}
+
+	anime.UpdateRatingWithStatus(*l)
+	return nil
+}
+
+// updateWatchStatus calls MAL API to update watch status and updates domain with result
+func (s *service) updateWatchStatus(ctx context.Context, client *mal.Client, anime *domain.AnimeUpdate) error {
+	options, err := anime.BuildWatchStatusOptions()
+	if err != nil {
+		return err
+	}
+
+	l, _, err := client.Anime.UpdateMyListStatus(ctx, anime.MALId, options...)
+	if err != nil {
+		return err
+	}
+
+	anime.UpdateWatchStatusWithStatus(*l)
+	return nil
 }
 
 func (s *service) convertAniDBToTVDB(ctx context.Context, anime *domain.AnimeUpdate) *domain.AnimeUpdate {

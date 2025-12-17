@@ -16,6 +16,7 @@ type plexService interface {
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
 	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
+	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) (domain.PlexSupportedAgents, error)
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
@@ -81,7 +82,7 @@ func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, err := plex.CheckPlex(plexSettings)
+	agent, err := h.service.CheckPlex(r.Context(), plex, plexSettings)
 	if err != nil {
 		log := hlog.FromRequest(r)
 		log.Debug().Err(err).Msg("Plex payload not sent for processing")

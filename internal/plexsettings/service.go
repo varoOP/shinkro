@@ -2,8 +2,12 @@ package plexsettings
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/dcarbone/zadapters/zstdlog"
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/domain"
@@ -34,7 +38,7 @@ func NewService(config *domain.Config, log zerolog.Logger, repo domain.PlexSetti
 }
 
 func (s *service) Store(ctx context.Context, ps domain.PlexSettings) (*domain.PlexSettings, error) {
-	eToken, err := s.config.Encrypt(ps.Token, ps.TokenIV)
+	eToken, err := s.encrypt(ps.Token, ps.TokenIV)
 	if err != nil {
 		s.log.Error().Err(err).Msg("error encrypting token")
 		return nil, err
@@ -77,7 +81,7 @@ func (s *service) GetClient(ctx context.Context, ps *domain.PlexSettings) (*plex
 		return nil, errors.New("token or tokenIV is empty")
 	}
 
-	token, err := s.config.Decrypt(ps.Token, ps.TokenIV)
+	token, err := s.decrypt(ps.Token, ps.TokenIV)
 	if err != nil {
 		return nil, err
 	}
@@ -118,4 +122,62 @@ func (s *service) HandlePlexAgent(ctx context.Context, p *domain.Plex) (domain.P
 		return id.PlexAgent(p.Metadata.Type)
 	}
 	return "", 0, nil
+}
+
+// encrypt encrypts plaintext using AES-GCM with the encryption key from config
+func (s *service) encrypt(plaintext, iv []byte) ([]byte, error) {
+	key, err := s.getEncryptionKey()
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, iv, plaintext, nil)
+	return ciphertext, nil
+}
+
+// decrypt decrypts ciphertext using AES-GCM with the encryption key from config
+func (s *service) decrypt(ciphertext, iv []byte) ([]byte, error) {
+	key, err := s.getEncryptionKey()
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintext, err := gcm.Open(nil, iv, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
+}
+
+// getEncryptionKey decodes the hex-encoded encryption key from config
+func (s *service) getEncryptionKey() ([]byte, error) {
+	key, err := hex.DecodeString(s.config.EncryptionKey)
+	if err != nil {
+		return nil, errors.New("invalid hex encryption key")
+	}
+	if len(key) != 32 {
+		return nil, errors.New("encryption key must be 32 bytes")
+	}
+	return key, nil
 }

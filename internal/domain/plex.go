@@ -340,33 +340,6 @@ func (p *Plex) IsMetadataAgentAllowed() (bool, PlexSupportedAgents) {
 	return false, ""
 }
 
-func (p *Plex) CheckPlex(ps *PlexSettings) (PlexSupportedAgents, error) {
-	if !p.IsPlexUserAllowed(ps) {
-		return "", errors.Wrap(errors.New("unauthorized plex user"), p.Account.Title)
-	}
-
-	if !p.IsEventAllowed() {
-		return "", errors.Wrap(errors.New("plex event not supported"), string(p.Event))
-	}
-
-	if !p.IsAnimeLibrary(ps) {
-		return "", errors.Wrap(errors.New("plex library not set as an anime library"), p.Metadata.LibrarySectionTitle)
-	}
-
-	if !p.IsMediaTypeAllowed() {
-		return "", errors.Wrap(errors.New("plex media type not supported"), string(p.Metadata.Type))
-	}
-
-	if !p.IsRatingAllowed() {
-		return "", errors.Wrap(errors.New("rating was unset, skipped"), strconv.FormatFloat(float64(p.Rating), 'f', -1, 64))
-	}
-
-	if allowed, agent := p.IsMetadataAgentAllowed(); allowed {
-		return agent, nil
-	}
-
-	return "", errors.New("metadata agent not supported")
-}
 
 func (g *GUID) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &g.GUID); err == nil {

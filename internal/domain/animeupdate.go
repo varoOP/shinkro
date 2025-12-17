@@ -50,42 +50,37 @@ type GetAnimeUpdateRequest struct {
 	Id int
 }
 
-func (ap *AnimeUpdate) UpdateRating(ctx context.Context, client *mal.Client) error {
-	err := ap.checkAnimeList(client, ctx)
-	if err != nil {
-		return err
-	}
-
-	l, _, err := client.Anime.UpdateMyListStatus(ctx, ap.MALId, mal.Score(ap.Plex.Rating))
-	if err != nil {
-		return err
-	}
-
-	ap.ListStatus = *l
-	return nil
+// UpdateRatingWithStatus updates the rating using the provided list status from MAL API.
+// The service layer should call MAL API first, then call this method with the result.
+func (ap *AnimeUpdate) UpdateRatingWithStatus(status mal.AnimeListStatus) {
+	ap.ListStatus = status
 }
 
-func (ap *AnimeUpdate) UpdateWatchStatus(ctx context.Context, client *mal.Client) error {
-	if err := ap.checkAnimeList(client, ctx); err != nil {
-		return err
-	}
-
+// BuildWatchStatusOptions builds the options for updating watch status.
+// Returns the options that should be sent to MAL API.
+func (ap *AnimeUpdate) BuildWatchStatusOptions() ([]mal.UpdateMyAnimeListStatusOption, error) {
 	options, err := ap.newOptions()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(options) == 0 {
-		return errors.New("no options to update")
+		return nil, errors.New("no options to update")
 	}
 
-	l, _, err := client.Anime.UpdateMyListStatus(ctx, ap.MALId, options...)
-	if err != nil {
-		return err
-	}
+	return options, nil
+}
 
-	ap.ListStatus = *l
-	return nil
+// UpdateWatchStatusWithStatus updates the watch status using the provided list status from MAL API.
+// The service layer should call MAL API first, then call this method with the result.
+func (ap *AnimeUpdate) UpdateWatchStatusWithStatus(status mal.AnimeListStatus) {
+	ap.ListStatus = status
+}
+
+// UpdateListDetails updates the list details from MAL API response data.
+// This should be called by the service layer after fetching anime details from MAL.
+func (ap *AnimeUpdate) UpdateListDetails(details ListDetails) {
+	ap.ListDetails = details
 }
 
 func (ap *AnimeUpdate) newOptions() ([]mal.UpdateMyAnimeListStatusOption, error) {
@@ -97,22 +92,17 @@ func (ap *AnimeUpdate) newOptions() ([]mal.UpdateMyAnimeListStatusOption, error)
 	return options, nil
 }
 
-func (ap *AnimeUpdate) checkAnimeList(client *mal.Client, ctx context.Context) error {
-	aa, _, err := client.Anime.Details(ctx, ap.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
-	if err != nil {
-		return err
+// BuildListDetailsFromMALResponse creates ListDetails from MAL API response.
+// This is a pure transformation function - no I/O.
+func BuildListDetailsFromMALResponse(status mal.AnimeStatus, rewatchNum, totalEpisodes, watchedNum int, title, pictureURL string) ListDetails {
+	return ListDetails{
+		Status:          status,
+		RewatchNum:      rewatchNum,
+		TotalEpisodeNum: totalEpisodes,
+		WatchedNum:      watchedNum,
+		Title:           title,
+		PictureURL:      pictureURL,
 	}
-
-	ap.ListDetails = ListDetails{
-		Status:          aa.MyListStatus.Status,
-		RewatchNum:      aa.MyListStatus.NumTimesRewatched,
-		TotalEpisodeNum: aa.NumEpisodes,
-		WatchedNum:      aa.MyListStatus.NumEpisodesWatched,
-		Title:           aa.Title,
-		PictureURL:      aa.MainPicture.Medium,
-	}
-
-	return nil
 }
 
 func (ap *AnimeUpdate) validateEpisodeNum() error {

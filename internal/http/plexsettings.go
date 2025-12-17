@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/sharedhttp"
 )
 
 type plexsettingsService interface {
@@ -169,8 +170,10 @@ func (h plexsettingsHandler) startOAuth(w http.ResponseWriter, r *http.Request) 
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", sharedhttp.UserAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Transport: sharedhttp.Transport}
+	resp, err := client.Do(req)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]string{
 			"message": "Failed to initiate OAuth: " + err.Error(),
@@ -225,8 +228,10 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", sharedhttp.UserAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Transport: sharedhttp.Transport}
+	resp, err := client.Do(req)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadGateway, map[string]string{
 			"message": "Polling failed: " + err.Error(),
@@ -269,8 +274,9 @@ func (h plexsettingsHandler) pollOAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Plex-Token", *tokenresp.AuthToken)
+	req.Header.Set("User-Agent", sharedhttp.UserAgent)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadGateway, map[string]string{
 			"message": "Failed to get user details: " + err.Error(),

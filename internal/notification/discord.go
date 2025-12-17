@@ -146,7 +146,7 @@ func (a *discordSender) buildEmbed(event domain.NotificationEvent, payload domai
 	switch event {
 	case domain.NotificationEventSuccess:
 		color = GREEN
-	case domain.NotificationEventError:
+	case domain.NotificationEventError, domain.NotificationEventPlexProcessingError, domain.NotificationEventAnimeUpdateError:
 		color = RED
 	case domain.NotificationEventTest:
 		color = LIGHT_BLUE

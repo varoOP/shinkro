@@ -1,5 +1,5 @@
 type NotificationType = "DISCORD" | "GOTIFY";
-type NotificationEvent = "SUCCESS" | "ERROR" | "APP_UPDATE_AVAILABLE";
+type NotificationEvent = "SUCCESS" | "ERROR" | "APP_UPDATE_AVAILABLE" | "PLEX_PROCESSING_ERROR" | "ANIME_UPDATE_ERROR";
 
 interface ServiceNotification {
     id: number;

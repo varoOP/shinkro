@@ -80,7 +80,7 @@ func (s *Subscriber) handlePlexProcessedError(event *domain.PlexProcessedErrorEv
 		PlexSource:   event.Plex.Source,
 		Timestamp:    event.Timestamp,
 	}
-	s.notificationService.Send(domain.NotificationEventError, payload)
+	s.notificationService.Send(domain.NotificationEventPlexProcessingError, payload)
 }
 
 func (s *Subscriber) handleNotificationSend(event *domain.NotificationSendEvent) {
@@ -175,7 +175,7 @@ func (s *Subscriber) handleAnimeUpdateFailed(event *domain.AnimeUpdateFailedEven
 		PlexSource:   event.AnimeUpdate.Plex.Source,
 		Timestamp:    event.Timestamp,
 	}
-	s.notificationService.Send(domain.NotificationEventError, payload)
+	s.notificationService.Send(domain.NotificationEventAnimeUpdateError, payload)
 }
 
 // getAnimeTitle extracts anime title from various sources

@@ -80,6 +80,8 @@ func BuildTitle(event domain.NotificationEvent) string {
 		domain.NotificationEventAppUpdateAvailable: "shinkro Update Available",
 		domain.NotificationEventSuccess:            "MAL Update Successful",
 		domain.NotificationEventError:              "ERROR",
+		domain.NotificationEventPlexProcessingError: "Plex Processing Error",
+		domain.NotificationEventAnimeUpdateError:    "Anime Update Error",
 		domain.NotificationEventTest:               "TEST",
 	}
 

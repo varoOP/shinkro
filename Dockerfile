@@ -1,5 +1,5 @@
 # build web
-FROM node:22.11.0-alpine AS web-builder
+FROM node:24.12.0-alpine AS web-builder
 RUN npm install --global corepack@latest
 RUN corepack enable
 
@@ -12,7 +12,7 @@ COPY web ./
 RUN pnpm run build
 
 # build app
-FROM golang:1.24.2-alpine AS app-builder
+FROM golang:1.25.5-alpine AS app-builder
 
 ARG VERSION=dev
 ARG REVISION=dev

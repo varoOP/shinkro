@@ -37,6 +37,7 @@ import (
 	"github.com/varoOP/shinkro/internal/plexstatus"
 	"github.com/varoOP/shinkro/internal/server"
 	"github.com/varoOP/shinkro/internal/user"
+	"github.com/varoOP/shinkro/pkg/sse"
 )
 
 const usage = `shinkro
@@ -98,39 +99,49 @@ func main() {
 			log.Fatal().Err(err).Msg("")
 		}
 
+		// Setup server-sent-events with buffering and replay
+		serverEvents := sse.New()
+		serverEvents.CreateStreamWithOpts("logs", sse.StreamOpts{
+			MaxEntries: 1000,
+			AutoReplay: true,
+		})
+
+		// Register SSE hook on logger
+		logger.GetInstance().RegisterSSEWriter(serverEvents)
+
 		// Setup internal event bus
 		bus := EventBus.New()
 
 		// Initialize repositories
 		var (
-			animeRepo              = database.NewAnimeRepo(log, db)
-			animeUpdateRepo        = database.NewAnimeUpdateRepo(log, db)
-			animeUpdateStatusRepo  = database.NewAnimeUpdateStatusRepo(log, db)
-			plexRepo               = database.NewPlexRepo(log, db)
-			plexSettingsRepo       = database.NewPlexSettingsRepo(log, db)
-			malauthRepo            = database.NewMalAuthRepo(log, db)
-			userRepo               = database.NewUserRepo(log, db)
-			apiRepo                = database.NewAPIRepo(log, db)
-			mappingRepo            = database.NewMappingRepo(log, db)
-			notificationRepo       = database.NewNotificationRepo(log, db)
-			plexStatusRepo         = database.NewPlexStatusRepo(log, db)
+			animeRepo             = database.NewAnimeRepo(log, db)
+			animeUpdateRepo       = database.NewAnimeUpdateRepo(log, db)
+			animeUpdateStatusRepo = database.NewAnimeUpdateStatusRepo(log, db)
+			plexRepo              = database.NewPlexRepo(log, db)
+			plexSettingsRepo      = database.NewPlexSettingsRepo(log, db)
+			malauthRepo           = database.NewMalAuthRepo(log, db)
+			userRepo              = database.NewUserRepo(log, db)
+			apiRepo               = database.NewAPIRepo(log, db)
+			mappingRepo           = database.NewMappingRepo(log, db)
+			notificationRepo      = database.NewNotificationRepo(log, db)
+			plexStatusRepo        = database.NewPlexStatusRepo(log, db)
 		)
 
 		// Initialize services
 		var (
-			animeService            = anime.NewService(log, animeRepo)
-			malauthService          = malauth.NewService(cfg.Config, log, malauthRepo)
-			mapService              = mapping.NewService(log, mappingRepo)
-			plexSettingsService     = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
-			notificationService     = notification.NewService(log, notificationRepo)
-			plexStatusService       = plexstatus.NewService(log, plexStatusRepo)
+			animeService             = anime.NewService(log, animeRepo)
+			malauthService           = malauth.NewService(cfg.Config, log, malauthRepo)
+			mapService               = mapping.NewService(log, mappingRepo)
+			plexSettingsService      = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
+			notificationService      = notification.NewService(log, notificationRepo)
+			plexStatusService        = plexstatus.NewService(log, plexStatusRepo)
 			animeUpdateStatusService = animeupdatestatus.NewService(log, animeUpdateStatusRepo)
-			animeUpdateService      = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
-			plexService             = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, plexStatusService, bus)
-			userService             = user.NewService(userRepo, log)
-			authService             = auth.NewService(log, userService)
-			apiService              = api.NewService(log, apiRepo)
-			fsService               = filesystem.NewService(cfg.Config, log)
+			animeUpdateService       = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
+			plexService              = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, plexStatusService, bus)
+			userService              = user.NewService(userRepo, log)
+			authService              = auth.NewService(log, userService)
+			apiService               = api.NewService(log, apiRepo)
+			fsService                = filesystem.NewService(cfg.Config, log)
 		)
 
 		// Register event subscribers
@@ -161,6 +172,7 @@ func main() {
 				fsService,
 				notificationService,
 				animeUpdateService,
+				serverEvents,
 			)
 			errorChannel <- httpServer.Open()
 		}()

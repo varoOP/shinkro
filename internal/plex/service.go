@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ type Service interface {
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
 	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
+	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) (domain.PlexSupportedAgents, error)
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
@@ -65,6 +67,36 @@ func (s *service) Store(ctx context.Context, plex *domain.Plex) error {
 
 func (s *service) GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error) {
 	return s.plexettingsService.Get(ctx)
+}
+
+// CheckPlex validates a Plex payload and returns the supported agent if valid.
+// This orchestrates multiple domain validation checks.
+func (s *service) CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) (domain.PlexSupportedAgents, error) {
+	if !plex.IsPlexUserAllowed(ps) {
+		return "", errors.Wrap(errors.New("unauthorized plex user"), plex.Account.Title)
+	}
+
+	if !plex.IsEventAllowed() {
+		return "", errors.Wrap(errors.New("plex event not supported"), string(plex.Event))
+	}
+
+	if !plex.IsAnimeLibrary(ps) {
+		return "", errors.Wrap(errors.New("plex library not set as an anime library"), plex.Metadata.LibrarySectionTitle)
+	}
+
+	if !plex.IsMediaTypeAllowed() {
+		return "", errors.Wrap(errors.New("plex media type not supported"), string(plex.Metadata.Type))
+	}
+
+	if !plex.IsRatingAllowed() {
+		return "", errors.Wrap(errors.New("rating was unset, skipped"), strconv.FormatFloat(float64(plex.Rating), 'f', -1, 64))
+	}
+
+	if allowed, agent := plex.IsMetadataAgentAllowed(); allowed {
+		return agent, nil
+	}
+
+	return "", errors.New("metadata agent not supported")
 }
 
 func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error {

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/sse"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -108,6 +109,19 @@ func (l *Logger) SetLogLevel(level string) error {
 	l.Logger = zerolog.New(l.levelWriter).With().Timestamp().Logger()
 
 	return nil
+}
+
+func (l *Logger) RegisterSSEWriter(sseServer *sse.Server) {
+	// Use the embedded *r3labs/sse/v2.Server for compatibility with SSEWriter
+	// Access the embedded field directly
+	w := NewSSEWriter(sseServer.Server)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	
+	// Add SSE writer to the multiwriter
+	l.writer = io.MultiWriter(l.writer, w)
+	l.levelWriter.writer = l.writer
+	l.Logger = zerolog.New(l.levelWriter).With().Timestamp().Logger()
 }
 
 func GetInstance() *Logger {

@@ -12,7 +12,9 @@ import (
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
+
 	"github.com/varoOP/shinkro/internal/config"
+	"github.com/varoOP/shinkro/pkg/sse"
 	"github.com/varoOP/shinkro/internal/database"
 	"github.com/varoOP/shinkro/web"
 )
@@ -34,9 +36,10 @@ type Server struct {
 	fsService           filesystemService
 	notificationService notificationService
 	animeUpdateService  animeupdateService
+	sse                 *sse.Server
 }
 
-func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService, animeUpdateSvc animeupdateService) Server {
+func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService, animeUpdateSvc animeupdateService, sseServer *sse.Server) Server {
 	return Server{
 		log:                 log.With().Str("module", "http").Logger(),
 		config:              config,
@@ -54,6 +57,7 @@ func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, ve
 		fsService:           fsSvc,
 		notificationService: notificationSvc,
 		animeUpdateService:  animeUpdateSvc,
+		sse:                 sseServer,
 	}
 }
 
@@ -118,6 +122,18 @@ func (s Server) Handler() http.Handler {
 		r.Route("/notification", newNotificationHandler(encoder, s.notificationService).Routes)
 		r.Route("/animeupdate", newAnimeupdateHandler(encoder, s.animeUpdateService).Routes)
 		r.Get("/updates/latest", GetLatestReleaseHandler)
+
+		// SSE events endpoint
+		r.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+			// inject CORS headers to bypass checks
+			s.sse.Headers = map[string]string{
+				"Content-Type":      "text/event-stream",
+				"Cache-Control":     "no-cache",
+				"Connection":        "keep-alive",
+				"X-Accel-Buffering": "no",
+			}
+			s.sse.ServeHTTP(w, r)
+		})
 	})
 
 	// Mount API routes under baseUrl + "api"

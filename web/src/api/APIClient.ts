@@ -1,4 +1,4 @@
-import {baseUrl} from "@utils";
+import {baseUrl, sseBaseUrl} from "@utils";
 import {
     PlexConfig,
     PlexOAuthPollResponse,
@@ -403,15 +403,14 @@ export const APIClient = {
             appClient.Get<{count: number}>("api/animeupdate/count"),
         getRecent: (limit = 5) =>
             appClient.Get<RecentAnimeItem[]>("api/animeupdate/recent", { queryString: { limit } }),
-        // getByPlexId removed or will be retyped later if needed
     },
 
-    // events: {
-    //     logs: () =>
-    //         new EventSource(`${sseBaseUrl()}api/events?stream=logs`, {
-    //             withCredentials: true,
-    //         }),
-    // },
+    events: {
+        logs: () =>
+            new EventSource(`${sseBaseUrl()}api/events?stream=logs`, {
+                withCredentials: true,
+            }),
+    },
     notifications: {
         getAll: () => appClient.Get<ServiceNotification[]>("api/notification"),
         create: (notification: ServiceNotification) =>

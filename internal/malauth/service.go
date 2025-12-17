@@ -2,7 +2,11 @@ package malauth
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/hex"
 	"encoding/json"
+
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -33,19 +37,19 @@ func NewService(config *domain.Config, log zerolog.Logger, repo domain.MalAuthRe
 }
 
 func (s *service) Store(ctx context.Context, ma *domain.MalAuth) error {
-	et, err := s.config.Encrypt(ma.AccessToken, ma.TokenIV)
+	et, err := s.encrypt(ma.AccessToken, ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to encrypt access token")).Msg("")
 		return err
 	}
 
-	ecid, err := s.config.Encrypt([]byte(ma.Config.ClientID), ma.TokenIV)
+	ecid, err := s.encrypt([]byte(ma.Config.ClientID), ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to encrypt client id")).Msg("")
 		return err
 	}
 
-	ecs, err := s.config.Encrypt([]byte(ma.Config.ClientSecret), ma.TokenIV)
+	ecs, err := s.encrypt([]byte(ma.Config.ClientSecret), ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to encrypt client secret")).Msg("")
 		return err
@@ -72,13 +76,13 @@ func (s *service) GetDecrypted(ctx context.Context) (*domain.MalAuth, error) {
 		return nil, err
 	}
 
-	cid, err := s.config.Decrypt([]byte(ma.Config.ClientID), ma.TokenIV)
+	cid, err := s.decrypt([]byte(ma.Config.ClientID), ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to decrypt client id")).Msg("")
 		return nil, err
 	}
 
-	cs, err := s.config.Decrypt([]byte(ma.Config.ClientSecret), ma.TokenIV)
+	cs, err := s.decrypt([]byte(ma.Config.ClientSecret), ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to decrypt client secret")).Msg("")
 		return nil, err
@@ -97,7 +101,7 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 	}
 
 	token := &oauth2.Token{}
-	dt, err := s.config.Decrypt(ma.AccessToken, ma.TokenIV)
+	dt, err := s.decrypt(ma.AccessToken, ma.TokenIV)
 	if err != nil {
 		s.log.Err(errors.Wrap(err, "failed to decrypt access token")).Msg("")
 		return nil, err
@@ -132,4 +136,62 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 	}
 
 	return mal.NewClient(ma.Config.Client(ctx, freshToken)), nil
+}
+
+// encrypt encrypts plaintext using AES-GCM with the encryption key from config
+func (s *service) encrypt(plaintext, iv []byte) ([]byte, error) {
+	key, err := s.getEncryptionKey()
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, iv, plaintext, nil)
+	return ciphertext, nil
+}
+
+// decrypt decrypts ciphertext using AES-GCM with the encryption key from config
+func (s *service) decrypt(ciphertext, iv []byte) ([]byte, error) {
+	key, err := s.getEncryptionKey()
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintext, err := gcm.Open(nil, iv, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
+}
+
+// getEncryptionKey decodes the hex-encoded encryption key from config
+func (s *service) getEncryptionKey() ([]byte, error) {
+	key, err := hex.DecodeString(s.config.EncryptionKey)
+	if err != nil {
+		return nil, errors.New("invalid hex encryption key")
+	}
+	if len(key) != 32 {
+		return nil, errors.New("encryption key must be 32 bytes")
+	}
+	return key, nil
 }

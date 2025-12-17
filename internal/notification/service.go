@@ -278,6 +278,12 @@ func enabledEvent(events []string, e domain.NotificationEvent) bool {
 		if v == string(e) {
 			return true
 		}
+		// Backward compatibility: "ERROR" matches both error types
+		if v == "ERROR" {
+			if e == domain.NotificationEventPlexProcessingError || e == domain.NotificationEventAnimeUpdateError {
+				return true
+			}
+		}
 	}
 
 	return false

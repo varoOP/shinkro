@@ -6,33 +6,32 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/pkg/errors"
-	"github.com/varoOP/shinkro/internal/mapping"
-
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/notification"
+	"github.com/varoOP/shinkro/internal/mapping"
 	"github.com/varoOP/shinkro/internal/update"
 )
 
 type Server struct {
-	log                 zerolog.Logger
-	config              *domain.Config
-	animeService        anime.Service
-	mappingService      mapping.Service
-	notificationService notification.Service
-	lastUpdateNotified  string
+	log                zerolog.Logger
+	config             *domain.Config
+	animeService       anime.Service
+	mappingService     mapping.Service
+	bus                EventBus.Bus
+	lastUpdateNotified string
 }
 
-func NewServer(log zerolog.Logger, config *domain.Config, animeSvc anime.Service, mappingSvc mapping.Service, notificationSvc notification.Service) *Server {
+func NewServer(log zerolog.Logger, config *domain.Config, animeSvc anime.Service, mappingSvc mapping.Service, bus EventBus.Bus) *Server {
 	return &Server{
-		log:                 log.With().Str("module", "server").Logger(),
-		config:              config,
-		animeService:        animeSvc,
-		mappingService:      mappingSvc,
-		notificationService: notificationSvc,
+		log:            log.With().Str("module", "server").Logger(),
+		config:         config,
+		animeService:   animeSvc,
+		mappingService: mappingSvc,
+		bus:            bus,
 	}
 }
 
@@ -91,11 +90,14 @@ func (s *Server) checkAndNotifyUpdate() {
 	if s.lastUpdateNotified == latest {
 		return
 	}
-	s.notificationService.Send(domain.NotificationEventAppUpdateAvailable, domain.NotificationPayload{
-		Subject:   "New update available!",
-		Message:   latest,
-		Event:     domain.NotificationEventAppUpdateAvailable,
-		Timestamp: time.Now(),
+	s.bus.Publish(domain.EventNotificationSend, &domain.NotificationSendEvent{
+		Event: domain.NotificationEventAppUpdateAvailable,
+		Payload: domain.NotificationPayload{
+			Subject:   "New update available!",
+			Message:   latest,
+			Event:     domain.NotificationEventAppUpdateAvailable,
+			Timestamp: time.Now(),
+		},
 	})
 	s.lastUpdateNotified = latest
 }

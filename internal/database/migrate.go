@@ -101,6 +101,7 @@ CREATE TABLE plex_status
     	title 							TEXT NOT NULL,
     	event 						TEXT NOT NULL,
     	success 			        BOOLEAN NOT NULL,
+    	error_type 				TEXT,
     	error_msg 				TEXT,
     	time_stamp 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     	plex_id 					INTEGER NOT NULL
@@ -142,8 +143,45 @@ CREATE TABLE notification
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE anime_update_status
+(
+	id            INTEGER PRIMARY KEY,
+	plex_id       INTEGER NOT NULL
+		REFERENCES plex_payload
+		ON DELETE CASCADE,
+	mal_id        INTEGER,
+	status        TEXT NOT NULL,
+	error_type    TEXT,
+	error_message TEXT,
+	anime_title   TEXT,
+	source_db     TEXT,
+	source_id     INTEGER,
+	season_num    INTEGER,
+	episode_num   INTEGER,
+	time_stamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 `
 
 var migrations = []string{
 	"",
+	`CREATE TABLE IF NOT EXISTS anime_update_status
+(
+	id            INTEGER PRIMARY KEY,
+	plex_id       INTEGER NOT NULL
+		REFERENCES plex_payload
+		ON DELETE CASCADE,
+	mal_id        INTEGER,
+	status        TEXT NOT NULL,
+	error_type    TEXT,
+	error_message TEXT,
+	anime_title   TEXT,
+	source_db     TEXT,
+	source_id     INTEGER,
+	season_num    INTEGER,
+	episode_num   INTEGER,
+	time_stamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE plex_status ADD COLUMN error_type TEXT;`,
 }

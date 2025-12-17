@@ -12,7 +12,7 @@ type Service interface {
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.PlexStatus, error)
 	GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]domain.PlexStatus, error)
 	StoreSuccess(ctx context.Context, plex *domain.Plex) error
-	StoreError(ctx context.Context, plex *domain.Plex, errorMsg string) error
+	StoreError(ctx context.Context, plex *domain.Plex, errorType domain.PlexErrorType, errorMsg string) error
 }
 
 type service struct {
@@ -55,7 +55,7 @@ func (s *service) StoreSuccess(ctx context.Context, plex *domain.Plex) error {
 	return s.Store(ctx, status)
 }
 
-func (s *service) StoreError(ctx context.Context, plex *domain.Plex, errorMsg string) error {
+func (s *service) StoreError(ctx context.Context, plex *domain.Plex, errorType domain.PlexErrorType, errorMsg string) error {
 	title := plex.Metadata.GrandparentTitle
 
 	if plex.Metadata.Type == "movie" {
@@ -66,6 +66,7 @@ func (s *service) StoreError(ctx context.Context, plex *domain.Plex, errorMsg st
 		Title:    title,
 		Event:    string(plex.Event),
 		Success:  false,
+		ErrorType: errorType,
 		ErrorMsg: errorMsg,
 		PlexID:   plex.ID,
 	}

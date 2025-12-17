@@ -2,10 +2,12 @@ package animeupdate
 
 import (
 	"context"
+	"time"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/rs/zerolog"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/malauth"
@@ -28,20 +30,31 @@ type service struct {
 	animeService   anime.Service
 	mapService     mapping.Service
 	malauthService malauth.Service
+	bus            EventBus.Bus
 }
 
-func NewService(log zerolog.Logger, repo domain.AnimeUpdateRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service) Service {
+func NewService(log zerolog.Logger, repo domain.AnimeUpdateRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, bus EventBus.Bus) Service {
 	return &service{
 		log:            log.With().Str("module", "animeUpdate").Logger(),
 		repo:           repo,
 		animeService:   animeSvc,
 		mapService:     mapSvc,
 		malauthService: malauthSvc,
+		bus:            bus,
 	}
 }
 
 func (s *service) Store(ctx context.Context, animeupdate *domain.AnimeUpdate) error {
-	return s.repo.Store(ctx, animeupdate)
+	if err := s.repo.Store(ctx, animeupdate); err != nil {
+		return err
+	}
+
+	s.log.Trace().
+		Int("malID", animeupdate.MALId).
+		Int64("plexID", animeupdate.PlexId).
+		Msg("anime update stored")
+
+	return nil
 }
 
 func (s *service) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error) {
@@ -49,21 +62,19 @@ func (s *service) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest
 }
 
 func (s *service) UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error {
+	var err error
 	switch event {
 	case domain.PlexRateEvent:
-		return s.handleRateEvent(ctx, anime)
+		err = s.handleEvent(ctx, anime, false)
 	case domain.PlexScrobbleEvent:
-		return s.handleScrobbleEvent(ctx, anime)
+		err = s.handleEvent(ctx, anime, true)
 	}
+
+	if err != nil {
+		return err
+	}
+
 	return nil
-}
-
-func (s *service) handleRateEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-	return s.handleEvent(ctx, anime, false)
-}
-
-func (s *service) handleScrobbleEvent(ctx context.Context, anime *domain.AnimeUpdate) error {
-	return s.handleEvent(ctx, anime, true)
 }
 
 func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) error {
@@ -82,37 +93,57 @@ func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, is
 		return s.updateAndStore(ctx, anime, isScrobble)
 	}
 
+	// Mapping not found - try database lookup for season 1
 	if anime.SeasonNum == 1 {
 		return s.updateFromDBAndStore(ctx, anime, isScrobble)
 	}
 
+	// Mapping not found and not season 1 - publish error
+	s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorMappingNotFound, err.Error())
 	return err
 }
 
 func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) error {
 	client, err := s.malauthService.GetMalClient(ctx)
 	if err != nil {
+		s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorMALAuthFailed, err.Error())
 		return err
 	}
 
 	// Fetch current anime list details from MAL API
 	if err := s.fetchAnimeDetails(ctx, client, anime); err != nil {
+		s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorMALAPIFetchFailed, err.Error())
 		return err
 	}
 
 	// Update MAL based on event type
 	if isScrobble {
 		if err := s.updateWatchStatus(ctx, client, anime); err != nil {
+			s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorMALAPIUpdateFailed, err.Error())
 			return err
 		}
 	} else {
 		if err := s.updateRating(ctx, client, anime); err != nil {
+			s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorMALAPIUpdateFailed, err.Error())
 			return err
 		}
 	}
 
 	s.log.Info().Interface("status", anime.ListStatus).Msg("MyAnimeList Updated Successfully")
-	return s.Store(ctx, anime)
+
+	// Store the update
+	if err := s.Store(ctx, anime); err != nil {
+		return err
+	}
+
+	// Publish success event
+	s.bus.Publish(domain.EventAnimeUpdateSuccess, &domain.AnimeUpdateSuccessEvent{
+		PlexID:      anime.PlexId,
+		AnimeUpdate: anime,
+		Timestamp:   time.Now(),
+	})
+
+	return nil
 }
 
 func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) error {
@@ -123,16 +154,29 @@ func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeU
 
 	animeFromDB, err := s.animeService.GetByID(ctx, req)
 	if err != nil {
+		s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorAnimeNotInDB, err.Error())
 		return err
 	}
 
 	s.log.Debug().Int("malId", animeFromDB.MALId).Msg("Anime from DB")
 	if animeFromDB.MALId == 0 {
-		return errors.New("Anime not found in database, update mapping")
+		errMsg := "could not retrieve malid from internal database"
+		s.publishAnimeUpdateFailed(anime, domain.AnimeUpdateErrorAnimeNotInDB, errMsg)
+		return errors.New(errMsg)
 	}
 
 	anime.MALId = animeFromDB.MALId
 	return s.updateAndStore(ctx, anime, isScrobble)
+}
+
+// publishAnimeUpdateFailed publishes failure event with detailed context
+func (s *service) publishAnimeUpdateFailed(anime *domain.AnimeUpdate, errorType domain.AnimeUpdateErrorType, errorMessage string) {
+	s.bus.Publish(domain.EventAnimeUpdateFailed, &domain.AnimeUpdateFailedEvent{
+		AnimeUpdate:  anime,
+		ErrorType:    errorType,
+		ErrorMessage: errorMessage,
+		Timestamp:    time.Now(),
+	})
 }
 
 // fetchAnimeDetails calls MAL API to get current anime list details

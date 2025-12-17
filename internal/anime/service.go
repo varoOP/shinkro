@@ -80,7 +80,9 @@ func (s *service) UpdateAnime(ctx context.Context) error {
 		return err
 	}
 
-	s.log.Info().Msg("Anime update complete.")
+	s.log.Info().
+		Int("animeCount", len(anime)).
+		Msg("Anime update complete.")
 
 	return nil
 }

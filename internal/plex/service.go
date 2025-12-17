@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/pkg/errors"
-	"github.com/varoOP/shinkro/internal/notification"
-
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/animeupdate"
@@ -23,37 +22,37 @@ import (
 type Service interface {
 	Store(ctx context.Context, plex *domain.Plex) error
 	Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error)
-	ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error
+	ProcessPlex(ctx context.Context, plex *domain.Plex) error
 	GetPlexSettings(ctx context.Context) (*domain.PlexSettings, error)
-	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) (domain.PlexSupportedAgents, error)
+	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
 }
 
 type service struct {
-	log                 zerolog.Logger
-	repo                domain.PlexRepo
-	plexettingsService  plexsettings.Service
-	animeService        anime.Service
-	mapService          mapping.Service
-	malauthService      malauth.Service
-	animeUpdateService  animeupdate.Service
-	notificationService notification.Service
-	plexStatusService   plexstatus.Service
+	log                zerolog.Logger
+	repo               domain.PlexRepo
+	plexettingsService plexsettings.Service
+	animeService       anime.Service
+	mapService         mapping.Service
+	malauthService     malauth.Service
+	animeUpdateService animeupdate.Service
+	plexStatusService  plexstatus.Service
+	bus                EventBus.Bus
 }
 
-func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, notificationSvc notification.Service, plexStatusSvc plexstatus.Service) Service {
+func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, plexStatusSvc plexstatus.Service, bus EventBus.Bus) Service {
 	return &service{
-		log:                 log.With().Str("module", "plex").Logger(),
-		repo:                repo,
-		plexettingsService:  plexsettingsSvc,
-		animeService:        animeSvc,
-		mapService:          mapSvc,
-		malauthService:      malauthSvc,
-		animeUpdateService:  animeUpdateSvc,
-		notificationService: notificationSvc,
-		plexStatusService:   plexStatusSvc,
+		log:                log.With().Str("module", "plex").Logger(),
+		repo:               repo,
+		plexettingsService: plexsettingsSvc,
+		animeService:       animeSvc,
+		mapService:         mapSvc,
+		malauthService:     malauthSvc,
+		animeUpdateService: animeUpdateSvc,
+		plexStatusService:  plexStatusSvc,
+		bus:                bus,
 	}
 }
 
@@ -69,83 +68,69 @@ func (s *service) GetPlexSettings(ctx context.Context) (*domain.PlexSettings, er
 	return s.plexettingsService.Get(ctx)
 }
 
-// CheckPlex validates a Plex payload and returns the supported agent if valid.
-// This orchestrates multiple domain validation checks.
-func (s *service) CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) (domain.PlexSupportedAgents, error) {
+// CheckPlex validates a Plex payload (user, event, library, media type, rating).
+func (s *service) CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) error {
 	if !plex.IsPlexUserAllowed(ps) {
-		return "", errors.Wrap(errors.New("unauthorized plex user"), plex.Account.Title)
+		return errors.Wrap(errors.New("unauthorized plex user"), plex.Account.Title)
 	}
 
 	if !plex.IsEventAllowed() {
-		return "", errors.Wrap(errors.New("plex event not supported"), string(plex.Event))
+		return errors.Wrap(errors.New("plex event not supported"), string(plex.Event))
 	}
 
 	if !plex.IsAnimeLibrary(ps) {
-		return "", errors.Wrap(errors.New("plex library not set as an anime library"), plex.Metadata.LibrarySectionTitle)
+		return errors.Wrap(errors.New("plex library not set as an anime library"), plex.Metadata.LibrarySectionTitle)
 	}
 
 	if !plex.IsMediaTypeAllowed() {
-		return "", errors.Wrap(errors.New("plex media type not supported"), string(plex.Metadata.Type))
+		return errors.Wrap(errors.New("plex media type not supported"), string(plex.Metadata.Type))
 	}
 
 	if !plex.IsRatingAllowed() {
-		return "", errors.Wrap(errors.New("rating was unset, skipped"), strconv.FormatFloat(float64(plex.Rating), 'f', -1, 64))
+		return errors.Wrap(errors.New("rating was unset, skipped"), strconv.FormatFloat(float64(plex.Rating), 'f', -1, 64))
 	}
 
-	if allowed, agent := plex.IsMetadataAgentAllowed(); allowed {
-		return agent, nil
-	}
-
-	return "", errors.New("metadata agent not supported")
+	return nil
 }
 
-func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex, agent *domain.PlexSupportedAgents) error {
-	a, err := s.extractSourceIdForAnime(ctx, plex, agent)
-	if err != nil {
-		s.plexStatusService.StoreError(ctx, plex, err.Error())
-		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
-			Message:      err.Error(),
-			Subject:      "Failed to extract anime information",
-			AnimeLibrary: plex.Metadata.LibrarySectionTitle,
-			PlexEvent:    plex.Event,
-			PlexSource:   plex.Source,
+func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
+	// Check if metadata agent is supported
+	allowed, agent := plex.IsMetadataAgentAllowed()
+	if !allowed {
+		err := errors.New("metadata agent not supported")
+		s.bus.Publish(domain.EventPlexProcessedError, &domain.PlexProcessedErrorEvent{
+			PlexID:       plex.ID,
+			Plex:         plex,
+			ErrorType:    domain.PlexErrorAgentNotSupported,
+			ErrorMessage: err.Error(),
 			Timestamp:    time.Now(),
 		})
 		return err
 	}
+
+	a, err := s.extractSourceIdForAnime(ctx, plex, &agent)
+	if err != nil {
+		s.bus.Publish(domain.EventPlexProcessedError, &domain.PlexProcessedErrorEvent{
+			PlexID:       plex.ID,
+			Plex:         plex,
+			ErrorType:    domain.PlexErrorExtractionFailed,
+			ErrorMessage: err.Error(),
+			Timestamp:    time.Now(),
+		})
+		return err
+	}
+
+	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
+		PlexID:      plex.ID,
+		Plex:        plex,
+		AnimeUpdate: a,
+		Timestamp:   time.Now(),
+	})
 
 	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
 	if err != nil {
-		s.plexStatusService.StoreError(ctx, plex, err.Error())
-		s.notificationService.Send(domain.NotificationEventError, domain.NotificationPayload{
-			Message:      err.Error(),
-			Subject:      "Failed to update MyAnimeList",
-			AnimeLibrary: a.Plex.Metadata.LibrarySectionTitle,
-			PlexEvent:    a.Plex.Event,
-			PlexSource:   a.Plex.Source,
-			Timestamp:    time.Now(),
-		})
-
 		return err
 	}
-
-	s.plexStatusService.StoreSuccess(ctx, plex)
-	s.notificationService.Send(domain.NotificationEventSuccess, domain.NotificationPayload{
-		MediaName:       a.ListDetails.Title,
-		MALID:           a.MALId,
-		AnimeLibrary:    a.Plex.Metadata.LibrarySectionTitle,
-		EpisodesWatched: a.ListStatus.NumEpisodesWatched,
-		EpisodesTotal:   a.ListDetails.TotalEpisodeNum,
-		TimesRewatched:  a.ListStatus.NumTimesRewatched,
-		PictureURL:      a.ListDetails.PictureURL,
-		StartDate:       a.ListStatus.StartDate,
-		FinishDate:      a.ListStatus.FinishDate,
-		AnimeStatus:     string(a.ListStatus.Status),
-		Score:           a.ListStatus.Score,
-		PlexEvent:       a.Plex.Event,
-		PlexSource:      a.Plex.Source,
-		Timestamp:       time.Now(),
-	})
 
 	return nil
 }

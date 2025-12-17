@@ -15,6 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/varoOP/shinkro/pkg/sharedhttp"
 )
 
 type Service interface {
@@ -255,12 +256,14 @@ func (s *service) loadLocalMaps(settings *domain.MapSettings, animeMap *domain.A
 
 // loadYamlFromURL fetches YAML data from a URL and unmarshals it
 func (s *service) loadYamlFromURL(ctx context.Context, url string, target interface{}) error {
+	client := &http.Client{Transport: sharedhttp.Transport}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("User-Agent", sharedhttp.UserAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

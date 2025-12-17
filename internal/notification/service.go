@@ -236,12 +236,6 @@ func (s *service) Test(ctx context.Context, notification *domain.Notification) e
 			PlexSource:   "Plex Webhook",
 			Timestamp:    time.Now(),
 		},
-		{
-			Subject:   "Failed to update MyAnimeList",
-			Message:   "MyAnimeList is not available",
-			Event:     domain.NotificationEventError,
-			Timestamp: time.Now(),
-		},
 	}
 
 	switch notification.Type {

@@ -135,8 +135,8 @@ func (a *discordSender) isEnabledEvent(event domain.NotificationEvent) bool {
 		if e == string(event) {
 			return true
 		}
-		// If "ERROR" is enabled, it should catch all error types
-		if e == string(domain.NotificationEventError) {
+		// Backward compatibility: "ERROR" matches both error types
+		if e == "ERROR" {
 			if event == domain.NotificationEventPlexProcessingError || event == domain.NotificationEventAnimeUpdateError {
 				return true
 			}
@@ -152,7 +152,7 @@ func (a *discordSender) buildEmbed(event domain.NotificationEvent, payload domai
 	switch event {
 	case domain.NotificationEventSuccess:
 		color = GREEN
-	case domain.NotificationEventError, domain.NotificationEventPlexProcessingError, domain.NotificationEventAnimeUpdateError:
+	case domain.NotificationEventPlexProcessingError, domain.NotificationEventAnimeUpdateError:
 		color = RED
 	case domain.NotificationEventTest:
 		color = LIGHT_BLUE

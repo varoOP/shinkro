@@ -116,8 +116,8 @@ func (s *gotifySender) isEnabledEvent(event domain.NotificationEvent) bool {
 		if e == string(event) {
 			return true
 		}
-		// If "ERROR" is enabled, it should catch all error types
-		if e == string(domain.NotificationEventError) {
+		// Backward compatibility: "ERROR" matches both error types
+		if e == "ERROR" {
 			if event == domain.NotificationEventPlexProcessingError || event == domain.NotificationEventAnimeUpdateError {
 				return true
 			}

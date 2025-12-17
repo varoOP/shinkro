@@ -39,8 +39,8 @@ import (
 const usage = `shinkro
 Sync your Anime watch status in Plex to myanimelist.net!
 Usage:
-    shinkro --config <path to shinkro configuration directory>           Run shinkro
-    shinkro setup [--config <dir>]                                      Setup new config, DB, and admin user
+    shinkro --config <path to shinkro configuration directory>          Run shinkro
+    shinkro setup --config <dir>                                        Setup new config, DB, and admin user
     shinkro --config=<dir> change-password <username>                   Change password for user
     shinkro version                                                     Print version info
     shinkro help                                                        Show this help message
@@ -95,29 +95,35 @@ func main() {
 			log.Fatal().Err(err).Msg("")
 		}
 
-		var animeRepo = database.NewAnimeRepo(log, db)
-		var animeUpdateRepo = database.NewAnimeUpdateRepo(log, db)
-		var plexRepo = database.NewPlexRepo(log, db)
-		var plexSettingsRepo = database.NewPlexSettingsRepo(log, db)
-		var malauthRepo = database.NewMalAuthRepo(log, db)
-		var userRepo = database.NewUserRepo(log, db)
-		var apiRepo = database.NewAPIRepo(log, db)
-		var mappingRepo = database.NewMappingRepo(log, db)
-		var notificationRepo = database.NewNotificationRepo(log, db)
-		var plexStatusRepo = database.NewPlexStatusRepo(log, db)
+		// Initialize repositories
+		var (
+			animeRepo        = database.NewAnimeRepo(log, db)
+			animeUpdateRepo  = database.NewAnimeUpdateRepo(log, db)
+			plexRepo         = database.NewPlexRepo(log, db)
+			plexSettingsRepo = database.NewPlexSettingsRepo(log, db)
+			malauthRepo      = database.NewMalAuthRepo(log, db)
+			userRepo         = database.NewUserRepo(log, db)
+			apiRepo          = database.NewAPIRepo(log, db)
+			mappingRepo      = database.NewMappingRepo(log, db)
+			notificationRepo = database.NewNotificationRepo(log, db)
+			plexStatusRepo   = database.NewPlexStatusRepo(log, db)
+		)
 
-		var animeService = anime.NewService(log, animeRepo)
-		var malauthService = malauth.NewService(cfg.Config, log, malauthRepo)
-		var mapService = mapping.NewService(log, mappingRepo)
-		var animeUpdateService = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
-		var plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
-		var notificationService = notification.NewService(log, notificationRepo)
-		var plexStatusService = plexstatus.NewService(log, plexStatusRepo)
-		var plexService = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, notificationService, plexStatusService)
-		var userService = user.NewService(userRepo, log)
-		var authService = auth.NewService(log, userService)
-		var apiService = api.NewService(log, apiRepo)
-		var fsService = filesystem.NewService(cfg.Config, log)
+		// Initialize services
+		var (
+			animeService        = anime.NewService(log, animeRepo)
+			malauthService      = malauth.NewService(cfg.Config, log, malauthRepo)
+			mapService          = mapping.NewService(log, mappingRepo)
+			plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
+			notificationService = notification.NewService(log, notificationRepo)
+			plexStatusService   = plexstatus.NewService(log, plexStatusRepo)
+			animeUpdateService  = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService)
+			plexService         = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, notificationService, plexStatusService)
+			userService         = user.NewService(userRepo, log)
+			authService         = auth.NewService(log, userService)
+			apiService          = api.NewService(log, apiRepo)
+			fsService           = filesystem.NewService(cfg.Config, log)
+		)
 
 		srv := server.NewServer(log, cfg.Config, animeService, mapService, notificationService)
 		if err := srv.Start(); err != nil {

@@ -24,7 +24,7 @@ import {Plex} from "@screens/settings/Plex";
 import {Mal} from "@screens/settings/Mal";
 import {MapSettings} from "@screens/settings/Mapping";
 import {AuthContext, SettingsContext} from "@utils/Context";
-import {TanStackRouterDevtools} from "@tanstack/router-devtools";
+import {TanStackRouterDevtools} from "@tanstack/react-router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {queryClient} from "@api/QueryClient";
 import {MalAuthCallback} from "@screens/MalAuthCallback.tsx";

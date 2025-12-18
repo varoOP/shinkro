@@ -107,6 +107,11 @@ export interface PlexMetadataMinimal {
     librarySectionTitle?: string;
     grandparentTitle?: string;
     title?: string;
+    index?: number;
+    parentIndex?: number;
+    type?: string;
+    guid?: string;
+    guids?: Array<{ id: string }>;
 }
 
 export interface PlexPayloadMinimal {

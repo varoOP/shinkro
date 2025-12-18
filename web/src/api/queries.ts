@@ -1,4 +1,4 @@
-import {queryOptions} from "@tanstack/react-query";
+import {queryOptions, keepPreviousData} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient";
 import {
     ApiKeys,
@@ -159,5 +159,6 @@ export const plexPayloadsQueryOptions = (
     return queryOptions({
         queryKey: PlexKeys.history("table", { pageIndex, pageSize, filters }),
         queryFn: () => APIClient.plex.findPayloads(params),
+        placeholderData: keepPreviousData,
     });
 };

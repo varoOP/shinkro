@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"regexp"
 	"strings"
 	"time"
 
@@ -67,37 +66,14 @@ func (repo *PlexRepo) FindAllWithFilters(ctx context.Context, params domain.Plex
 		whereQueryBuilder = append(whereQueryBuilder, sq.Eq{"p.source": string(params.Filters.Source)})
 	}
 
-	// Handle search query
+	// Handle search query - only search by title
 	if params.Search != "" {
 		search := strings.TrimSpace(params.Search)
-
-		// Check if search matches pattern db:id (e.g., "anidb:123" or "tvdb:456")
-		// Support partial matches (e.g., "anidb:12" matches "anidb:123")
-		dbIdPattern := regexp.MustCompile(`^(\w+):(\d+)$`)
-		if matches := dbIdPattern.FindStringSubmatch(search); len(matches) == 3 {
-			dbName := strings.ToLower(matches[1])
-			idStr := matches[2]
-
-			// Search in guid_string and guids JSON
-			// guid_string format: "com.plexapp.agents.hama://anidb-12345"
-			// guids JSON: [{"id": "tvdb://12345"}]
-			guidPattern := dbName + "-" + idStr + "%"
-			guidPattern2 := dbName + "://" + idStr + "%"
-			guidPattern3 := `%"` + dbName + `://` + idStr + `%"` // JSON format
-
-			whereQueryBuilder = append(whereQueryBuilder, sq.Or{
-				sq.Like{"p.guid_string": guidPattern},
-				sq.Like{"p.guid_string": guidPattern2},
-				sq.Like{"p.guids": guidPattern3},
-			})
-		} else {
-			// Fallback to title search
-			searchPattern := "%" + search + "%"
-			whereQueryBuilder = append(whereQueryBuilder, sq.Or{
-				sq.Like{"p.title": searchPattern},
-				sq.Like{"p.grand_parent_title": searchPattern},
-			})
-		}
+		searchPattern := "%" + search + "%"
+		whereQueryBuilder = append(whereQueryBuilder, sq.Or{
+			sq.Like{"p.title": searchPattern},
+			sq.Like{"p.grand_parent_title": searchPattern},
+		})
 	}
 
 	// Build subquery for pagination

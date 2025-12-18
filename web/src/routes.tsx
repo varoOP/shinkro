@@ -15,6 +15,7 @@ import {NotFound} from "@components/alerts/NotFound";
 import {Dashboard} from "@screens/Dashboard";
 import {Logs} from "@screens/Logs";
 import {Settings} from "@screens/Settings";
+import {PlexPayloads} from "@screens/PlexPayloads";
 import {Application} from "@screens/settings/Application";
 import {User} from "@screens/settings/User";
 import {Api} from "@screens/settings/Api";
@@ -48,6 +49,13 @@ const LogsRoute = createRoute({
     path: "logs",
     pendingMs: 3000,
     component: Logs,
+});
+
+const PlexPayloadsRoute = createRoute({
+    getParentRoute: () => AuthIndexRoute,
+    path: "plex-payloads",
+    pendingMs: 3000,
+    component: PlexPayloads,
 });
 
 export const OnboardRoute = createRoute({
@@ -246,7 +254,7 @@ const settingsRouteTree = SettingsRoute.addChildren([
     SettingsMappingRoute,
 ]);
 const authenticatedTree = AuthRoute.addChildren([
-    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, settingsRouteTree]),
+    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, PlexPayloadsRoute, settingsRouteTree]),
 ]);
 const routeTree = RootRoute.addChildren([
     LoginRoute,

@@ -226,7 +226,7 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                                                 {animeUpdateStatus.sourceDB} ID: {animeUpdateStatus.sourceID}
                                                             </Text>
                                                         </List.Item>
-                                                        {animeUpdateStatus.seasonNum !== undefined && (
+                                                        {animeUpdateStatus.seasonNum !== undefined && plex?.Metadata?.type !== "movie" && (
                                                             <List.Item>
                                                                 <Text size="sm">
                                                                     <Text component="span" fw={700}>Season: </Text>
@@ -234,7 +234,7 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                                                 </Text>
                                                             </List.Item>
                                                         )}
-                                                        {animeUpdateStatus.episodeNum !== undefined && (
+                                                        {animeUpdateStatus.episodeNum !== undefined && plex?.Metadata?.type !== "movie" && (
                                                             <List.Item>
                                                                 <Text size="sm">
                                                                     <Text component="span" fw={700}>Episode: </Text>

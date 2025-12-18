@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ActionIcon,
   Checkbox,
+  Container,
   Group,
   Menu,
   Paper,
@@ -107,9 +108,9 @@ export const Logs = () => {
   };
 
   return (
-    <main>
+    <Container size={1200} px="md" component="main">
       <Stack gap="md" p="md">
-        <Title order={1}>Logs</Title>
+        <Title order={2}>Logs</Title>
 
         <Paper withBorder p="md">
           <Stack gap="md">
@@ -260,7 +261,7 @@ export const Logs = () => {
           <LogFiles />
         </Paper>
       </Stack>
-    </main>
+    </Container>
   );
 };
 

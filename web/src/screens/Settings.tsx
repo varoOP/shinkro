@@ -1,4 +1,4 @@
-import { Container, Paper, Tabs } from "@mantine/core";
+import { Container, Paper, Tabs , Stack, Title} from "@mantine/core";
 import { Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { FaCog, FaUserCog, FaKey, FaBell, FaMap } from "react-icons/fa";
 import { BsStack } from "react-icons/bs";
@@ -41,6 +41,8 @@ export const Settings = () => {
 
     return (
         <Container size={1200} px="md" component="main">
+            <Stack gap="md" p="md">
+                <Title order={2}>Settings</Title>
             <Paper mt="md" withBorder p={"md"} h={"100%"} mih={"80vh"}>
                 {normalizedPathname === '/settings' || (normalizedPathname.startsWith('/settings/') && !normalizedPathname.includes('/plex') && !normalizedPathname.includes('/mal')) ? (
                     <Tabs value={getActiveTab()} onChange={handleTabChange} variant="pills">
@@ -68,6 +70,7 @@ export const Settings = () => {
                 ) : null}
                 <Outlet />
             </Paper>
+        </Stack>
         </Container>
     );
 };

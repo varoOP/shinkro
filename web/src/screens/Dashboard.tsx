@@ -27,7 +27,7 @@ export const Dashboard = () => {
 
     return (
         <Container size={1200} px="md" component="main">
-            <Stack gap="md">
+            <Stack gap="md" p="md">
                 <Title order={2}>
                     Statistics
                 </Title>
@@ -38,7 +38,7 @@ export const Dashboard = () => {
                     animeUpdateLoading={animeUpdateLoading}
                 />
             </Stack>
-            <Stack gap="md" mt="xl">
+            <Stack gap="md" mt="xl" p="md">
                 <Title order={2}>Recently Updated Anime</Title>
                 <RecentlyUpdatedAnimeCarousel
                     items={recentAnime as RecentAnimeItem[] | undefined}
@@ -47,7 +47,7 @@ export const Dashboard = () => {
             </Stack>
 
             {/* Timeline Section */}
-            <Stack gap="md" mt="xl">
+            <Stack gap="md" mt="xl" p="md">
                 <Group justify="space-between" align="center">
                     <Title order={2}>Recent Activity Timeline</Title>
                     <Select

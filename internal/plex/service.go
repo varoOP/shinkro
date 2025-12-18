@@ -122,17 +122,21 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 		return err
 	}
 
-	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
-	if err != nil {
-		return err
-	}
-
+	// Publish success event - Plex processing succeeded (metadata extraction worked, animeupdate was attempted)
+	// The actual MAL update success/failure is tracked separately in AnimeUpdateStatus
 	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
 		PlexID:      plex.ID,
 		Plex:        plex,
 		AnimeUpdate: a,
 		Timestamp:   time.Now(),
 	})
+
+	// Attempt MAL update - errors are handled by UpdateAnimeList and published as EventAnimeUpdateFailed
+	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
+	if err != nil {
+		// Don't return error - Plex processing succeeded, MAL update failure is tracked separately
+		return nil
+	}
 
 	return nil
 }

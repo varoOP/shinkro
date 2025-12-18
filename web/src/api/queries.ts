@@ -90,6 +90,7 @@ export const plexHistoryQueryOptions = (opts: {
     queryOptions({
         queryKey: PlexKeys.history("timeline", opts),
         queryFn: () => APIClient.plex.history({ limit: opts.limit }),
+        placeholderData: keepPreviousData,
     });
 
 export const plexCountsQueryOptions = () =>

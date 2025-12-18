@@ -176,7 +176,7 @@ export const PlexPayloads = () => {
                 cell: ({ row }) => {
                     const source = row.original.plex.source || "";
                     return (
-                        <Badge variant="light" color={source === "Plex Webhook" ? "plex" : "blue"}>
+                        <Badge variant="light" color={source === "Plex Webhook" ? "plex" : "blue"} style={{ whiteSpace: "nowrap" }}>
                             {source || "Unknown"}
                         </Badge>
                     );
@@ -323,8 +323,15 @@ export const PlexPayloads = () => {
                                         <Table.Tr key={row.id}>
                                             {row.getVisibleCells().map((cell) => {
                                                 const shouldCenter = cell.column.id !== "payload";
+                                                const isSourceColumn = cell.column.id === "source";
                                                 return (
-                                                    <Table.Td key={cell.id} style={{ textAlign: shouldCenter ? "center" : "left" }}>
+                                                    <Table.Td 
+                                                        key={cell.id} 
+                                                        style={{ 
+                                                            textAlign: shouldCenter ? "center" : "left",
+                                                            whiteSpace: isSourceColumn ? "nowrap" : "normal"
+                                                        }}
+                                                    >
                                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                     </Table.Td>
                                                 );

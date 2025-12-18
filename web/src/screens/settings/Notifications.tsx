@@ -91,7 +91,7 @@ export const Notifications = () => {
                                     <Group gap="xs">
                                         <Text size="sm" c="dimmed" fw={700}>Events:</Text>
                                         {notification.events.map((event) => (
-                                            <Badge key={event} variant="light">
+                                            <Badge key={event} variant="outline">
                                                 {event.replace(/_/g, ' ')}
                                             </Badge>
                                         ))}

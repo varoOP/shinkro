@@ -34,6 +34,7 @@ import { Navigate } from "@tanstack/react-router";
 import { plexPayloadsQueryOptions } from "@api/queries";
 import type { PlexPayloadListItem } from "@app/types/Plex";
 import { displayNotification } from "@components/notifications";
+import { formatEventName } from "@utils";
 
 export const PlexPayloads = () => {
     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
@@ -91,23 +92,33 @@ export const PlexPayloads = () => {
                     }
 
                     return (
-                        <Stack gap={4}>
-                            <Text fw={600} size="sm">
-                                {title}
-                            </Text>
+                        <Stack gap={4} style={{ maxWidth: "500px" }}>
+                            <Tooltip label={title} disabled={title.length <= 50}>
+                                <Text 
+                                    fw={600} 
+                                    size="sm" 
+                                    style={{ 
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap"
+                                    }}
+                                >
+                                    {title}
+                                </Text>
+                            </Tooltip>
                             <Group gap="xs">
                                 {library && (
-                                    <Badge size="xs" variant="light" color="gray">
+                                    <Badge size="xs" variant="transparent" color="gray">
                                         {library}
                                     </Badge>
                                 )}
                                 {event && (
-                                    <Badge size="xs" variant="light" color="plex">
-                                        {event}
+                                    <Badge size="xs" variant="transparent" color="plex">
+                                        {formatEventName(event)}
                                     </Badge>
                                 )}
                                 {season && episode && (
-                                    <Badge size="xs" variant="light">
+                                    <Badge size="xs" variant="transparent">
                                         {season} {episode}
                                     </Badge>
                                 )}
@@ -176,7 +187,7 @@ export const PlexPayloads = () => {
                 cell: ({ row }) => {
                     const source = row.original.plex.source || "";
                     return (
-                        <Badge variant="light" color={source === "Plex Webhook" ? "plex" : "blue"} style={{ whiteSpace: "nowrap" }}>
+                        <Badge variant="transparent" color={source === "Plex Webhook" ? "plex" : "blue"}>
                             {source || "Unknown"}
                         </Badge>
                     );

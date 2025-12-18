@@ -215,3 +215,16 @@ export function getFileExtension(path: string): string {
     if (parts.length === 1) return "";
     return parts.pop() || "";
 }
+
+/**
+ * Format Plex event names for display by removing the "media." prefix.
+ * Examples: "media.scrobble" -> "scrobble", "media.rate" -> "rate"
+ */
+export function formatEventName(event?: string): string {
+    if (!event) return "";
+    // Remove "media." prefix if present
+    if (event.startsWith("media.")) {
+        return event.substring(6); // "media." is 6 characters
+    }
+    return event;
+}

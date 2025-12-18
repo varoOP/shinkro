@@ -2,7 +2,7 @@ import {Anchor, Badge, Card, Group, Stack, Text, Timeline, TimelineItem, Alert, 
 import {formatDistanceToNow} from "date-fns";
 import {FaExclamationCircle, FaInfoCircle} from "react-icons/fa";
 import type { PlexHistoryItem, AnimeUpdateErrorType, PlexErrorType } from "@app/types/Plex";
-import { formatStatusLabel } from "@utils/index";
+import { formatStatusLabel, formatEventName } from "@utils/index";
 
 export type RecentTimelineProps = {
     timelineItems: PlexHistoryItem[];
@@ -105,19 +105,19 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                             </Group>
                             <Group gap="sm" mb={4} mt="xs">
                                 {plex?.Metadata?.librarySectionTitle && (
-                                    <Badge color="gray" variant="light">
+                                    <Badge color="gray" variant="outline">
                                         {plex.Metadata.librarySectionTitle}
                                     </Badge>
                                 )}
-                                <Badge color="plex">
-                                    {plex.event}
+                                <Badge color="plex" variant="outline">
+                                    {formatEventName(plex.event)}
                                 </Badge>
                                 {isSuccess ? (
-                                    <Badge color="green" variant="filled">Successful</Badge>
+                                    <Badge color="green" variant="outline">Successful</Badge>
                                 ) : isFailed ? (
-                                    <Badge color="red" variant="filled">Failed</Badge>
+                                    <Badge color="red" variant="outline">Failed</Badge>
                                 ) : (
-                                    <Badge color="yellow" variant="filled">Pending</Badge>
+                                    <Badge color="yellow" variant="outline">Pending</Badge>
                                 )}
                             </Group>
                             
@@ -134,15 +134,17 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                     {statusText && (
                                         <Text size="sm">Status: {formatStatusLabel(statusText, true)}</Text>
                                     )}
-                                    <Anchor 
-                                        href={`https://myanimelist.net/anime/${animeUpdate.malid}`}
-                                        target="_blank" 
-                                        underline="hover" 
-                                        c="mal" 
-                                        fw={700}
-                                    >
-                                        View on MAL
-                                    </Anchor>
+                                    {(animeUpdate.malid && animeUpdate.malid > 0) && (
+                                        <Anchor 
+                                            href={`https://myanimelist.net/anime/${animeUpdate.malid}`}
+                                            target="_blank" 
+                                            underline="hover" 
+                                            c="mal" 
+                                            fw={700}
+                                        >
+                                            View on MAL
+                                        </Anchor>
+                                    )}
                                 </Stack>
                             )}
                             
@@ -202,11 +204,11 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                             </Stack>
                                             
                                             {/* Plex Payload Details - only show if we have both sourceDB and sourceID */}
-                                            {animeUpdateStatus.sourceDB && animeUpdateStatus.sourceID && (
+                                            {(animeUpdateStatus.sourceDB && typeof animeUpdateStatus.sourceID === 'number' && animeUpdateStatus.sourceID > 0) && (
                                                 <Stack gap={4}>
                                                     <Text size="sm" fw={700}>Plex Payload Details</Text>
                                                     <List size="sm" spacing="xs">
-                                                        {animeUpdateStatus.malID && (
+                                                        {Boolean(animeUpdateStatus.malID && animeUpdateStatus.malID > 0) && (
                                                             <List.Item>
                                                                 <Group gap="xs">
                                                                     <Text size="sm" fw={700}>MAL ID:</Text>

@@ -57,7 +57,10 @@ CREATE TABLE anime_update
 	list_status  	TEXT,
 	plex_id      	INTEGER
 	    REFERENCES plex_payload
-			ON DELETE CASCADE       
+			ON DELETE CASCADE,
+	status          TEXT,
+	error_type      TEXT,
+	error_message   TEXT
 );
 
 CREATE TABLE plex_payload
@@ -76,7 +79,10 @@ CREATE TABLE plex_payload
 	parent_index 				INTEGER,
 	title						TEXT,
 	type						TEXT NOT NULL,
-	time_stamp                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	time_stamp                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	success                     BOOLEAN,
+	error_type                  TEXT,
+	error_msg                   TEXT
 );
 
 CREATE TABLE plex_settings
@@ -93,20 +99,6 @@ CREATE TABLE plex_settings
 	plex_client_enabled			BOOLEAN DEFAULT false NOT NULL,
 	client_id				    TEXT,
 	time_stamp                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE plex_status
-(
-    	id 							INTEGER PRIMARY KEY,
-    	title 							TEXT NOT NULL,
-    	event 						TEXT NOT NULL,
-    	success 			        BOOLEAN NOT NULL,
-    	error_type 				TEXT,
-    	error_msg 				TEXT,
-    	time_stamp 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    	plex_id 					INTEGER NOT NULL
-    	  REFERENCES plex_payload
-		     ON DELETE CASCADE
 );
 
 CREATE TABLE mapping_settings
@@ -144,44 +136,40 @@ CREATE TABLE notification
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE anime_update_status
-(
-	id            INTEGER PRIMARY KEY,
-	plex_id       INTEGER NOT NULL
-		REFERENCES plex_payload
-		ON DELETE CASCADE,
-	mal_id        INTEGER,
-	status        TEXT NOT NULL,
-	error_type    TEXT,
-	error_message TEXT,
-	anime_title   TEXT,
-	source_db     TEXT,
-	source_id     INTEGER,
-	season_num    INTEGER,
-	episode_num   INTEGER,
-	time_stamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 `
 
 var migrations = []string{
 	"",
-	`CREATE TABLE IF NOT EXISTS anime_update_status
-(
-	id            INTEGER PRIMARY KEY,
-	plex_id       INTEGER NOT NULL
-		REFERENCES plex_payload
-		ON DELETE CASCADE,
-	mal_id        INTEGER,
-	status        TEXT NOT NULL,
-	error_type    TEXT,
-	error_message TEXT,
-	anime_title   TEXT,
-	source_db     TEXT,
-	source_id     INTEGER,
-	season_num    INTEGER,
-	episode_num   INTEGER,
-	time_stamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	`-- Add status columns to plex_payload
+ALTER TABLE plex_payload ADD COLUMN success BOOLEAN;
+ALTER TABLE plex_payload ADD COLUMN error_type TEXT;
+ALTER TABLE plex_payload ADD COLUMN error_msg TEXT;
+
+-- Migrate data from plex_status to plex_payload
+UPDATE plex_payload 
+SET success = (
+	SELECT ps.success 
+	FROM plex_status ps 
+	WHERE ps.plex_id = plex_payload.id 
+	LIMIT 1
+),
+error_msg = (
+	SELECT ps.error_msg 
+	FROM plex_status ps 
+	WHERE ps.plex_id = plex_payload.id 
+	LIMIT 1
+)
+WHERE EXISTS (
+	SELECT 1 FROM plex_status ps WHERE ps.plex_id = plex_payload.id
 );
 
-ALTER TABLE plex_status ADD COLUMN error_type TEXT;`,
+-- Drop plex_status table
+DROP TABLE IF EXISTS plex_status;
+	-- Add status columns to anime_update
+ALTER TABLE anime_update ADD COLUMN status TEXT;
+ALTER TABLE anime_update ADD COLUMN error_type TEXT;
+ALTER TABLE anime_update ADD COLUMN error_message TEXT;
+
+-- Set status to SUCCESS for existing anime_update records
+UPDATE anime_update SET status = 'SUCCESS' WHERE status IS NULL;`,
 }

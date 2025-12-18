@@ -20,6 +20,7 @@ type PlexRepo interface {
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetRecent(ctx context.Context, limit int) ([]*Plex, error)
+	UpdateStatus(ctx context.Context, plexID int64, success *bool, errorType PlexErrorType, errorMsg string) error
 }
 
 type Plex struct {
@@ -46,7 +47,19 @@ type Plex struct {
 		UUID          string `json:"uuid"`
 	} `json:"Player"`
 	Metadata Metadata `json:"Metadata"`
+	// Status fields (consolidated from plex_status table)
+	Success   *bool         `json:"success,omitempty"`
+	ErrorType PlexErrorType `json:"errorType,omitempty"`
+	ErrorMsg  string        `json:"errorMsg,omitempty"`
 }
+
+type PlexErrorType string
+
+const (
+	PlexErrorAgentNotSupported PlexErrorType = "AGENT_NOT_SUPPORTED"
+	PlexErrorExtractionFailed   PlexErrorType = "EXTRACTION_FAILED"
+	PlexErrorUnknown            PlexErrorType = "UNKNOWN_ERROR"
+)
 
 type Metadata struct {
 	RatingGlobal          float32       `json:"rating"`
@@ -396,10 +409,8 @@ type PlexHistoryRequest struct {
 }
 
 type PlexHistoryItem struct {
-	Plex              *Plex              `json:"plex"`
-	Status            *PlexStatus        `json:"status"`
-	AnimeUpdate       *AnimeUpdate       `json:"animeUpdate,omitempty"`
-	AnimeUpdateStatus *AnimeUpdateStatus `json:"animeUpdateStatus,omitempty"`
+	Plex        *Plex        `json:"plex"`
+	AnimeUpdate *AnimeUpdate `json:"animeUpdate,omitempty"`
 }
 
 type PlexPayloadQueryParams struct {
@@ -414,8 +425,7 @@ type PlexPayloadQueryParams struct {
 }
 
 type PlexPayloadListItem struct {
-	Plex   *Plex       `json:"plex"`
-	Status *PlexStatus `json:"status"`
+	Plex *Plex `json:"plex"`
 }
 
 type FindPlexPayloadsResponse struct {

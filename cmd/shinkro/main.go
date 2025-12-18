@@ -19,7 +19,6 @@ import (
 
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/animeupdate"
-	"github.com/varoOP/shinkro/internal/animeupdatestatus"
 	"github.com/varoOP/shinkro/internal/api"
 	"github.com/varoOP/shinkro/internal/auth"
 	"github.com/varoOP/shinkro/internal/config"
@@ -34,7 +33,6 @@ import (
 	"github.com/varoOP/shinkro/internal/notification"
 	"github.com/varoOP/shinkro/internal/plex"
 	"github.com/varoOP/shinkro/internal/plexsettings"
-	"github.com/varoOP/shinkro/internal/plexstatus"
 	"github.com/varoOP/shinkro/internal/server"
 	"github.com/varoOP/shinkro/internal/user"
 	"github.com/varoOP/shinkro/pkg/sse"
@@ -116,7 +114,6 @@ func main() {
 		var (
 			animeRepo             = database.NewAnimeRepo(log, db)
 			animeUpdateRepo       = database.NewAnimeUpdateRepo(log, db)
-			animeUpdateStatusRepo = database.NewAnimeUpdateStatusRepo(log, db)
 			plexRepo              = database.NewPlexRepo(log, db)
 			plexSettingsRepo      = database.NewPlexSettingsRepo(log, db)
 			malauthRepo           = database.NewMalAuthRepo(log, db)
@@ -124,7 +121,6 @@ func main() {
 			apiRepo               = database.NewAPIRepo(log, db)
 			mappingRepo           = database.NewMappingRepo(log, db)
 			notificationRepo      = database.NewNotificationRepo(log, db)
-			plexStatusRepo        = database.NewPlexStatusRepo(log, db)
 		)
 
 		// Initialize services
@@ -134,10 +130,8 @@ func main() {
 			mapService               = mapping.NewService(log, mappingRepo)
 			plexSettingsService      = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
 			notificationService      = notification.NewService(log, notificationRepo)
-			plexStatusService        = plexstatus.NewService(log, plexStatusRepo)
-			animeUpdateStatusService = animeupdatestatus.NewService(log, animeUpdateStatusRepo)
 			animeUpdateService       = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
-			plexService              = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, animeUpdateStatusService, plexStatusService, bus)
+			plexService              = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, bus)
 			userService              = user.NewService(userRepo, log)
 			authService              = auth.NewService(log, userService)
 			apiService               = api.NewService(log, apiRepo)
@@ -145,7 +139,7 @@ func main() {
 		)
 
 		// Register event subscribers
-		events.NewSubscribers(log, bus, notificationService, plexStatusService, animeUpdateStatusService)
+		events.NewSubscribers(log, bus, notificationService, plexRepo)
 
 		srv := server.NewServer(log, cfg.Config, animeService, mapService, bus)
 		if err := srv.Start(); err != nil {

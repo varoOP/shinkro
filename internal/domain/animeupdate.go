@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+
 type AnimeUpdateRepo interface {
 	Store(ctx context.Context, animeUpdate *AnimeUpdate) error
 	GetByID(ctx context.Context, req *GetAnimeUpdateRequest) (*AnimeUpdate, error)
@@ -29,6 +30,10 @@ type AnimeUpdate struct {
 	ListStatus  mal.AnimeListStatus `json:"listStatus"`
 	PlexId      int64               `json:"plexID"`
 	Plex        *Plex               `json:"-"`
+	// Status fields (consolidated from anime_update_status table)
+	Status        AnimeUpdateStatusType `json:"status,omitempty"`
+	ErrorType     AnimeUpdateErrorType  `json:"errorType,omitempty"`
+	ErrorMessage  string                `json:"errorMessage,omitempty"`
 }
 
 type ListDetails struct {
@@ -39,6 +44,27 @@ type ListDetails struct {
 	Title           string          `json:"title"`
 	PictureURL      string          `json:"pictureUrl"`
 }
+
+// AnimeUpdateStatusType represents the status of an anime update
+type AnimeUpdateStatusType string
+
+const (
+	AnimeUpdateStatusPending AnimeUpdateStatusType = "PENDING"
+	AnimeUpdateStatusSuccess AnimeUpdateStatusType = "SUCCESS"
+	AnimeUpdateStatusFailed  AnimeUpdateStatusType = "FAILED"
+)
+
+// AnimeUpdateErrorType represents the type of error that occurred during anime update
+type AnimeUpdateErrorType string
+
+const (
+	AnimeUpdateErrorMALAuthFailed      AnimeUpdateErrorType = "MAL_AUTH_FAILED"
+	AnimeUpdateErrorMappingNotFound    AnimeUpdateErrorType = "MAPPING_NOT_FOUND"
+	AnimeUpdateErrorAnimeNotInDB       AnimeUpdateErrorType = "ANIME_NOT_IN_DB"
+	AnimeUpdateErrorMALAPIFetchFailed  AnimeUpdateErrorType = "MAL_API_FETCH_FAILED"
+	AnimeUpdateErrorMALAPIUpdateFailed AnimeUpdateErrorType = "MAL_API_UPDATE_FAILED"
+	AnimeUpdateErrorUnknown             AnimeUpdateErrorType = "UNKNOWN_ERROR"
+)
 
 type Key string
 

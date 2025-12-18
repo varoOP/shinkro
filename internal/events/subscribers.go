@@ -6,28 +6,24 @@ import (
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/animeupdatestatus"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/notification"
-	"github.com/varoOP/shinkro/internal/plexstatus"
 )
 
 type Subscriber struct {
 	log      zerolog.Logger
 	eventbus EventBus.Bus
 
-	notificationService      notification.Service
-	plexStatusService        plexstatus.Service
-	animeUpdateStatusService animeupdatestatus.Service
+	notificationService notification.Service
+	plexRepo            domain.PlexRepo
 }
 
-func NewSubscribers(log zerolog.Logger, eventbus EventBus.Bus, notificationSvc notification.Service, plexStatusSvc plexstatus.Service, animeUpdateStatusSvc animeupdatestatus.Service) *Subscriber {
+func NewSubscribers(log zerolog.Logger, eventbus EventBus.Bus, notificationSvc notification.Service, plexRepo domain.PlexRepo) *Subscriber {
 	s := &Subscriber{
-		log:                      log.With().Str("module", "events").Logger(),
-		eventbus:                 eventbus,
-		notificationService:      notificationSvc,
-		plexStatusService:        plexStatusSvc,
-		animeUpdateStatusService: animeUpdateStatusSvc,
+		log:                 log.With().Str("module", "events").Logger(),
+		eventbus:            eventbus,
+		notificationService: notificationSvc,
+		plexRepo:            plexRepo,
 	}
 
 	s.Register()
@@ -49,7 +45,8 @@ func (s *Subscriber) handlePlexProcessedSuccess(event *domain.PlexProcessedSucce
 		Int64("plexID", event.PlexID).
 		Msg("plex processed successfully (extraction complete)")
 
-	if err := s.plexStatusService.StoreSuccess(context.Background(), event.Plex); err != nil {
+	success := true
+	if err := s.plexRepo.UpdateStatus(context.Background(), event.PlexID, &success, "", ""); err != nil {
 		s.log.Error().Err(err).Msg("failed to store plex success status")
 	}
 
@@ -63,7 +60,8 @@ func (s *Subscriber) handlePlexProcessedError(event *domain.PlexProcessedErrorEv
 		Msg("plex processing error")
 
 	// Store error status with error type
-	if err := s.plexStatusService.StoreError(context.Background(), event.Plex, event.ErrorType, event.ErrorMessage); err != nil {
+	success := false
+	if err := s.plexRepo.UpdateStatus(context.Background(), event.PlexID, &success, event.ErrorType, event.ErrorMessage); err != nil {
 		s.log.Error().Err(err).Msg("failed to store plex error status")
 	}
 
@@ -94,21 +92,8 @@ func (s *Subscriber) handleAnimeUpdateSuccess(event *domain.AnimeUpdateSuccessEv
 		Int("malID", event.AnimeUpdate.MALId).
 		Msg("anime update succeeded")
 
-	// Store success status
-	status := &domain.AnimeUpdateStatus{
-		PlexID:     event.PlexID,
-		MALID:      event.AnimeUpdate.MALId,
-		Status:     domain.AnimeUpdateStatusSuccess,
-		AnimeTitle: event.AnimeUpdate.ListDetails.Title,
-		SourceDB:   event.AnimeUpdate.SourceDB,
-		SourceID:   event.AnimeUpdate.SourceId,
-		SeasonNum:  event.AnimeUpdate.SeasonNum,
-		EpisodeNum: event.AnimeUpdate.EpisodeNum,
-		Timestamp:  event.Timestamp,
-	}
-	if err := s.animeUpdateStatusService.Store(context.Background(), status); err != nil {
-		s.log.Error().Err(err).Msg("failed to store anime update success status")
-	}
+	// Note: anime_update record is already stored with status=SUCCESS by animeupdate service
+	// No need to create separate status record anymore
 
 	// Send success notification with detailed info
 	if event.AnimeUpdate != nil {
@@ -140,26 +125,11 @@ func (s *Subscriber) handleAnimeUpdateFailed(event *domain.AnimeUpdateFailedEven
 		Str("error", event.ErrorMessage).
 		Msg("anime update failed")
 
+	// Note: anime_update record is already stored with status=FAILED by animeupdate service
+	// No need to create separate status record anymore
+
 	// Extract anime title for better error messages
 	animeTitle := s.getAnimeTitle(event.AnimeUpdate)
-
-	// Store failed status with detailed error info
-	status := &domain.AnimeUpdateStatus{
-		PlexID:       event.AnimeUpdate.Plex.ID,
-		MALID:        event.AnimeUpdate.MALId,
-		Status:       domain.AnimeUpdateStatusFailed,
-		ErrorType:    event.ErrorType,
-		ErrorMessage: event.ErrorMessage,
-		AnimeTitle:   animeTitle,
-		SourceDB:     event.AnimeUpdate.SourceDB,
-		SourceID:     event.AnimeUpdate.SourceId,
-		SeasonNum:    event.AnimeUpdate.SeasonNum,
-		EpisodeNum:   event.AnimeUpdate.EpisodeNum,
-		Timestamp:    event.Timestamp,
-	}
-	if err := s.animeUpdateStatusService.Store(context.Background(), status); err != nil {
-		s.log.Error().Err(err).Msg("failed to store anime update failed status")
-	}
 
 	// Send detailed error notification
 	subject := s.buildErrorSubject(event.ErrorType)

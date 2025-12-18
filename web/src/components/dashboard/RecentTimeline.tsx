@@ -74,22 +74,22 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
         <Timeline active={-1} bulletSize={24} lineWidth={2}>
             {timelineItems.map((item) => {
                 const plex = item.plex;
-                const status = item.status;
                 const animeUpdate = item.animeUpdate;
-                const animeUpdateStatus = item.animeUpdateStatus;
                 
-                // Backward compatibility: If PlexStatus.success is true but no AnimeUpdateStatus exists,
-                // treat it as successful (AnimeUpdateStatus table was added later)
-                // If PlexStatus.success is true, it means the entire process including MAL update succeeded
-                const isSuccess = status?.success === true && 
-                                 (animeUpdateStatus?.status === "SUCCESS" || !animeUpdateStatus);
-                const isFailed = status?.success === false || animeUpdateStatus?.status === "FAILED";
+                // Read status from consolidated fields
+                const plexSuccess = plex?.success;
+                const animeUpdateStatusValue = animeUpdate?.status;
+                
+                // Determine success/failure: plex must be successful AND anime update must be successful (or not exist)
+                const isSuccess = plexSuccess === true && 
+                                 (animeUpdateStatusValue === "SUCCESS" || animeUpdateStatusValue === undefined);
+                const isFailed = plexSuccess === false || animeUpdateStatusValue === "FAILED";
                 
                 const score = animeUpdate?.listStatus?.score;
                 const statusText = animeUpdate?.listStatus?.status;
                 
                 // Get anime title from various sources
-                const animeTitle = animeUpdateStatus?.animeTitle || 
+                const animeTitle = animeUpdate?.listDetails?.title ||
                                  plex?.Metadata?.grandparentTitle || 
                                  plex?.Metadata?.title || 
                                  'Unknown Title';
@@ -151,73 +151,69 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                             {/* Failed case - show detailed error information */}
                             {isFailed && (
                                 <Stack gap="xs" mt={4}>
-                                    {/* PlexStatus errors (metadata extraction, agent issues) */}
-                                    {status && !status.success && status.errorType && (
+                                    {/* Plex errors (metadata extraction, agent issues) */}
+                                    {plexSuccess === false && plex?.errorType && (
                                         <Stack gap="xs">
-                                            {/* Failure Type */}
                                             <Stack gap={4}>
                                                 <Alert 
                                                     icon={<FaExclamationCircle size={16} />} 
-                                                    title={formatPlexErrorType(status.errorType)}
+                                                    title={formatPlexErrorType(plex.errorType)}
                                                     color="red" 
                                                     variant="light"
                                                 >
-                                                    {status.errorMsg && (
-                                                        <Text size="sm">{status.errorMsg}</Text>
+                                                    {plex.errorMsg && (
+                                                        <Text size="sm">{plex.errorMsg}</Text>
                                                     )}
                                                 </Alert>
                                             </Stack>
                                             
-                                            {/* Helpful Hint Alert */}
-                                            {getPlexErrorMessage(status.errorType) && (
+                                            {getPlexErrorMessage(plex.errorType) && (
                                                 <Alert 
                                                     icon={<FaInfoCircle size={16} />}
                                                     color="blue" 
                                                     variant="light"
                                                 >
-                                                    <Text size="sm">{getPlexErrorMessage(status.errorType)}</Text>
+                                                    <Text size="sm">{getPlexErrorMessage(plex.errorType)}</Text>
                                                 </Alert>
                                             )}
                                             
-                                            {/* Error occurred message */}
                                             <Text size="xs" fw={700}>
                                                 Error occurred during Plex metadata processing.
                                             </Text>
                                         </Stack>
                                     )}
                                     
-                                    {/* AnimeUpdateStatus errors (MAL API, mapping, etc.) */}
-                                    {animeUpdateStatus && animeUpdateStatus.status === "FAILED" && (
+                                    {/* AnimeUpdate errors (MAL API, mapping, etc.) */}
+                                    {animeUpdate?.status === "FAILED" && animeUpdate?.errorType && (
                                         <Stack gap="xs">
-                                            {/* Failure Type */}
                                             <Stack gap={4}>
                                                 <Alert 
                                                     icon={<FaExclamationCircle size={16} />} 
-                                                    title={formatAnimeUpdateErrorType(animeUpdateStatus.errorType)}
+                                                    title={formatAnimeUpdateErrorType(animeUpdate.errorType)}
                                                     color="red" 
                                                     variant="light"
                                                 >
-                                                    {animeUpdateStatus.errorMessage && (
-                                                        <Text size="sm">{animeUpdateStatus.errorMessage}</Text>
+                                                    {animeUpdate.errorMessage && (
+                                                        <Text size="sm">{animeUpdate.errorMessage}</Text>
                                                     )}
                                                 </Alert>
                                             </Stack>
                                             
                                             {/* Plex Payload Details - only show if we have both sourceDB and sourceID */}
-                                            {(animeUpdateStatus.sourceDB && typeof animeUpdateStatus.sourceID === 'number' && animeUpdateStatus.sourceID > 0) && (
+                                            {(animeUpdate.sourceDB && typeof animeUpdate.sourceID === 'number' && animeUpdate.sourceID > 0) && (
                                                 <Stack gap={4}>
                                                     <Text size="sm" fw={700}>Plex Payload Details</Text>
                                                     <List size="sm" spacing="xs">
-                                                        {Boolean(animeUpdateStatus.malID && animeUpdateStatus.malID > 0) && (
+                                                        {Boolean(animeUpdate.malid && animeUpdate.malid > 0) && (
                                                             <List.Item>
                                                                 <Group gap="xs">
                                                                     <Text size="sm" fw={700}>MAL ID:</Text>
                                                                     <Anchor 
-                                                                        href={`https://myanimelist.net/anime/${animeUpdateStatus.malID}`}
+                                                                        href={`https://myanimelist.net/anime/${animeUpdate.malid}`}
                                                                         target="_blank"
                                                                         size="sm"
                                                                     >
-                                                                        {animeUpdateStatus.malID}
+                                                                        {animeUpdate.malid}
                                                                     </Anchor>
                                                                 </Group>
                                                             </List.Item>
@@ -225,22 +221,22 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                                         <List.Item>
                                                             <Text size="sm">
                                                                 <Text component="span" fw={700}>Source: </Text>
-                                                                {animeUpdateStatus.sourceDB} ID: {animeUpdateStatus.sourceID}
+                                                                {animeUpdate.sourceDB} ID: {animeUpdate.sourceID}
                                                             </Text>
                                                         </List.Item>
-                                                        {animeUpdateStatus.seasonNum !== undefined && plex?.Metadata?.type !== "movie" && (
+                                                        {animeUpdate.seasonNum !== undefined && plex?.Metadata?.type !== "movie" && (
                                                             <List.Item>
                                                                 <Text size="sm">
                                                                     <Text component="span" fw={700}>Season: </Text>
-                                                                    {animeUpdateStatus.seasonNum}
+                                                                    {animeUpdate.seasonNum}
                                                                 </Text>
                                                             </List.Item>
                                                         )}
-                                                        {animeUpdateStatus.episodeNum !== undefined && plex?.Metadata?.type !== "movie" && (
+                                                        {animeUpdate.episodeNum !== undefined && plex?.Metadata?.type !== "movie" && (
                                                             <List.Item>
                                                                 <Text size="sm">
                                                                     <Text component="span" fw={700}>Episode: </Text>
-                                                                    {animeUpdateStatus.episodeNum}
+                                                                    {animeUpdate.episodeNum}
                                                                 </Text>
                                                             </List.Item>
                                                         )}
@@ -248,18 +244,16 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                                 </Stack>
                                             )}
                                             
-                                            {/* Helpful Hint Alert */}
-                                            {getAnimeUpdateErrorMessage(animeUpdateStatus.errorType) && (
+                                            {getAnimeUpdateErrorMessage(animeUpdate.errorType) && (
                                                 <Alert 
                                                     icon={<FaInfoCircle size={16} />}
                                                     color="blue" 
                                                     variant="light"
                                                 >
-                                                    <Text size="sm">{getAnimeUpdateErrorMessage(animeUpdateStatus.errorType)}</Text>
+                                                    <Text size="sm">{getAnimeUpdateErrorMessage(animeUpdate.errorType)}</Text>
                                                 </Alert>
                                             )}
                                             
-                                            {/* Error occurred message */}
                                             <Text size="xs" fw={700}>
                                                 Error occurred during MyAnimeList update.
                                             </Text>
@@ -267,21 +261,21 @@ export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) 
                                     )}
                                     
                                     {/* Fallback for old error messages without errorType */}
-                                    {status && !status.success && !status.errorType && status.errorMsg && (
+                                    {plexSuccess === false && !plex?.errorType && plex?.errorMsg && (
                                         <Alert 
                                             icon={<FaExclamationCircle size={16} />} 
                                             title="Processing Error"
                                             color="red" 
                                             variant="light"
                                         >
-                                            <Text size="sm">{status.errorMsg}</Text>
+                                            <Text size="sm">{plex.errorMsg}</Text>
                                         </Alert>
                                     )}
                                 </Stack>
                             )}
                             
                             {/* No status at all */}
-                            {!animeUpdateStatus && !animeUpdate && !status?.errorMsg && (
+                            {!animeUpdate && !plex?.errorMsg && (
                                 <Text size="sm" c="dimmed" mt={4}>
                                     No MyAnimeList update for this event.
                                 </Text>

@@ -118,7 +118,12 @@ export interface PlexPayloadMinimal {
     id: number;
     event: string;
     timestamp: string;
+    source?: string;
     Metadata?: PlexMetadataMinimal;
+    // Status fields (consolidated from plex_status table)
+    success?: boolean | null;
+    errorType?: PlexErrorType;
+    errorMsg?: string;
     // Allow additional fields from backend without strict typing
     [key: string]: any;
 }
@@ -127,17 +132,6 @@ export type PlexErrorType =
     | "AGENT_NOT_SUPPORTED"
     | "EXTRACTION_FAILED"
     | "UNKNOWN_ERROR";
-
-export interface PlexStatusItem {
-    id: number;
-    title?: string;
-    event?: string;
-    success: boolean;
-    errorType?: PlexErrorType;
-    errorMsg?: string;
-    plexID: number;
-    timestamp: string | Date;
-}
 
 import type { TimelineAnimeUpdate } from "./Anime";
 
@@ -151,31 +145,13 @@ export type AnimeUpdateErrorType =
     | "MAL_API_UPDATE_FAILED"
     | "UNKNOWN_ERROR";
 
-export interface AnimeUpdateStatus {
-    id: number;
-    plexID: number;
-    malID?: number;
-    status: AnimeUpdateStatusType;
-    errorType?: AnimeUpdateErrorType;
-    errorMessage?: string;
-    animeTitle?: string;
-    sourceDB?: string;
-    sourceID?: number;
-    seasonNum?: number;
-    episodeNum?: number;
-    timestamp: string | Date;
-}
-
 export interface PlexHistoryItem {
     plex: PlexPayloadMinimal;
-    status?: PlexStatusItem;
     animeUpdate?: TimelineAnimeUpdate;
-    animeUpdateStatus?: AnimeUpdateStatus;
 }
 
 export interface PlexPayloadListItem {
     plex: PlexPayloadMinimal;
-    status?: PlexStatusItem;
 }
 
 export interface FindPlexPayloadsResponse {

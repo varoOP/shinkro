@@ -10,12 +10,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/animeupdate"
-	"github.com/varoOP/shinkro/internal/animeupdatestatus"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/mapping"
 	"github.com/varoOP/shinkro/internal/plexsettings"
-	"github.com/varoOP/shinkro/internal/plexstatus"
 )
 
 type Service interface {
@@ -31,30 +29,26 @@ type Service interface {
 }
 
 type service struct {
-	log                      zerolog.Logger
-	repo                     domain.PlexRepo
-	plexettingsService       plexsettings.Service
-	animeService             anime.Service
-	mapService               mapping.Service
-	malauthService           malauth.Service
-	animeUpdateService       animeupdate.Service
-	animeUpdateStatusService animeupdatestatus.Service
-	plexStatusService        plexstatus.Service
-	bus                      EventBus.Bus
+	log                zerolog.Logger
+	repo               domain.PlexRepo
+	plexettingsService plexsettings.Service
+	animeService       anime.Service
+	mapService         mapping.Service
+	malauthService     malauth.Service
+	animeUpdateService animeupdate.Service
+	bus                EventBus.Bus
 }
 
-func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, animeUpdateStatusSvc animeupdatestatus.Service, plexStatusSvc plexstatus.Service, bus EventBus.Bus) Service {
+func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, bus EventBus.Bus) Service {
 	return &service{
-		log:                      log.With().Str("module", "plex").Logger(),
-		repo:                     repo,
-		plexettingsService:       plexsettingsSvc,
-		animeService:             animeSvc,
-		mapService:               mapSvc,
-		malauthService:           malauthSvc,
-		animeUpdateService:       animeUpdateSvc,
-		animeUpdateStatusService: animeUpdateStatusSvc,
-		plexStatusService:        plexStatusSvc,
-		bus:                      bus,
+		log:                log.With().Str("module", "plex").Logger(),
+		repo:               repo,
+		plexettingsService: plexsettingsSvc,
+		animeService:       animeSvc,
+		mapService:         mapSvc,
+		malauthService:     malauthSvc,
+		animeUpdateService: animeUpdateSvc,
+		bus:                bus,
 	}
 }
 
@@ -123,12 +117,11 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 	}
 
 	// Publish success event - Plex processing succeeded (metadata extraction worked, animeupdate was attempted)
-	// The actual MAL update success/failure is tracked separately in AnimeUpdateStatus
+	// The actual MAL update success/failure is tracked in animeUpdate.Status
 	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
-		PlexID:      plex.ID,
-		Plex:        plex,
-		AnimeUpdate: a,
-		Timestamp:   time.Now(),
+		PlexID:    plex.ID,
+		Plex:      plex,
+		Timestamp: time.Now(),
 	})
 
 	// Attempt MAL update - errors are handled by UpdateAnimeList and published as EventAnimeUpdateFailed
@@ -170,7 +163,7 @@ func (s *service) CountRateEvents(ctx context.Context) (int, error) {
 }
 
 func (s *service) GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error) {
-	// Get most recent Plex payloads
+	// Get most recent Plex payloads (now includes status fields)
 	plexPayloads, err := s.repo.GetRecent(ctx, limit)
 	if err != nil {
 		return nil, err
@@ -182,43 +175,8 @@ func (s *service) GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexH
 		plexIDs[i] = p.ID
 	}
 
-	// Get PlexStatus for all payloads
-	plexStatuses, err := s.plexStatusService.GetByPlexIDs(ctx, plexIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create map for quick lookup
-	statusMap := make(map[int64]*domain.PlexStatus)
-	for i := range plexStatuses {
-		statusMap[plexStatuses[i].PlexID] = &plexStatuses[i]
-	}
-
-	// Get AnimeUpdateStatus for all payloads (both success and failure)
-	animeUpdateStatuses, err := s.animeUpdateStatusService.GetByPlexIDs(ctx, plexIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create map for quick lookup (use most recent status per plexID)
-	animeUpdateStatusMap := make(map[int64]*domain.AnimeUpdateStatus)
-	for i := range animeUpdateStatuses {
-		status := &animeUpdateStatuses[i]
-		// If multiple statuses exist for same plexID, keep the most recent one
-		if existing, exists := animeUpdateStatusMap[status.PlexID]; !exists || status.Timestamp.After(existing.Timestamp) {
-			animeUpdateStatusMap[status.PlexID] = status
-		}
-	}
-
-	// Get AnimeUpdates only for successful ones
-	var successfulPlexIDs []int64
-	for _, status := range plexStatuses {
-		if status.Success {
-			successfulPlexIDs = append(successfulPlexIDs, status.PlexID)
-		}
-	}
-
-	animeUpdates, err := s.getAnimeUpdatesByPlexIDs(ctx, successfulPlexIDs)
+	// Get all AnimeUpdates (both success and failure - status is now in anime_update)
+	animeUpdates, err := s.getAnimeUpdatesByPlexIDs(ctx, plexIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -229,22 +187,16 @@ func (s *service) GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexH
 		animeUpdateMap[au.PlexId] = au
 	}
 
-	// Combine data
+	// Combine data - status is now in plex and animeUpdate directly
 	items := make([]domain.PlexHistoryItem, 0, len(plexPayloads))
 	for _, plex := range plexPayloads {
 		item := domain.PlexHistoryItem{
-			Plex:   plex,
-			Status: statusMap[plex.ID],
+			Plex: plex,
 		}
 
-		// Add AnimeUpdate for successful ones
+		// Add AnimeUpdate if exists (now includes status fields)
 		if animeUpdate, exists := animeUpdateMap[plex.ID]; exists {
 			item.AnimeUpdate = animeUpdate
-		}
-
-		// Add AnimeUpdateStatus for all (success and failure)
-		if animeUpdateStatus, exists := animeUpdateStatusMap[plex.ID]; exists {
-			item.AnimeUpdateStatus = animeUpdateStatus
 		}
 
 		items = append(items, item)

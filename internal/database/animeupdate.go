@@ -36,8 +36,8 @@ func (repo *AnimeUpdateRepo) Store(ctx context.Context, r *domain.AnimeUpdate) e
 
 	queryBuilder := repo.db.squirrel.
 		Insert("anime_update").
-		Columns("mal_id", "source_db", "source_id", "episode_num", "season_num", "time_stamp", "list_details", "list_status", "plex_id").
-		Values(r.MALId, r.SourceDB, r.SourceId, r.EpisodeNum, r.SeasonNum, r.Timestamp, string(listDetails), string(listStatus), r.PlexId).
+		Columns("mal_id", "source_db", "source_id", "episode_num", "season_num", "time_stamp", "list_details", "list_status", "plex_id", "status", "error_type", "error_message").
+		Values(r.MALId, r.SourceDB, r.SourceId, r.EpisodeNum, r.SeasonNum, r.Timestamp, string(listDetails), string(listStatus), r.PlexId, r.Status, r.ErrorType, r.ErrorMessage).
 		Suffix("RETURNING id").RunWith(repo.db.handler)
 
 	var retID int64
@@ -86,7 +86,7 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 		GroupBy("mal_id")
 
 	queryBuilder := repo.db.squirrel.
-		Select("au.id, au.mal_id, au.source_db, au.source_id, au.episode_num, au.season_num, au.time_stamp, au.list_details, au.list_status, au.plex_id").
+		Select("au.id, au.mal_id, au.source_db, au.source_id, au.episode_num, au.season_num, au.time_stamp, au.list_details, au.list_status, au.plex_id, au.status, au.error_type, au.error_message").
 		FromSelect(latest, "latest").
 		Join("anime_update au ON latest.mal_id = au.mal_id AND latest.max_ts = au.time_stamp").
 		OrderBy("au.time_stamp DESC").
@@ -107,7 +107,8 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 	for rows.Next() {
 		var au domain.AnimeUpdate
 		var listDetailsBytes, listStatusBytes []byte
-		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+		var status, errorType, errorMessage sql.NullString
+		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId, &status, &errorType, &errorMessage); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
 		}
 		if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
@@ -116,6 +117,15 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 		if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
 			return nil, errors.Wrap(err, "error unmarshalling list_status")
 		}
+		if status.Valid {
+			au.Status = domain.AnimeUpdateStatusType(status.String)
+		}
+		if errorType.Valid {
+			au.ErrorType = domain.AnimeUpdateErrorType(errorType.String)
+		}
+		if errorMessage.Valid {
+			au.ErrorMessage = errorMessage.String
+		}
 		updates = append(updates, &au)
 	}
 	return updates, nil
@@ -123,7 +133,7 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 
 func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id, status, error_type, error_message").
 		From("anime_update").
 		Where("plex_id = ?", plexID).
 		OrderBy("time_stamp DESC").
@@ -137,7 +147,8 @@ func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*do
 	row := repo.db.handler.QueryRowContext(ctx, query, args...)
 	var au domain.AnimeUpdate
 	var listDetailsBytes, listStatusBytes []byte
-	if err := row.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+	var status, errorType, errorMessage sql.NullString
+	if err := row.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId, &status, &errorType, &errorMessage); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // No update for this plex_id
 		}
@@ -149,6 +160,15 @@ func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*do
 	if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
 		return nil, errors.Wrap(err, "error unmarshalling list_status")
 	}
+	if status.Valid {
+		au.Status = domain.AnimeUpdateStatusType(status.String)
+	}
+	if errorType.Valid {
+		au.ErrorType = domain.AnimeUpdateErrorType(errorType.String)
+	}
+	if errorMessage.Valid {
+		au.ErrorMessage = errorMessage.String
+	}
 	return &au, nil
 }
 
@@ -158,7 +178,7 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 	}
 
 	queryBuilder := repo.db.squirrel.
-		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id").
+		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id, status, error_type, error_message").
 		From("anime_update").
 		Where(sq.Eq{"plex_id": plexIDs}).
 		OrderBy("time_stamp DESC")
@@ -180,7 +200,8 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 	for rows.Next() {
 		var au domain.AnimeUpdate
 		var listDetailsBytes, listStatusBytes []byte
-		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId); err != nil {
+		var status, errorType, errorMessage sql.NullString
+		if err := rows.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId, &status, &errorType, &errorMessage); err != nil {
 			return nil, errors.Wrap(err, "error scanning row")
 		}
 		if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
@@ -188,6 +209,15 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 		}
 		if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
 			return nil, errors.Wrap(err, "error unmarshalling list_status")
+		}
+		if status.Valid {
+			au.Status = domain.AnimeUpdateStatusType(status.String)
+		}
+		if errorType.Valid {
+			au.ErrorType = domain.AnimeUpdateErrorType(errorType.String)
+		}
+		if errorMessage.Valid {
+			au.ErrorMessage = errorMessage.String
 		}
 		updates = append(updates, &au)
 	}

@@ -154,15 +154,20 @@ export const PlexPayloads = () => {
                 accessorKey: "status",
                 id: "status",
                 cell: ({ row }) => {
-                    const status = row.original.status;
-                    if (!status) {
+                    // Read from consolidated fields
+                    const plex = row.original.plex;
+                    const plexSuccess = plex?.success;
+                    const errorType = plex?.errorType;
+                    const errorMsg = plex?.errorMsg;
+                    
+                    if (plexSuccess === undefined || plexSuccess === null) {
                         return (
                             <Tooltip label="Failed">
                                 <FaTimesCircle size={20} color="red" />
                             </Tooltip>
                         );
                     }
-                    if (status.success) {
+                    if (plexSuccess === true) {
                         return (
                             <Tooltip label="Success">
                                 <FaCheckCircle size={20} color="green" />
@@ -170,9 +175,9 @@ export const PlexPayloads = () => {
                         );
                     }
                     // Build tooltip with errorType and errorMessage
-                    const tooltipLabel = status.errorType && status.errorMsg
-                        ? `${status.errorType}: ${status.errorMsg}`
-                        : status.errorMsg || status.errorType || "Failed";
+                    const tooltipLabel = errorType && errorMsg
+                        ? `${errorType}: ${errorMsg}`
+                        : errorMsg || errorType || "Failed";
                     return (
                         <Tooltip label={tooltipLabel}>
                             <FaTimesCircle size={20} color="red" />

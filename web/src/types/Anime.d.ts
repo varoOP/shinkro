@@ -22,4 +22,12 @@ export interface TimelineAnimeUpdate {
     listDetails?: {
         totalEpisodeNum?: number;
     };
+    // Status fields (consolidated from anime_update_status table)
+    status?: AnimeUpdateStatusType;
+    errorType?: AnimeUpdateErrorType;
+    errorMessage?: string;
+    sourceDB?: string;
+    sourceID?: number;
+    seasonNum?: number;
+    episodeNum?: number;
 }

@@ -131,6 +131,9 @@ func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate,
 
 	s.log.Info().Interface("status", anime.ListStatus).Msg("MyAnimeList Updated Successfully")
 
+	// Set status to SUCCESS before storing
+	anime.Status = domain.AnimeUpdateStatusSuccess
+	
 	// Store the update
 	if err := s.Store(ctx, anime); err != nil {
 		return err
@@ -169,8 +172,18 @@ func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeU
 	return s.updateAndStore(ctx, anime, isScrobble)
 }
 
-// publishAnimeUpdateFailed publishes failure event with detailed context
+// publishAnimeUpdateFailed publishes failure event and stores failed anime_update record
 func (s *service) publishAnimeUpdateFailed(anime *domain.AnimeUpdate, errorType domain.AnimeUpdateErrorType, errorMessage string) {
+	// Set status fields for failed update
+	anime.Status = domain.AnimeUpdateStatusFailed
+	anime.ErrorType = errorType
+	anime.ErrorMessage = errorMessage
+	
+	// Store the failed update record
+	if err := s.Store(context.Background(), anime); err != nil {
+		s.log.Error().Err(err).Msg("failed to store anime update failure record")
+	}
+	
 	s.bus.Publish(domain.EventAnimeUpdateFailed, &domain.AnimeUpdateFailedEvent{
 		AnimeUpdate:  anime,
 		ErrorType:    errorType,

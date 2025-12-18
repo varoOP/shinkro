@@ -21,6 +21,8 @@ export interface TimelineAnimeUpdate {
     };
     listDetails?: {
         totalEpisodeNum?: number;
+        title?: string;
+        pictureUrl?: string;
     };
     // Status fields (consolidated from anime_update_status table)
     status?: AnimeUpdateStatusType;

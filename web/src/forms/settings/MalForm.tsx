@@ -4,7 +4,7 @@ import {MalAuth} from "@app/types/MalAuth";
 import {useMutation} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient.ts";
 import {displayNotification} from "@components/notifications";
-import {useState} from "react";
+import {useState, useEffect, useRef} from "react";
 import {baseUrl, CopyTextToClipboard} from "@utils/index";
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
     const [copied, setCopied] = useState(false);
     const [copyError, setCopyError] = useState(false);
+    const isModalOpenRef = useRef(opened);
     const appRedirectURL = `${window.location.origin}${baseUrl()}malauth/callback`
 
     const form = useForm<MalAuth>({
@@ -33,6 +34,11 @@ export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
     const mutation = useMutation({
         mutationFn: APIClient.malauth.start,
         onSuccess: (data) => {
+            // Only execute side effects if modal is still open
+            if (!isModalOpenRef.current) {
+                return;
+            }
+            
             const url = data?.url;
             if (url) {
                 setLoading(true);
@@ -40,13 +46,29 @@ export const MalForm = ({opened, onClose, loading, setLoading}: Props) => {
             }
         },
         onError: (error) => {
+            // Only show error if modal is still open
+            if (!isModalOpenRef.current) {
+                return;
+            }
+            
             displayNotification({
                 title: "MyAnimeList Authentication Failed",
                 message: error.message || "Could not start MyAnimeList authentication",
                 type: "error",
             });
         },
-    })
+    });
+
+    // Keep ref in sync with opened prop and reset mutation when modal closes
+    useEffect(() => {
+        isModalOpenRef.current = opened;
+        
+        // Reset mutation state when modal closes to prevent stale callbacks
+        if (!opened) {
+            mutation.reset();
+            setLoading(false);
+        }
+    }, [opened, mutation, setLoading]);
 
     const handleFormSubmit = (mal: MalAuth) => {
         mutation.mutate(mal);

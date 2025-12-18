@@ -4,8 +4,7 @@ import {
     PlexOAuthPollResponse,
     PlexOAuthStartResponse,
     PlexLibraryResponse, PlexServerResponse,
-    PlexHistoryRequest,
-    PlexHistoryResponse
+    PlexHistoryItem
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
@@ -328,17 +327,9 @@ export const APIClient = {
         getCounts: () =>
             appClient.Get<{countScrobble: number, countRate: number}>("api/plex/count"),
 
-        history: (opts: PlexHistoryRequest = {}) => appClient.Get<PlexHistoryResponse>("api/plex/history", {
+        history: (opts: { limit?: number } = {}) => appClient.Get<PlexHistoryItem[]>("api/plex/history", {
             queryString: {
-                type: opts.type,
                 limit: opts.limit,
-                cursor: opts.cursor,
-                offset: opts.offset,
-                search: opts.search,
-                status: opts.status,
-                event: opts.event,
-                from: opts.from,
-                to: opts.to,
             }
         }),
     },

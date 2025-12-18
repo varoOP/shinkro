@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import {TfiReload} from "react-icons/tfi";
 import {useForm} from "@mantine/form";
-import {useEffect, useState} from "react";
+import {useEffect, useState, useRef} from "react";
 import {
     PlexConfig,
     PlexServer,
@@ -62,6 +62,9 @@ export const PlexSettings = ({
         client_id: string;
         code: string;
     } | null>(null);
+    const isModalOpenRef = useRef(opened);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Servers state and selected server (using Select)
     const [servers, setServers] = useState<PlexServerResponse | null>(null);
@@ -73,6 +76,25 @@ export const PlexSettings = ({
     const [libraries, setLibraries] = useState<PlexLibrary[]>([]);
     const [loadingLibraries, setLoadingLibraries] = useState(false);
     const [testingConnection, setTestingConnection] = useState(false);
+
+    // Keep ref in sync with opened prop and stop polling when modal closes
+    useEffect(() => {
+        isModalOpenRef.current = opened;
+        
+        // Stop polling when modal closes
+        if (!opened) {
+            setPolling(false);
+            setOauthInfo(null);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+        }
+    }, [opened]);
 
     useEffect(() => {
         if (defaultValues && Object.keys(defaultValues).length !== 0) {
@@ -124,19 +146,49 @@ export const PlexSettings = ({
 
     useEffect(() => {
         if (!polling || !oauthInfo) return;
+        
+        // Don't start polling if modal is closed
+        if (!isModalOpenRef.current) {
+            setPolling(false);
+            setOauthInfo(null);
+            return;
+        }
+        
         let timeoutReached = false;
-        const timeout = setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
             timeoutReached = true;
             setPolling(false);
-            displayNotification({
-                title: "Timeout",
-                message: "Authentication with Plex timed out after 60 seconds",
-                type: "error",
-            });
+            setOauthInfo(null);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            // Only show timeout notification if modal is still open
+            if (isModalOpenRef.current) {
+                displayNotification({
+                    title: "Timeout",
+                    message: "Authentication with Plex timed out after 60 seconds",
+                    type: "error",
+                });
+            }
         }, 60000);
 
-        const interval = setInterval(async () => {
-            if (timeoutReached) return;
+        intervalRef.current = setInterval(async () => {
+            // Stop polling if modal is closed or timeout reached
+            if (timeoutReached || !isModalOpenRef.current) {
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                    timeoutRef.current = null;
+                }
+                setPolling(false);
+                setOauthInfo(null);
+                return;
+            }
+            
             try {
                 const result = await APIClient.plex.pollOAuth(
                     oauthInfo.pin_id,
@@ -146,8 +198,24 @@ export const PlexSettings = ({
                 if (result.message === "waiting for auth") {
                     return;
                 }
-                clearInterval(interval);
-                clearTimeout(timeout);
+                
+                // Clear intervals
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                    timeoutRef.current = null;
+                }
+                
+                // Only process success if modal is still open
+                if (!isModalOpenRef.current) {
+                    setPolling(false);
+                    setOauthInfo(null);
+                    return;
+                }
+                
                 setPolling(false);
                 setOauthInfo(null);
                 setAuthenticated(true)
@@ -163,22 +231,41 @@ export const PlexSettings = ({
                     type: "success",
                 });
             } catch (err) {
+                // Clear intervals on error
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                    timeoutRef.current = null;
+                }
+                
                 setAuthenticated(false);
-                const error = err as Error;
-                clearInterval(interval);
-                clearTimeout(timeout);
                 setPolling(false);
-                displayNotification({
-                    title: "Plex Login Failed",
-                    message: error.message || "Polling error",
-                    type: "error",
-                });
+                setOauthInfo(null);
+                
+                // Only show error notification if modal is still open
+                if (isModalOpenRef.current) {
+                    const error = err as Error;
+                    displayNotification({
+                        title: "Plex Login Failed",
+                        message: error.message || "Polling error",
+                        type: "error",
+                    });
+                }
             }
         }, 1000);
 
         return () => {
-            clearInterval(interval);
-            clearTimeout(timeout);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
         };
     }, [polling, oauthInfo, form]);
 

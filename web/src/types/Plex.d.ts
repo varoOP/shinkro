@@ -102,20 +102,6 @@ export interface PlexLibraryLocation {
     path: string;
 }
 
-// Unified Plex History API types
-export type PlexHistoryType = "timeline" | "table";
-
-export interface PlexHistoryRequest {
-    type?: PlexHistoryType;
-    limit?: number;
-    cursor?: string;
-    offset?: number;
-    search?: string;
-    status?: string;
-    event?: string;
-    from?: string;
-    to?: string;
-}
 
 export interface PlexMetadataMinimal {
     librarySectionTitle?: string;
@@ -132,11 +118,17 @@ export interface PlexPayloadMinimal {
     [key: string]: any;
 }
 
+export type PlexErrorType = 
+    | "AGENT_NOT_SUPPORTED"
+    | "EXTRACTION_FAILED"
+    | "UNKNOWN_ERROR";
+
 export interface PlexStatusItem {
     id: number;
     title?: string;
     event?: string;
     success: boolean;
+    errorType?: PlexErrorType;
     errorMsg?: string;
     plexID: number;
     timestamp: string | Date;
@@ -144,19 +136,34 @@ export interface PlexStatusItem {
 
 import type { TimelineAnimeUpdate } from "./Anime";
 
+export type AnimeUpdateStatusType = "PENDING" | "SUCCESS" | "FAILED";
+
+export type AnimeUpdateErrorType = 
+    | "MAL_AUTH_FAILED"
+    | "MAPPING_NOT_FOUND"
+    | "ANIME_NOT_IN_DB"
+    | "MAL_API_FETCH_FAILED"
+    | "MAL_API_UPDATE_FAILED"
+    | "UNKNOWN_ERROR";
+
+export interface AnimeUpdateStatus {
+    id: number;
+    plexID: number;
+    malID?: number;
+    status: AnimeUpdateStatusType;
+    errorType?: AnimeUpdateErrorType;
+    errorMessage?: string;
+    animeTitle?: string;
+    sourceDB?: string;
+    sourceID?: number;
+    seasonNum?: number;
+    episodeNum?: number;
+    timestamp: string | Date;
+}
+
 export interface PlexHistoryItem {
     plex: PlexPayloadMinimal;
     status?: PlexStatusItem;
     animeUpdate?: TimelineAnimeUpdate;
-}
-
-export interface PlexHistoryPagination {
-    hasNext?: boolean;
-    next?: string;
-    totalCount?: number;
-}
-
-export interface PlexHistoryResponse {
-    data: PlexHistoryItem[];
-    pagination: PlexHistoryPagination;
+    animeUpdateStatus?: AnimeUpdateStatus;
 }

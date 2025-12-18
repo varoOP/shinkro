@@ -137,7 +137,7 @@ func main() {
 			plexStatusService        = plexstatus.NewService(log, plexStatusRepo)
 			animeUpdateStatusService = animeupdatestatus.NewService(log, animeUpdateStatusRepo)
 			animeUpdateService       = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
-			plexService              = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, plexStatusService, bus)
+			plexService              = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, animeUpdateStatusService, plexStatusService, bus)
 			userService              = user.NewService(userRepo, log)
 			authService              = auth.NewService(log, userService)
 			apiService               = api.NewService(log, apiRepo)

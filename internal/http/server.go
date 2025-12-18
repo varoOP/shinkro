@@ -14,8 +14,8 @@ import (
 	"github.com/rs/zerolog/hlog"
 
 	"github.com/varoOP/shinkro/internal/config"
-	"github.com/varoOP/shinkro/pkg/sse"
 	"github.com/varoOP/shinkro/internal/database"
+	"github.com/varoOP/shinkro/pkg/sse"
 	"github.com/varoOP/shinkro/web"
 )
 

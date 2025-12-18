@@ -19,7 +19,7 @@ type plexService interface {
 	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
-	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
+	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
 }
 
 type plexHandler struct {
@@ -145,39 +145,15 @@ func (h plexHandler) getCounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h plexHandler) getHistory(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters
-	limit := 20
+	// Parse limit parameter
+	limit := 5
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if n, err := strconv.Atoi(l); err == nil && n > 0 {
 			limit = n
 		}
 	}
 
-	offset := 0
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
-			offset = n
-		}
-	}
-
-	req := &domain.PlexHistoryRequest{
-		Limit:    limit,
-		Offset:   offset,
-		Cursor:   r.URL.Query().Get("cursor"),
-		Search:   r.URL.Query().Get("search"),
-		Status:   r.URL.Query().Get("status"),
-		Event:    r.URL.Query().Get("event"),
-		FromDate: r.URL.Query().Get("from"),
-		ToDate:   r.URL.Query().Get("to"),
-		Type:     r.URL.Query().Get("type"),
-	}
-
-	// Default to "table" if not specified
-	if req.Type == "" {
-		req.Type = "table"
-	}
-
-	response, err := h.service.GetPlexHistory(r.Context(), req)
+	items, err := h.service.GetPlexHistory(r.Context(), limit)
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
 			"code":    "INTERNAL_SERVER_ERROR",
@@ -186,5 +162,5 @@ func (h plexHandler) getHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.encoder.StatusResponse(w, http.StatusOK, response)
+	h.encoder.StatusResponse(w, http.StatusOK, items)
 }

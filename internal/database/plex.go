@@ -288,7 +288,25 @@ func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*dom
 }
 
 func (repo *PlexRepo) Delete(ctx context.Context, req *domain.DeletePlexRequest) error {
-	//TODO: Implement delete for plex payloads
+	if req.Id == 0 {
+		return errors.New("plex ID is required for deletion")
+	}
+
+	queryBuilder := repo.db.squirrel.
+		Delete("plex_payload").
+		Where(sq.Eq{"id": req.Id})
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return errors.Wrap(err, "error building delete query")
+	}
+
+	_, err = repo.db.handler.ExecContext(ctx, query, args...)
+	if err != nil {
+		return errors.Wrap(err, "error deleting plex payload")
+	}
+
+	repo.log.Debug().Int64("plexID", req.Id).Msg("plex payload deleted")
 	return nil
 }
 

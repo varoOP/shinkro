@@ -95,7 +95,7 @@ export const plexHistoryQueryOptions = (opts: {
 
 export const plexCountsQueryOptions = () =>
     queryOptions({
-        queryKey: ["plexCounts"],
+        queryKey: PlexKeys.counts(),
         queryFn: () => APIClient.plex.getCounts(),
     });
 

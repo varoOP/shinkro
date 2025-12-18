@@ -351,6 +351,8 @@ export const APIClient = {
                 status: opts.status,
             }
         }),
+
+        deletePayload: (id: number) => appClient.Delete(`api/plex/payloads/${id}`),
     },
 
     malauth: {

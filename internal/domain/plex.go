@@ -235,6 +235,7 @@ type GetPlexRequest struct {
 }
 
 type DeletePlexRequest struct {
+	Id        int64
 	OlderThan int
 }
 

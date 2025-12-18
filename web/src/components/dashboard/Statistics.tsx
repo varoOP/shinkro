@@ -16,7 +16,7 @@ export const StatisticsSection = ({
     animeUpdateLoading,
 }: StatisticsProps) => {
     return (
-        <Group gap="xl" justify="start">
+        <Group gap="lg" justify="start">
             <Card shadow="sm" padding="lg" radius="md" withBorder style={{minWidth: 350}}>
                 <Group gap="sm" mb="xs" justify="center">
                     <MdMovie size={24}/>

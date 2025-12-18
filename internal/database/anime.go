@@ -77,8 +77,21 @@ func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest)
 	anime := results[0]
 
 	if len(results) > 1 {
-		anime.MALId = 0
-		repo.log.Debug().Int("tvdbId", req.Id).Int("rowCount", len(results)).Msg("Multiple rows found, setting MAL ID to 0")
+		// Try to tie-break by type: if there's exactly one with type = 'tv', use that one
+		var tvResults []domain.Anime
+		for _, r := range results {
+			if r.AnimeType == "tv" {
+				tvResults = append(tvResults, r)
+			}
+		}
+
+		if len(tvResults) == 1 {
+			anime = tvResults[0]
+			repo.log.Debug().Int("tvdbId", req.Id).Int("rowCount", len(results)).Msg("Multiple rows found, using the single 'tv' type row")
+		} else {
+			anime.MALId = 0
+			repo.log.Debug().Int("tvdbId", req.Id).Int("rowCount", len(results)).Msg("Multiple rows found, setting MAL ID to 0")
+		}
 	}
 
 	return &anime, nil

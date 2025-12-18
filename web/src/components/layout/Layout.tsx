@@ -2,11 +2,10 @@ import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Titl
 import {useDisclosure} from "@mantine/hooks";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
-import {MdDarkMode, MdLightMode, MdSpaceDashboard, MdSettings} from "react-icons/md";
+import {MdDarkMode, MdLightMode} from "react-icons/md";
 import {FaDiscord, FaGithub, FaUser} from "react-icons/fa";
 import {GrHelpBook} from "react-icons/gr";
 import {BiLogOut} from "react-icons/bi";
-import {BsStack} from "react-icons/bs";
 import {SiMyanimelist, SiPlex} from "react-icons/si";
 import {FaSlidersH} from "react-icons/fa";
 import {useMutation, useQuery} from "@tanstack/react-query";
@@ -84,11 +83,6 @@ export const Layout = () => {
 
     const isDevOrNightly = config?.version && /dev|nightly/i.test(config.version);
 
-    const navIconFor = (name: string) => {
-        if (/^settings$/i.test(name)) return <MdSettings size={16} />;
-        if (/^logs$/i.test(name)) return <BsStack size={16} />;
-        return <MdSpaceDashboard size={16} />; // default for Dashboard and others
-    };
 
     const settingsData = [
         { label: 'General', icon: FaSlidersH, link: '/settings' },
@@ -195,7 +189,7 @@ export const Layout = () => {
                                 key={item.name + itemIdx}
                                 label={
                                     <Group gap={6} align="center">
-                                        {navIconFor(item.name)}
+                                        <item.icon size={16} />
                                         <Text fw={700}>{item.name}</Text>
                                     </Group>
                                 }
@@ -248,7 +242,7 @@ export const Layout = () => {
                                         component="button"
                                         label={
                                             <Group gap={6} align="center">
-                                                {navIconFor(item.name)}
+                                                <item.icon size={16} />
                                                 <Text fw={700}>{item.name}</Text>
                                             </Group>
                                         }

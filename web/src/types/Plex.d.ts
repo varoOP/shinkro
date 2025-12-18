@@ -107,6 +107,11 @@ export interface PlexMetadataMinimal {
     librarySectionTitle?: string;
     grandparentTitle?: string;
     title?: string;
+    index?: number;
+    parentIndex?: number;
+    type?: string;
+    guid?: string;
+    guids?: Array<{ id: string }>;
 }
 
 export interface PlexPayloadMinimal {
@@ -166,4 +171,14 @@ export interface PlexHistoryItem {
     status?: PlexStatusItem;
     animeUpdate?: TimelineAnimeUpdate;
     animeUpdateStatus?: AnimeUpdateStatus;
+}
+
+export interface PlexPayloadListItem {
+    plex: PlexPayloadMinimal;
+    status?: PlexStatusItem;
+}
+
+export interface FindPlexPayloadsResponse {
+    data: PlexPayloadListItem[];
+    count: number;
 }

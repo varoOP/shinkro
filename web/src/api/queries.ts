@@ -1,4 +1,4 @@
-import {queryOptions} from "@tanstack/react-query";
+import {queryOptions, keepPreviousData} from "@tanstack/react-query";
 import {APIClient} from "@api/APIClient";
 import {
     ApiKeys,
@@ -11,6 +11,7 @@ import {
     PlexKeys,
 } from "@api/query_keys";
 import { baseUrl } from "@utils";
+import type { ColumnFilter } from "@tanstack/react-table";
 
 export const ConfigQueryOptions = (enabled: boolean = true) =>
     queryOptions({
@@ -115,3 +116,49 @@ export const latestReleaseQueryOptions = () =>
         queryFn: () => APIClient.updates.getLatestRelease(),
         staleTime: 1000 * 60 * 60, // 1 hour
     });
+
+export const plexPayloadsQueryOptions = (
+    pageIndex: number,
+    pageSize: number,
+    filters: ColumnFilter[]
+) => {
+    const params: {
+        offset?: number;
+        limit?: number;
+        q?: string;
+        event?: string;
+        source?: string;
+        status?: string;
+    } = {
+        offset: pageIndex * pageSize,
+        limit: pageSize,
+    };
+
+    filters.forEach((filter) => {
+        if (!filter.value) return;
+
+        if (filter.id === "event") {
+            if (typeof filter.value === "string") {
+                params.event = filter.value;
+            }
+        } else if (filter.id === "source") {
+            if (typeof filter.value === "string") {
+                params.source = filter.value;
+            }
+        } else if (filter.id === "status") {
+            if (typeof filter.value === "string") {
+                params.status = filter.value;
+            }
+        } else if (filter.id === "payload") {
+            if (typeof filter.value === "string") {
+                params.q = filter.value;
+            }
+        }
+    });
+
+    return queryOptions({
+        queryKey: PlexKeys.history("table", { pageIndex, pageSize, filters }),
+        queryFn: () => APIClient.plex.findPayloads(params),
+        placeholderData: keepPreviousData,
+    });
+};

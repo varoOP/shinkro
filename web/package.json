@@ -20,6 +20,7 @@
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-router": "^1.141.4",
+    "@tanstack/react-table": "^8.21.3",
     "@types/node": "^25.0.3",
     "@types/react-portal": "^4.0.7",
     "date-fns": "^4.1.0",

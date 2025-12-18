@@ -48,4 +48,9 @@ export const PlexKeys = {
         type,
         params,
     ] as const,
+    payloads: (params: Record<string, unknown>) => [
+        ...PlexKeys.all,
+        "payloads",
+        params,
+    ] as const,
 };

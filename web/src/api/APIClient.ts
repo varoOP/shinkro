@@ -4,7 +4,8 @@ import {
     PlexOAuthPollResponse,
     PlexOAuthStartResponse,
     PlexLibraryResponse, PlexServerResponse,
-    PlexHistoryItem
+    PlexHistoryItem,
+    FindPlexPayloadsResponse
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
@@ -330,6 +331,24 @@ export const APIClient = {
         history: (opts: { limit?: number } = {}) => appClient.Get<PlexHistoryItem[]>("api/plex/history", {
             queryString: {
                 limit: opts.limit,
+            }
+        }),
+
+        findPayloads: (opts: {
+            offset?: number;
+            limit?: number;
+            q?: string;
+            event?: string;
+            source?: string;
+            status?: string;
+        } = {}) => appClient.Get<FindPlexPayloadsResponse>("api/plex/payloads", {
+            queryString: {
+                offset: opts.offset,
+                limit: opts.limit,
+                q: opts.q,
+                event: opts.event,
+                source: opts.source,
+                status: opts.status,
             }
         }),
     },

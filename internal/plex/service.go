@@ -27,6 +27,7 @@ type Service interface {
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
+	FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error)
 }
 
 type service struct {
@@ -121,17 +122,21 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 		return err
 	}
 
-	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
-	if err != nil {
-		return err
-	}
-
+	// Publish success event - Plex processing succeeded (metadata extraction worked, animeupdate was attempted)
+	// The actual MAL update success/failure is tracked separately in AnimeUpdateStatus
 	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
 		PlexID:      plex.ID,
 		Plex:        plex,
 		AnimeUpdate: a,
 		Timestamp:   time.Now(),
 	})
+
+	// Attempt MAL update - errors are handled by UpdateAnimeList and published as EventAnimeUpdateFailed
+	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
+	if err != nil {
+		// Don't return error - Plex processing succeeded, MAL update failure is tracked separately
+		return nil
+	}
 
 	return nil
 }
@@ -254,4 +259,8 @@ func (s *service) getAnimeUpdatesByPlexIDs(ctx context.Context, plexIDs []int64)
 	}
 
 	return s.animeUpdateService.GetByPlexIDs(ctx, plexIDs)
+}
+
+func (s *service) FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error) {
+	return s.repo.FindAllWithFilters(ctx, params)
 }

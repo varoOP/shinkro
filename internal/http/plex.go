@@ -21,6 +21,7 @@ type plexService interface {
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
 	FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error)
+	Delete(ctx context.Context, req *domain.DeletePlexRequest) error
 }
 
 type plexHandler struct {
@@ -41,6 +42,7 @@ func (h plexHandler) Routes(r chi.Router) {
 	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.postPlex)
 	r.Get("/history", h.getHistory)
 	r.Get("/payloads", h.getPayloads)
+	r.Delete("/payloads/{id}", h.deletePayload)
 }
 
 func (h plexHandler) getPlex(w http.ResponseWriter, r *http.Request) {
@@ -239,4 +241,29 @@ func (h plexHandler) getPayloads(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.encoder.StatusResponse(w, http.StatusOK, resp)
+}
+
+func (h plexHandler) deletePayload(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "BAD_REQUEST",
+			"message": "invalid plex ID",
+		})
+		return
+	}
+
+	err = h.service.Delete(r.Context(), &domain.DeletePlexRequest{Id: id})
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
+			"code":    "INTERNAL_SERVER_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
+		"message": "plex payload deleted successfully",
+	})
 }

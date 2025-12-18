@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     useReactTable,
     getCoreRowModel,
@@ -32,9 +32,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { AuthContext } from "@utils/Context";
 import { Navigate } from "@tanstack/react-router";
 import { plexPayloadsQueryOptions } from "@api/queries";
+import { PlexKeys } from "@api/query_keys";
 import type { PlexPayloadListItem } from "@app/types/Plex";
 import { displayNotification } from "@components/notifications";
 import { formatEventName } from "@utils";
+import { APIClient } from "@api/APIClient";
+import { ConfirmDeleteIcon } from "@components/alerts/ConfirmDeleteIcon";
 
 export const PlexPayloads = () => {
     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
@@ -50,10 +53,33 @@ export const PlexPayloads = () => {
     const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
     const [selectedPayload, setSelectedPayload] = useState<PlexPayloadListItem | null>(null);
     const [opened, { open, close }] = useDisclosure(false);
+    const queryClient = useQueryClient();
 
     const { isLoading, error, data } = useQuery(
         plexPayloadsQueryOptions(pagination.pageIndex, pagination.pageSize, columnFilters)
     );
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: number) => APIClient.plex.deletePayload(id),
+        onSuccess: () => {
+            displayNotification({
+                title: "Success",
+                message: "Plex payload deleted successfully",
+                type: "success",
+            });
+            // Invalidate all related queries
+            queryClient.invalidateQueries({ queryKey: PlexKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: PlexKeys.timeline() });
+            queryClient.invalidateQueries({ queryKey: PlexKeys.counts() });
+        },
+        onError: (error: Error) => {
+            displayNotification({
+                title: "Error",
+                message: error.message || "Failed to delete plex payload",
+                type: "error",
+            });
+        },
+    });
 
     const columns = useMemo<ColumnDef<PlexPayloadListItem>[]>(
         () => [
@@ -131,21 +157,31 @@ export const PlexPayloads = () => {
                 },
             },
             {
-                header: "View Payload",
-                accessorKey: "view",
+                header: "Actions",
+                accessorKey: "actions",
                 cell: ({ row }) => {
+                    const plexId = row.original.plex.id;
                     return (
-                        <Tooltip label="View full payload">
-                            <ActionIcon
-                                variant="light"
-                                onClick={() => {
-                                    setSelectedPayload(row.original);
-                                    open();
-                                }}
-                            >
-                                <FaEye size={16} />
-                            </ActionIcon>
-                        </Tooltip>
+                        <Group gap="xs" justify="center">
+                            <Tooltip label="View full payload">
+                                <ActionIcon
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedPayload(row.original);
+                                        open();
+                                    }}
+                                >
+                                    <FaEye size={16} />
+                                </ActionIcon>
+                            </Tooltip>
+                            <ConfirmDeleteIcon
+                                onConfirm={() => deleteMutation.mutate(plexId)}
+                                title="Delete Plex Payload"
+                                message="This will also delete the related anime update record if it exists."
+                                loading={deleteMutation.isPending}
+                                variant="outline"
+                            />
+                        </Group>
                     );
                 },
             },

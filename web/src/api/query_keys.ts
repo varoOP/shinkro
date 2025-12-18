@@ -42,6 +42,9 @@ export const NotificationKeys = {
 
 export const PlexKeys = {
     all: ["plex"] as const,
+    lists: () => [...PlexKeys.all, "history", "table"] as const,
+    timeline: () => [...PlexKeys.all, "history", "timeline"] as const,
+    counts: () => [...PlexKeys.all, "counts"] as const,
     history: (type: "timeline" | "table", params: Record<string, unknown>) => [
         ...PlexKeys.all,
         "history",

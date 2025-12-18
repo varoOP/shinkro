@@ -27,6 +27,7 @@ type Service interface {
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
+	FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error)
 }
 
 type service struct {
@@ -254,4 +255,8 @@ func (s *service) getAnimeUpdatesByPlexIDs(ctx context.Context, plexIDs []int64)
 	}
 
 	return s.animeUpdateService.GetByPlexIDs(ctx, plexIDs)
+}
+
+func (s *service) FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error) {
+	return s.repo.FindAllWithFilters(ctx, params)
 }

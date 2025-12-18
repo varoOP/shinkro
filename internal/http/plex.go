@@ -20,6 +20,7 @@ type plexService interface {
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
 	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
+	FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error)
 }
 
 type plexHandler struct {
@@ -39,6 +40,7 @@ func (h plexHandler) Routes(r chi.Router) {
 	r.Get("/count", h.getCounts)
 	r.With(middleware.AllowContentType("application/json", "multipart/form-data"), parsePlexPayload).Post("/", h.postPlex)
 	r.Get("/history", h.getHistory)
+	r.Get("/payloads", h.getPayloads)
 }
 
 func (h plexHandler) getPlex(w http.ResponseWriter, r *http.Request) {
@@ -163,4 +165,78 @@ func (h plexHandler) getHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.encoder.StatusResponse(w, http.StatusOK, items)
+}
+
+func (h plexHandler) getPayloads(w http.ResponseWriter, r *http.Request) {
+	// Parse limit parameter
+	limit := uint64(20)
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.ParseUint(l, 10, 64); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	// Parse offset parameter
+	offset := uint64(0)
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.ParseUint(o, 10, 64); err == nil {
+			offset = n
+		}
+	}
+
+	// Parse search parameter
+	search := r.URL.Query().Get("q")
+
+	// Parse filters
+	eventStr := r.URL.Query().Get("event")
+	sourceStr := r.URL.Query().Get("source")
+	statusStr := r.URL.Query().Get("status")
+
+	var event domain.PlexEvent
+	if eventStr != "" {
+		event = domain.PlexEvent(eventStr)
+	}
+
+	var source domain.PlexPayloadSource
+	if sourceStr != "" {
+		source = domain.PlexPayloadSource(sourceStr)
+	}
+
+	var status *bool
+	if statusStr != "" {
+		switch statusStr {
+		case "success":
+			val := true
+			status = &val
+		case "failed":
+			val := false
+			status = &val
+		}
+	}
+
+	params := domain.PlexPayloadQueryParams{
+		Limit:  limit,
+		Offset: offset,
+		Search: search,
+		Filters: struct {
+			Event  domain.PlexEvent
+			Source domain.PlexPayloadSource
+			Status *bool
+		}{
+			Event:  event,
+			Source: source,
+			Status: status,
+		},
+	}
+
+	resp, err := h.service.FindAllWithFilters(r.Context(), params)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
+			"code":    "INTERNAL_SERVER_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, resp)
 }

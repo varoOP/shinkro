@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"regexp"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -51,6 +53,217 @@ func (repo *PlexRepo) Store(ctx context.Context, r *domain.Plex) error {
 
 func (repo *PlexRepo) FindAll(ctx context.Context) ([]*domain.Plex, error) {
 	return nil, nil
+}
+
+func (repo *PlexRepo) FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error) {
+	whereQueryBuilder := sq.And{}
+
+	// Apply filters
+	if params.Filters.Event != "" {
+		whereQueryBuilder = append(whereQueryBuilder, sq.Eq{"p.event": string(params.Filters.Event)})
+	}
+
+	if params.Filters.Source != "" {
+		whereQueryBuilder = append(whereQueryBuilder, sq.Eq{"p.source": string(params.Filters.Source)})
+	}
+
+	// Handle search query
+	if params.Search != "" {
+		search := strings.TrimSpace(params.Search)
+
+		// Check if search matches pattern db:id (e.g., "anidb:123" or "tvdb:456")
+		// Support partial matches (e.g., "anidb:12" matches "anidb:123")
+		dbIdPattern := regexp.MustCompile(`^(\w+):(\d+)$`)
+		if matches := dbIdPattern.FindStringSubmatch(search); len(matches) == 3 {
+			dbName := strings.ToLower(matches[1])
+			idStr := matches[2]
+
+			// Search in guid_string and guids JSON
+			// guid_string format: "com.plexapp.agents.hama://anidb-12345"
+			// guids JSON: [{"id": "tvdb://12345"}]
+			guidPattern := dbName + "-" + idStr + "%"
+			guidPattern2 := dbName + "://" + idStr + "%"
+			guidPattern3 := `%"` + dbName + `://` + idStr + `%"` // JSON format
+
+			whereQueryBuilder = append(whereQueryBuilder, sq.Or{
+				sq.Like{"p.guid_string": guidPattern},
+				sq.Like{"p.guid_string": guidPattern2},
+				sq.Like{"p.guids": guidPattern3},
+			})
+		} else {
+			// Fallback to title search
+			searchPattern := "%" + search + "%"
+			whereQueryBuilder = append(whereQueryBuilder, sq.Or{
+				sq.Like{"p.title": searchPattern},
+				sq.Like{"p.grand_parent_title": searchPattern},
+			})
+		}
+	}
+
+	// Build subquery for pagination
+	subQueryBuilder := repo.db.squirrel.
+		Select("p.id").
+		Distinct().
+		From("plex_payload p").
+		OrderBy("p.id DESC")
+
+	if params.Limit > 0 {
+		subQueryBuilder = subQueryBuilder.Limit(params.Limit)
+	} else {
+		subQueryBuilder = subQueryBuilder.Limit(20)
+	}
+
+	if params.Offset > 0 {
+		subQueryBuilder = subQueryBuilder.Offset(params.Offset)
+	}
+
+	if len(whereQueryBuilder) > 0 {
+		subQueryBuilder = subQueryBuilder.Where(whereQueryBuilder)
+	}
+
+	// Handle status filter - need to join with plex_status
+	if params.Filters.Status != nil {
+		subQueryBuilder = subQueryBuilder.
+			InnerJoin("plex_status ps ON p.id = ps.plex_id").
+			Where(sq.Eq{"ps.success": *params.Filters.Status})
+	}
+
+	subQuery, subArgs, err := subQueryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building subquery")
+	}
+
+	// Build count query - reuse whereQueryBuilder
+	countQueryBuilder := repo.db.squirrel.
+		Select("COUNT(DISTINCT p.id)").
+		From("plex_payload p")
+
+	if params.Filters.Status != nil {
+		countQueryBuilder = countQueryBuilder.
+			InnerJoin("plex_status ps ON p.id = ps.plex_id").
+			Where(sq.Eq{"ps.success": *params.Filters.Status})
+	}
+
+	if len(whereQueryBuilder) > 0 {
+		countQueryBuilder = countQueryBuilder.Where(whereQueryBuilder)
+	}
+
+	countQuery, countArgs, err := countQueryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building count query")
+	}
+
+	// Build main query
+	queryBuilder := repo.db.squirrel.
+		Select(
+			"p.id", "p.rating", "p.event", "p.source", "p.account_title", "p.guid_string", "p.guids",
+			"p.grand_parent_key", "p.grand_parent_title", "p.metadata_index", "p.library_section_title",
+			"p.parent_index", "p.title", "p.type", "p.time_stamp",
+			"ps.id", "ps.title", "ps.event", "ps.success", "ps.error_type", "ps.error_msg", "ps.plex_id", "ps.time_stamp",
+		).
+		From("plex_payload p").
+		OrderBy("p.id DESC").
+		Where("p.id IN ("+subQuery+")", subArgs...).
+		LeftJoin("plex_status ps ON p.id = ps.plex_id")
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	// Execute count query separately
+	var totalCount int
+	row := repo.db.handler.QueryRowContext(ctx, countQuery, countArgs...)
+	if err := row.Scan(&totalCount); err != nil {
+		return nil, errors.Wrap(err, "error scanning count")
+	}
+
+	allArgs := args
+
+	repo.log.Trace().Str("database", "plex.findAllWithFilters").Msgf("query: '%s', args: '%v'", query, allArgs)
+
+	resp := &domain.FindPlexPayloadsResponse{
+		Data:       make([]domain.PlexPayloadListItem, 0),
+		TotalCount: totalCount,
+	}
+
+	rows, err := repo.db.handler.QueryContext(ctx, query, allArgs...)
+	if err != nil {
+		return resp, errors.Wrap(err, "error executing query")
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return resp, errors.Wrap(err, "error rows find plex payloads")
+	}
+
+	for rows.Next() {
+		var p domain.Plex
+		var ps domain.PlexStatus
+		var rating sql.NullFloat64
+		var index, parent_index sql.NullInt32
+		var grandParentKey, grandParentTitle, title, guids, guid_string sql.NullString
+		var psID, psPlexID sql.NullInt64
+		var psTitle, psEvent, psErrorType, psErrorMsg sql.NullString
+		var psSuccess sql.NullBool
+		var psTimestamp sql.NullTime
+
+		if err := rows.Scan(
+			&p.ID, &rating, &p.Event, &p.Source, &p.Account.Title, &guid_string, &guids,
+			&grandParentKey, &grandParentTitle, &index, &p.Metadata.LibrarySectionTitle,
+			&parent_index, &title, &p.Metadata.Type, &p.TimeStamp,
+			&psID, &psTitle, &psEvent, &psSuccess, &psErrorType, &psErrorMsg, &psPlexID, &psTimestamp,
+		); err != nil {
+			return resp, errors.Wrap(err, "error scanning row")
+		}
+
+		// Unmarshal GUIDs
+		if guids.Valid && guids.String != "" {
+			err = json.Unmarshal([]byte(guids.String), &p.Metadata.GUID.GUIDS)
+			if err != nil {
+				return resp, errors.Wrap(err, "error unmarshaling guids")
+			}
+		}
+
+		p.Metadata.GUID.GUID = guid_string.String
+		if rating.Valid {
+			p.Rating = float32(rating.Float64)
+		}
+		p.Metadata.GrandparentKey = grandParentKey.String
+		p.Metadata.GrandparentTitle = grandParentTitle.String
+		if index.Valid {
+			p.Metadata.Index = int(index.Int32)
+		}
+		if parent_index.Valid {
+			p.Metadata.ParentIndex = int(parent_index.Int32)
+		}
+		p.Metadata.Title = title.String
+
+		// Handle PlexStatus
+		var status *domain.PlexStatus
+		if psID.Valid {
+			ps.ID = psID.Int64
+			ps.Title = psTitle.String
+			ps.Event = psEvent.String
+			ps.Success = psSuccess.Bool
+			if psErrorType.Valid {
+				ps.ErrorType = domain.PlexErrorType(psErrorType.String)
+			}
+			ps.ErrorMsg = psErrorMsg.String
+			ps.PlexID = psPlexID.Int64
+			if psTimestamp.Valid {
+				ps.TimeStamp = psTimestamp.Time
+			}
+			status = &ps
+		}
+
+		resp.Data = append(resp.Data, domain.PlexPayloadListItem{
+			Plex:   &p,
+			Status: status,
+		})
+	}
+
+	return resp, nil
 }
 
 func (repo *PlexRepo) Get(ctx context.Context, req *domain.GetPlexRequest) (*domain.Plex, error) {
@@ -188,4 +401,3 @@ func (repo *PlexRepo) GetRecent(ctx context.Context, limit int) ([]*domain.Plex,
 	}
 	return payloads, nil
 }
-

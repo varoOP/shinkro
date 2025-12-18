@@ -167,3 +167,13 @@ export interface PlexHistoryItem {
     animeUpdate?: TimelineAnimeUpdate;
     animeUpdateStatus?: AnimeUpdateStatus;
 }
+
+export interface PlexPayloadListItem {
+    plex: PlexPayloadMinimal;
+    status?: PlexStatusItem;
+}
+
+export interface FindPlexPayloadsResponse {
+    data: PlexPayloadListItem[];
+    count: number;
+}

@@ -14,6 +14,7 @@ import (
 type PlexRepo interface {
 	Store(ctx context.Context, plex *Plex) error
 	FindAll(ctx context.Context) ([]*Plex, error)
+	FindAllWithFilters(ctx context.Context, params PlexPayloadQueryParams) (*FindPlexPayloadsResponse, error)
 	Get(ctx context.Context, req *GetPlexRequest) (*Plex, error)
 	Delete(ctx context.Context, req *DeletePlexRequest) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
@@ -399,4 +400,25 @@ type PlexHistoryItem struct {
 	Status            *PlexStatus        `json:"status"`
 	AnimeUpdate       *AnimeUpdate       `json:"animeUpdate,omitempty"`
 	AnimeUpdateStatus *AnimeUpdateStatus `json:"animeUpdateStatus,omitempty"`
+}
+
+type PlexPayloadQueryParams struct {
+	Limit   uint64
+	Offset  uint64
+	Search  string
+	Filters struct {
+		Event  PlexEvent
+		Source PlexPayloadSource
+		Status *bool // nil = no filter, true = success, false = failed
+	}
+}
+
+type PlexPayloadListItem struct {
+	Plex   *Plex       `json:"plex"`
+	Status *PlexStatus `json:"status"`
+}
+
+type FindPlexPayloadsResponse struct {
+	Data       []PlexPayloadListItem `json:"data"`
+	TotalCount int                   `json:"count"`
 }

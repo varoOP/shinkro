@@ -2,8 +2,6 @@ package plex
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"strconv"
 	"time"
 
@@ -12,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/varoOP/shinkro/internal/anime"
 	"github.com/varoOP/shinkro/internal/animeupdate"
+	"github.com/varoOP/shinkro/internal/animeupdatestatus"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/malauth"
 	"github.com/varoOP/shinkro/internal/mapping"
@@ -27,32 +26,34 @@ type Service interface {
 	CheckPlex(ctx context.Context, plex *domain.Plex, ps *domain.PlexSettings) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
-	GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error)
+	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
 }
 
 type service struct {
-	log                zerolog.Logger
-	repo               domain.PlexRepo
-	plexettingsService plexsettings.Service
-	animeService       anime.Service
-	mapService         mapping.Service
-	malauthService     malauth.Service
-	animeUpdateService animeupdate.Service
-	plexStatusService  plexstatus.Service
-	bus                EventBus.Bus
+	log                      zerolog.Logger
+	repo                     domain.PlexRepo
+	plexettingsService       plexsettings.Service
+	animeService             anime.Service
+	mapService               mapping.Service
+	malauthService           malauth.Service
+	animeUpdateService       animeupdate.Service
+	animeUpdateStatusService animeupdatestatus.Service
+	plexStatusService        plexstatus.Service
+	bus                      EventBus.Bus
 }
 
-func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, plexStatusSvc plexstatus.Service, bus EventBus.Bus) Service {
+func NewService(log zerolog.Logger, plexsettingsSvc plexsettings.Service, repo domain.PlexRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, animeUpdateSvc animeupdate.Service, animeUpdateStatusSvc animeupdatestatus.Service, plexStatusSvc plexstatus.Service, bus EventBus.Bus) Service {
 	return &service{
-		log:                log.With().Str("module", "plex").Logger(),
-		repo:               repo,
-		plexettingsService: plexsettingsSvc,
-		animeService:       animeSvc,
-		mapService:         mapSvc,
-		malauthService:     malauthSvc,
-		animeUpdateService: animeUpdateSvc,
-		plexStatusService:  plexStatusSvc,
-		bus:                bus,
+		log:                      log.With().Str("module", "plex").Logger(),
+		repo:                     repo,
+		plexettingsService:       plexsettingsSvc,
+		animeService:             animeSvc,
+		mapService:               mapSvc,
+		malauthService:           malauthSvc,
+		animeUpdateService:       animeUpdateSvc,
+		animeUpdateStatusService: animeUpdateStatusSvc,
+		plexStatusService:        plexStatusSvc,
+		bus:                      bus,
 	}
 }
 
@@ -163,36 +164,9 @@ func (s *service) CountRateEvents(ctx context.Context) (int, error) {
 	return s.repo.CountRateEvents(ctx)
 }
 
-func (s *service) GetPlexHistory(ctx context.Context, req *domain.PlexHistoryRequest) (*domain.PlexHistoryResponse, error) {
-	// Get Plex payloads based on request type
-	var plexPayloads []*domain.Plex
-	var totalCount int
-	var err error
-	var hasMore bool
-	var nextCursor string
-
-	if req.Type == "timeline" {
-		// Use cursor-based pagination for timeline (with lookahead)
-		plexPayloads, err = s.getPlexWithCursor(ctx, req)
-		hasMore = len(plexPayloads) > req.Limit
-		if hasMore {
-			// Determine next cursor from the last item of the current page (index limit-1)
-			if req.Limit > 0 && len(plexPayloads) >= req.Limit {
-				anchor := plexPayloads[req.Limit-1]
-				nextCursor = s.encodeCursor(anchor.TimeStamp, anchor.ID)
-			}
-			// Trim to page size
-			plexPayloads = plexPayloads[:req.Limit]
-		} else if len(plexPayloads) > 0 {
-			// No more pages, but keep a stable nextCursor empty
-			nextCursor = ""
-		}
-		// totalCount not used for cursor-based
-	} else {
-		// Use offset-based pagination for table
-		plexPayloads, totalCount, err = s.getPlexWithOffset(ctx, req)
-	}
-
+func (s *service) GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error) {
+	// Get most recent Plex payloads
+	plexPayloads, err := s.repo.GetRecent(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +189,22 @@ func (s *service) GetPlexHistory(ctx context.Context, req *domain.PlexHistoryReq
 		statusMap[plexStatuses[i].PlexID] = &plexStatuses[i]
 	}
 
+	// Get AnimeUpdateStatus for all payloads (both success and failure)
+	animeUpdateStatuses, err := s.animeUpdateStatusService.GetByPlexIDs(ctx, plexIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create map for quick lookup (use most recent status per plexID)
+	animeUpdateStatusMap := make(map[int64]*domain.AnimeUpdateStatus)
+	for i := range animeUpdateStatuses {
+		status := &animeUpdateStatuses[i]
+		// If multiple statuses exist for same plexID, keep the most recent one
+		if existing, exists := animeUpdateStatusMap[status.PlexID]; !exists || status.Timestamp.After(existing.Timestamp) {
+			animeUpdateStatusMap[status.PlexID] = status
+		}
+	}
+
 	// Get AnimeUpdates only for successful ones
 	var successfulPlexIDs []int64
 	for _, status := range plexStatuses {
@@ -235,52 +225,27 @@ func (s *service) GetPlexHistory(ctx context.Context, req *domain.PlexHistoryReq
 	}
 
 	// Combine data
-	var items []domain.PlexHistoryItem
+	items := make([]domain.PlexHistoryItem, 0, len(plexPayloads))
 	for _, plex := range plexPayloads {
 		item := domain.PlexHistoryItem{
 			Plex:   plex,
 			Status: statusMap[plex.ID],
 		}
 
+		// Add AnimeUpdate for successful ones
 		if animeUpdate, exists := animeUpdateMap[plex.ID]; exists {
 			item.AnimeUpdate = animeUpdate
+		}
+
+		// Add AnimeUpdateStatus for all (success and failure)
+		if animeUpdateStatus, exists := animeUpdateStatusMap[plex.ID]; exists {
+			item.AnimeUpdateStatus = animeUpdateStatus
 		}
 
 		items = append(items, item)
 	}
 
-	// Build pagination info
-	pagination := s.buildPagination(req, len(items), totalCount)
-
-	// For timeline, compute next cursor and hasNext using lookahead
-	if req.Type == "timeline" {
-		pagination.HasPrev = req.Cursor != ""
-		pagination.HasNext = hasMore
-		if hasMore && nextCursor != "" {
-			pagination.Next = nextCursor
-		}
-	}
-
-	return &domain.PlexHistoryResponse{
-		Data:       items,
-		Pagination: pagination,
-	}, nil
-}
-
-func (s *service) getPlexWithCursor(ctx context.Context, req *domain.PlexHistoryRequest) ([]*domain.Plex, error) {
-	var cursor *domain.PlexCursor
-	if req.Cursor != "" {
-		decoded, err := s.decodeCursor(req.Cursor)
-		if err == nil {
-			cursor = decoded
-		}
-	}
-	return s.repo.GetWithCursor(ctx, req.Limit, cursor)
-}
-
-func (s *service) getPlexWithOffset(ctx context.Context, req *domain.PlexHistoryRequest) ([]*domain.Plex, int, error) {
-	payloads, totalCount, err := s.repo.GetWithOffset(ctx, req)
-	return payloads, totalCount, err
+	return items, nil
 }
 
 func (s *service) getAnimeUpdatesByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.AnimeUpdate, error) {
@@ -289,54 +254,4 @@ func (s *service) getAnimeUpdatesByPlexIDs(ctx context.Context, plexIDs []int64)
 	}
 
 	return s.animeUpdateService.GetByPlexIDs(ctx, plexIDs)
-}
-
-func (s *service) buildPagination(req *domain.PlexHistoryRequest, itemCount, totalCount int) domain.PlexHistoryPagination {
-	pagination := domain.PlexHistoryPagination{}
-
-	if req.Type == "timeline" {
-		// Cursor-based pagination
-		pagination.HasNext = itemCount == req.Limit
-		pagination.HasPrev = req.Cursor != ""
-	} else {
-		// Offset-based pagination
-		pagination.CurrentPage = (req.Offset / req.Limit) + 1
-		pagination.TotalPages = (totalCount + req.Limit - 1) / req.Limit
-		pagination.TotalItems = totalCount
-	}
-
-	return pagination
-}
-
-// encodeCursor creates a base64 JSON cursor from timestamp and id
-func (s *service) encodeCursor(ts time.Time, id int64) string {
-	payload := struct {
-		Time string `json:"t"`
-		ID   int64  `json:"i"`
-	}{Time: ts.UTC().Format(time.RFC3339Nano), ID: id}
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return ""
-	}
-	return base64.RawURLEncoding.EncodeToString(b)
-}
-
-// decodeCursor parses a base64 JSON cursor into PlexCursor
-func (s *service) decodeCursor(c string) (*domain.PlexCursor, error) {
-	b, err := base64.RawURLEncoding.DecodeString(c)
-	if err != nil {
-		return nil, err
-	}
-	var payload struct {
-		Time string `json:"t"`
-		ID   int64  `json:"i"`
-	}
-	if err := json.Unmarshal(b, &payload); err != nil {
-		return nil, err
-	}
-	ts, err := time.Parse(time.RFC3339Nano, payload.Time)
-	if err != nil {
-		return nil, err
-	}
-	return &domain.PlexCursor{TimeStamp: ts, ID: payload.ID}, nil
 }

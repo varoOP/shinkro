@@ -18,8 +18,7 @@ type PlexRepo interface {
 	Delete(ctx context.Context, req *DeletePlexRequest) error
 	CountScrobbleEvents(ctx context.Context) (int, error)
 	CountRateEvents(ctx context.Context) (int, error)
-	GetWithCursor(ctx context.Context, limit int, cursor *PlexCursor) ([]*Plex, error)
-	GetWithOffset(ctx context.Context, req *PlexHistoryRequest) ([]*Plex, int, error)
+	GetRecent(ctx context.Context, limit int) ([]*Plex, error)
 }
 
 type Plex struct {
@@ -340,7 +339,6 @@ func (p *Plex) IsMetadataAgentAllowed() (bool, PlexSupportedAgents) {
 	return false, ""
 }
 
-
 func (g *GUID) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &g.GUID); err == nil {
 		return nil
@@ -393,47 +391,12 @@ func (g *GUID) PlexAgent(mediaType PlexMediaType) (PlexSupportedDBs, int, error)
 }
 
 type PlexHistoryRequest struct {
-	// Pagination
-	Limit  int    `json:"limit"`
-	Offset int    `json:"offset,omitempty"` // For table pagination
-	Cursor string `json:"cursor,omitempty"` // For timeline pagination
-
-	// Search & Filter
-	Search   string `json:"search,omitempty"` // Search in title
-	Status   string `json:"status,omitempty"` // success, error, all
-	Event    string `json:"event,omitempty"`  // scrobble, rate, all
-	FromDate string `json:"from,omitempty"`   // ISO date
-	ToDate   string `json:"to,omitempty"`     // ISO date
-
-	// Response type
-	Type string `json:"type,omitempty"` // "timeline" or "table"
-}
-
-type PlexHistoryResponse struct {
-	Data       []PlexHistoryItem     `json:"data"`
-	Pagination PlexHistoryPagination `json:"pagination"`
+	Limit int `json:"limit"`
 }
 
 type PlexHistoryItem struct {
-	Plex        *Plex        `json:"plex"`
-	Status      *PlexStatus  `json:"status"`
-	AnimeUpdate *AnimeUpdate `json:"animeUpdate,omitempty"`
-}
-
-type PlexCursor struct {
-	TimeStamp time.Time `json:"timestamp"`
-	ID        int64     `json:"id"`
-}
-
-type PlexHistoryPagination struct {
-	// For timeline (cursor-based)
-	HasNext bool   `json:"hasNext,omitempty"`
-	HasPrev bool   `json:"hasPrev,omitempty"`
-	Next    string `json:"next,omitempty"`
-	Prev    string `json:"prev,omitempty"`
-
-	// For table (offset-based)
-	CurrentPage int `json:"currentPage,omitempty"`
-	TotalPages  int `json:"totalPages,omitempty"`
-	TotalItems  int `json:"totalItems,omitempty"`
+	Plex              *Plex              `json:"plex"`
+	Status            *PlexStatus        `json:"status"`
+	AnimeUpdate       *AnimeUpdate       `json:"animeUpdate,omitempty"`
+	AnimeUpdateStatus *AnimeUpdateStatus `json:"animeUpdateStatus,omitempty"`
 }

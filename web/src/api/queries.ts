@@ -84,19 +84,11 @@ export const ApikeysQueryOptions = () =>
     });
 
 export const plexHistoryQueryOptions = (opts: {
-    type?: "timeline" | "table";
     limit?: number;
-    cursor?: string;
-    offset?: number;
-    search?: string;
-    status?: string;
-    event?: string;
-    from?: string;
-    to?: string;
-} = { type: "timeline", limit: 10 }) =>
+} = { limit: 5 }) =>
     queryOptions({
-        queryKey: PlexKeys.history(opts.type ?? "timeline", opts),
-        queryFn: () => APIClient.plex.history(opts),
+        queryKey: PlexKeys.history("timeline", opts),
+        queryFn: () => APIClient.plex.history({ limit: opts.limit }),
     });
 
 export const plexCountsQueryOptions = () =>

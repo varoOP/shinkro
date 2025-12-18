@@ -137,7 +137,7 @@ function AuthenticatedLayout() {
 }
 
 export const MalAuthRoute = createRoute({
-    getParentRoute: () => AuthRoute,
+    getParentRoute: () => RootRoute,
     component: MalAuthCallback,
     path: "malauth/callback",
     pendingMs: 3000,

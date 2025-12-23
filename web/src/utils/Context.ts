@@ -7,6 +7,7 @@ interface SettingsType {
   scrollOnNewLog: boolean;
   indentLogLines: boolean;
   hideWrappedText: boolean;
+  timelineLimit: number;
 }
 
 interface AuthInfo {
@@ -25,6 +26,7 @@ const SettingsContextDefaults: SettingsType = {
   scrollOnNewLog: false,
   indentLogLines: false,
   hideWrappedText: false,
+  timelineLimit: 5,
 };
 
 // eslint-disable-next-line

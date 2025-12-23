@@ -1,5 +1,4 @@
 import {useQuery} from "@tanstack/react-query";
-import {useState} from "react";
 import {Container, Stack, Title, Group, Select} from "@mantine/core";
 import {
     plexCountsQueryOptions,
@@ -7,7 +6,7 @@ import {
     recentAnimeUpdatesQueryOptions,
     plexHistoryQueryOptions
 } from "@api/queries";
-import {AuthContext} from "@utils/Context";
+import {AuthContext, SettingsContext} from "@utils/Context";
 import {Navigate} from "@tanstack/react-router";
 import {StatisticsSection, RecentlyUpdatedAnimeCarousel, RecentTimeline} from "@components/dashboard";
 import type { RecentAnimeItem } from "@app/types/Anime";
@@ -22,7 +21,9 @@ export const Dashboard = () => {
     const {data: animeUpdateCount, isLoading: animeUpdateLoading} = useQuery(animeUpdateCountQueryOptions());
     const {data: recentAnime, isLoading: recentLoading} = useQuery(recentAnimeUpdatesQueryOptions(8));
 
-    const [limit, setLimit] = useState<number>(5);
+    const [settings, setSettings] = SettingsContext.use();
+    const limit = settings.timelineLimit;
+    
     const {data: timelineData, isLoading: timelineLoading} = useQuery(plexHistoryQueryOptions({ limit }));
 
     return (
@@ -52,15 +53,22 @@ export const Dashboard = () => {
                     <Title order={2}>Recent Activity Timeline</Title>
                     <Select
                         value={limit.toString()}
-                        onChange={(value) => setLimit(value ? parseInt(value, 10) : 5)}
+                        onChange={(value) => {
+                            const newLimit = value ? parseInt(value, 10) : 5;
+                            if ([5, 10, 25, 50].includes(newLimit)) {
+                                setSettings((prevState) => ({
+                                    ...prevState,
+                                    timelineLimit: newLimit,
+                                }));
+                            }
+                        }}
                         data={[
-                            { value: "5", label: "5" },
-                            { value: "10", label: "10" },
-                            { value: "25", label: "25" },
-                            { value: "50", label: "50" },
-                            { value: "100", label: "100" },
+                            { value: "5", label: "5 items" },
+                            { value: "10", label: "10 items" },
+                            { value: "25", label: "25 items" },
+                            { value: "50", label: "50 items" },
                         ]}
-                        style={{ width: 100 }}
+                        style={{ width: 115 }}
                     />
                 </Group>
                 <RecentTimeline 

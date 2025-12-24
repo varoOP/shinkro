@@ -8,7 +8,6 @@ import (
 type NotificationRepo interface {
 	List(ctx context.Context) ([]Notification, error)
 	Find(ctx context.Context, params NotificationQueryParams) ([]Notification, int, error)
-	FindByID(ctx context.Context, id int) (*Notification, error)
 	Store(ctx context.Context, notification *Notification) error
 	Update(ctx context.Context, notification *Notification) error
 	Delete(ctx context.Context, notificationID int) error

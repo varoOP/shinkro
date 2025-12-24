@@ -57,8 +57,8 @@ type PlexErrorType string
 
 const (
 	PlexErrorAgentNotSupported PlexErrorType = "AGENT_NOT_SUPPORTED"
-	PlexErrorExtractionFailed   PlexErrorType = "EXTRACTION_FAILED"
-	PlexErrorUnknown            PlexErrorType = "UNKNOWN_ERROR"
+	PlexErrorExtractionFailed  PlexErrorType = "EXTRACTION_FAILED"
+	PlexErrorUnknown           PlexErrorType = "UNKNOWN_ERROR"
 )
 
 type Metadata struct {
@@ -316,25 +316,41 @@ func (p *Plex) IsMediaTypeAllowed() bool {
 }
 
 func (p *Plex) SetAnimeFields(source PlexSupportedDBs, id int) AnimeUpdate {
+	// Extract title from Plex metadata
+	var title string
+	if p.Metadata.Type == PlexMovie {
+		title = p.Metadata.Title
+	} else {
+		// For episodes, the show title is in GrandparentTitle
+		title = p.Metadata.GrandparentTitle
+	}
+
+	// Initialize ListDetails with title from Plex payload
+	listDetails := ListDetails{
+		Title: title,
+	}
+
 	if p.Metadata.Type == PlexMovie {
 		return AnimeUpdate{
-			PlexId:     p.ID,
-			Plex:       p,
-			SourceId:   id,
-			SourceDB:   source,
-			Timestamp:  time.Now(),
-			SeasonNum:  1,
-			EpisodeNum: 1,
+			PlexId:      p.ID,
+			Plex:        p,
+			SourceId:    id,
+			SourceDB:    source,
+			Timestamp:   time.Now(),
+			SeasonNum:   1,
+			EpisodeNum:  1,
+			ListDetails: listDetails,
 		}
 	}
 	return AnimeUpdate{
-		PlexId:     p.ID,
-		Plex:       p,
-		SourceId:   id,
-		SourceDB:   source,
-		Timestamp:  time.Now(),
-		SeasonNum:  p.Metadata.ParentIndex,
-		EpisodeNum: p.Metadata.Index,
+		PlexId:      p.ID,
+		Plex:        p,
+		SourceId:    id,
+		SourceDB:    source,
+		Timestamp:   time.Now(),
+		SeasonNum:   p.Metadata.ParentIndex,
+		EpisodeNum:  p.Metadata.Index,
+		ListDetails: listDetails,
 	}
 }
 

@@ -13,7 +13,6 @@ import (
 
 type Service interface {
 	Find(ctx context.Context, params domain.NotificationQueryParams) ([]domain.Notification, int, error)
-	FindByID(ctx context.Context, id int) (*domain.Notification, error)
 	Store(ctx context.Context, notification *domain.Notification) error
 	Update(ctx context.Context, notification *domain.Notification) error
 	Delete(ctx context.Context, id int) error
@@ -47,16 +46,6 @@ func (s *service) Find(ctx context.Context, params domain.NotificationQueryParam
 	}
 
 	return notifications, count, err
-}
-
-func (s *service) FindByID(ctx context.Context, id int) (*domain.Notification, error) {
-	notification, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		s.log.Error().Err(err).Msgf("could not find notification by id: %v", id)
-		return nil, err
-	}
-
-	return notification, err
 }
 
 func (s *service) Store(ctx context.Context, notification *domain.Notification) error {

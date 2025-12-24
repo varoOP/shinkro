@@ -9,6 +9,7 @@ import {
     MappingKeys,
     LogKeys,
     PlexKeys,
+    AnimeUpdateKeys,
 } from "@api/query_keys";
 import { baseUrl } from "@utils";
 import type { ColumnFilter } from "@tanstack/react-table";
@@ -91,24 +92,47 @@ export const plexHistoryQueryOptions = (opts: {
         queryKey: PlexKeys.history("timeline", opts),
         queryFn: () => APIClient.plex.history({ limit: opts.limit }),
         placeholderData: keepPreviousData,
+        staleTime: 5000,
+        refetchOnWindowFocus: true,
     });
 
 export const plexCountsQueryOptions = () =>
     queryOptions({
         queryKey: PlexKeys.counts(),
         queryFn: () => APIClient.plex.getCounts(),
+        staleTime: 5000,
+        refetchOnWindowFocus: true,
     });
 
 export const animeUpdateCountQueryOptions = () =>
     queryOptions({
         queryKey: ["animeUpdateCount"],
         queryFn: () => APIClient.animeupdate.getCount(),
+        staleTime: 5000,
+        refetchOnWindowFocus: true,
     });
 
 export const recentAnimeUpdatesQueryOptions = (limit: number = 5) =>
     queryOptions({
         queryKey: ["recentAnimeUpdates", limit],
         queryFn: () => APIClient.animeupdate.getRecent(limit),
+        staleTime: 5000,
+        refetchOnWindowFocus: true,
+    });
+
+export const animeUpdateListQueryOptions = (params: {
+    limit?: number;
+    offset?: number;
+    q?: string;
+    status?: string;
+    errorType?: string;
+    source?: string;
+}) =>
+    queryOptions({
+        queryKey: AnimeUpdateKeys.lists(params),
+        queryFn: () => APIClient.animeupdate.getList(params),
+        placeholderData: keepPreviousData,
+        staleTime: 5000,
     });
 
 export const latestReleaseQueryOptions = () =>
@@ -161,5 +185,6 @@ export const plexPayloadsQueryOptions = (
         queryKey: PlexKeys.history("table", { pageIndex, pageSize, filters }),
         queryFn: () => APIClient.plex.findPayloads(params),
         placeholderData: keepPreviousData,
+        staleTime: 5000,
     });
 };

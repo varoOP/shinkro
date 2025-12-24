@@ -100,9 +100,13 @@ export const Layout = () => {
             <AppShell.Header className={classes.header}>
                 <Group h="100%" px={"md"} align="center" gap={0}>
                     <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" mr={"xs"}/>
-                    <Image src={Logo} style={{width: 60, height: 60, flexShrink: 0}}/>
+                    <Link to="/" style={{textDecoration: "none", color: "inherit", display: "flex", alignItems: "center"}}>
+                        <Image src={Logo} style={{width: 60, height: 60, flexShrink: 0}}/>
+                    </Link>
                     <Flex align="flex-end" gap={"xs"} ml={"xs"}>
-                        <Title order={3}>shinkro</Title>
+                        <Link to="/" style={{textDecoration: "none", color: "inherit"}}>
+                            <Title order={3}>shinkro</Title>
+                        </Link>
                         <Code fw={700} className={classes.code}>
                             {config?.version}
                         </Code>
@@ -189,7 +193,7 @@ export const Layout = () => {
                                 key={item.name + itemIdx}
                                 label={
                                     <Group gap={6} align="center">
-                                        <item.icon size={16} />
+                                        <item.icon size={20} />
                                         <Text fw={700}>{item.name}</Text>
                                     </Group>
                                 }
@@ -242,7 +246,7 @@ export const Layout = () => {
                                         component="button"
                                         label={
                                             <Group gap={6} align="center">
-                                                <item.icon size={16} />
+                                                <item.icon size={20} />
                                                 <Text fw={700}>{item.name}</Text>
                                             </Group>
                                         }

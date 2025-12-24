@@ -68,7 +68,7 @@ export const User = () => {
     return (
         <main>
             <SettingsSectionHeader
-                title="User Settings"
+                title="User"
                 description="Change your account password here."
             />
             <Stack mt="md" maw={800} mx="auto">

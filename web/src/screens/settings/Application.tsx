@@ -4,8 +4,64 @@ import {
     Text,
 } from "@mantine/core";
 import {useQuery} from "@tanstack/react-query";
+import {useRef, useState, useEffect, useLayoutEffect} from "react";
 import {ConfigQueryOptions} from "@api/queries.ts";
 import {SettingsSectionHeader} from "@screens/settings/components.tsx";
+import {InfoTooltip} from "@components/table/InfoTooltip";
+
+const TruncatedText = ({ value }: { value: string }) => {
+    const textRef = useRef<HTMLDivElement>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    const checkTruncation = (element: HTMLDivElement | null) => {
+        if (element) {
+            // Use requestAnimationFrame to ensure layout is complete
+            requestAnimationFrame(() => {
+                const isOverflowing = element.scrollWidth > element.clientWidth;
+                setIsTruncated(isOverflowing);
+            });
+        }
+    };
+
+    const setRef = (element: HTMLDivElement | null) => {
+        textRef.current = element;
+        checkTruncation(element);
+    };
+
+    useLayoutEffect(() => {
+        checkTruncation(textRef.current);
+    }, [value]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            checkTruncation(textRef.current);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const textElement = (
+        <div
+            ref={setRef}
+            style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'block',
+                width: '100%',
+                minWidth: 0,
+            }}
+        >
+            {value}
+        </div>
+    );
+
+    if (isTruncated) {
+        return <InfoTooltip label={value}>{textElement}</InfoTooltip>;
+    }
+
+    return textElement;
+};
 
 export const Application = () => {
     const {data: config} = useQuery(ConfigQueryOptions());
@@ -29,22 +85,26 @@ export const Application = () => {
     return (
         <main>
             <SettingsSectionHeader
-                title="Application Settings"
+                title="Application"
                 description="To change settings, edit config.toml found in the config directory and restart the application."
             />
             
             {config ? (
                 <Stack mt="md">
-                    <Table variant="vertical" verticalSpacing="sm" withTableBorder>
-                        <Table.Tbody>
-                            {rows.map((row, index) => (
-                                <Table.Tr key={index}>
-                                    <Table.Th w={180}>{row.label}</Table.Th>
-                                    <Table.Td>{row.value}</Table.Td>
-                                </Table.Tr>
-                            ))}
-                        </Table.Tbody>
-                    </Table>
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                        <Table variant="vertical" verticalSpacing="sm" withTableBorder style={{ minWidth: '100%' }}>
+                            <Table.Tbody>
+                                {rows.map((row, index) => (
+                                    <Table.Tr key={index}>
+                                        <Table.Th w={180} style={{ whiteSpace: 'nowrap' }}>{row.label}</Table.Th>
+                                        <Table.Td style={{ maxWidth: 0, width: '100%' }}>
+                                            <TruncatedText value={row.value} />
+                                        </Table.Td>
+                                    </Table.Tr>
+                                ))}
+                            </Table.Tbody>
+                        </Table>
+                    </div>
                 </Stack>
             ) : (
                 <Stack mt="md">

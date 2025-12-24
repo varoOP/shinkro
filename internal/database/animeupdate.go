@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strconv"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
@@ -83,12 +85,14 @@ func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]
 	latest := repo.db.squirrel.
 		Select("mal_id, MAX(time_stamp) AS max_ts").
 		From("anime_update").
+		Where(sq.Eq{"status": string(domain.AnimeUpdateStatusSuccess)}).
 		GroupBy("mal_id")
 
 	queryBuilder := repo.db.squirrel.
 		Select("au.id, au.mal_id, au.source_db, au.source_id, au.episode_num, au.season_num, au.time_stamp, au.list_details, au.list_status, au.plex_id, au.status, au.error_type, au.error_message").
 		FromSelect(latest, "latest").
 		Join("anime_update au ON latest.mal_id = au.mal_id AND latest.max_ts = au.time_stamp").
+		Where(sq.Eq{"au.status": string(domain.AnimeUpdateStatusSuccess)}).
 		OrderBy("au.time_stamp DESC").
 		Limit(uint64(limit))
 
@@ -223,4 +227,187 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 	}
 
 	return updates, nil
+}
+
+func (repo *AnimeUpdateRepo) FindAllWithFilters(ctx context.Context, params domain.AnimeUpdateQueryParams) (*domain.FindAnimeUpdatesResponse, error) {
+	whereQueryBuilder := sq.And{}
+
+	// Parse search query - check for SourceDB:ID pattern
+	if params.Search != "" {
+		search := strings.TrimSpace(params.Search)
+
+		// Check if search contains ":" pattern (e.g., "TVDB:12345")
+		if strings.Contains(search, ":") {
+			parts := strings.SplitN(search, ":", 2)
+			if len(parts) == 2 {
+				sourceDB := strings.ToUpper(strings.TrimSpace(parts[0]))
+				sourceIDStr := strings.TrimSpace(parts[1])
+
+				// Convert sourceDB to match database values
+				var dbSourceDB string
+				switch sourceDB {
+				case "TVDB":
+					dbSourceDB = "tvdb"
+				case "TMDB":
+					dbSourceDB = "tmdb"
+				case "ANIDB":
+					dbSourceDB = "anidb"
+				case "MAL", "MYANIMELIST":
+					dbSourceDB = "myanimelist"
+				default:
+					// If not a recognized source, treat as regular search
+					searchPattern := "%" + search + "%"
+					whereQueryBuilder = append(whereQueryBuilder, sq.Or{
+						sq.Like{"json_extract(au.list_details, '$.title')": searchPattern},
+						sq.Eq{"au.mal_id": parseMALID(search)},
+					})
+				}
+
+				// If we have a valid sourceDB, filter by it
+				if dbSourceDB != "" {
+					if sourceID, err := strconv.Atoi(sourceIDStr); err == nil {
+						whereQueryBuilder = append(whereQueryBuilder, sq.And{
+							sq.Eq{"au.source_db": dbSourceDB},
+							sq.Eq{"au.source_id": sourceID},
+						})
+					}
+				}
+			}
+		} else {
+			// Regular search - search in title or MAL ID
+			searchPattern := "%" + search + "%"
+			malID := parseMALID(search)
+
+			searchConditions := sq.Or{}
+			searchConditions = append(searchConditions, sq.Like{"json_extract(au.list_details, '$.title')": searchPattern})
+
+			if malID > 0 {
+				searchConditions = append(searchConditions, sq.Eq{"au.mal_id": malID})
+			}
+
+			whereQueryBuilder = append(whereQueryBuilder, searchConditions)
+		}
+	}
+
+	// Apply filters
+	if params.Filters.Status != "" {
+		whereQueryBuilder = append(whereQueryBuilder, sq.Eq{"au.status": string(params.Filters.Status)})
+	}
+
+	if params.Filters.ErrorType != "" {
+		whereQueryBuilder = append(whereQueryBuilder, sq.Eq{"au.error_type": string(params.Filters.ErrorType)})
+	}
+
+	if params.Filters.Source != "" {
+		whereQueryBuilder = append(whereQueryBuilder, sq.Eq{"au.source_db": string(params.Filters.Source)})
+	}
+
+	// Build count query
+	countQueryBuilder := repo.db.squirrel.
+		Select("COUNT(*)").
+		From("anime_update au")
+
+	if len(whereQueryBuilder) > 0 {
+		countQueryBuilder = countQueryBuilder.Where(whereQueryBuilder)
+	}
+
+	countQuery, countArgs, err := countQueryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building count query")
+	}
+
+	// Build main query
+	queryBuilder := repo.db.squirrel.
+		Select(
+			"au.id", "au.mal_id", "au.source_db", "au.source_id", "au.episode_num", "au.season_num",
+			"au.time_stamp", "au.list_details", "au.list_status", "au.plex_id",
+			"au.status", "au.error_type", "au.error_message",
+		).
+		From("anime_update au").
+		OrderBy("au.id DESC")
+
+	if params.Limit > 0 {
+		queryBuilder = queryBuilder.Limit(params.Limit)
+	} else {
+		queryBuilder = queryBuilder.Limit(20)
+	}
+
+	if params.Offset > 0 {
+		queryBuilder = queryBuilder.Offset(params.Offset)
+	}
+
+	if len(whereQueryBuilder) > 0 {
+		queryBuilder = queryBuilder.Where(whereQueryBuilder)
+	}
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	// Execute count query
+	var totalCount int
+	row := repo.db.handler.QueryRowContext(ctx, countQuery, countArgs...)
+	if err := row.Scan(&totalCount); err != nil {
+		return nil, errors.Wrap(err, "error scanning count")
+	}
+
+	repo.log.Trace().Str("database", "animeupdate.findAllWithFilters").Msgf("query: '%s', args: '%v'", query, args)
+
+	resp := &domain.FindAnimeUpdatesResponse{
+		Data:       make([]domain.AnimeUpdateListItem, 0),
+		TotalCount: totalCount,
+	}
+
+	rows, err := repo.db.handler.QueryContext(ctx, query, args...)
+	if err != nil {
+		return resp, errors.Wrap(err, "error executing query")
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var au domain.AnimeUpdate
+		var listDetailsBytes, listStatusBytes []byte
+		var status, errorType, errorMessage sql.NullString
+
+		if err := rows.Scan(
+			&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum,
+			&au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId,
+			&status, &errorType, &errorMessage,
+		); err != nil {
+			return resp, errors.Wrap(err, "error scanning row")
+		}
+
+		if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
+			return resp, errors.Wrap(err, "error unmarshalling list_details")
+		}
+		if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
+			return resp, errors.Wrap(err, "error unmarshalling list_status")
+		}
+
+		if status.Valid {
+			au.Status = domain.AnimeUpdateStatusType(status.String)
+		}
+		if errorType.Valid {
+			au.ErrorType = domain.AnimeUpdateErrorType(errorType.String)
+		}
+		if errorMessage.Valid {
+			au.ErrorMessage = errorMessage.String
+		}
+
+		resp.Data = append(resp.Data, domain.AnimeUpdateListItem{
+			AnimeUpdate: &au,
+		})
+	}
+
+	return resp, nil
+}
+
+// parseMALID attempts to parse a string as MAL ID (numeric)
+func parseMALID(s string) int {
+	id, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0
+	}
+	return id
 }

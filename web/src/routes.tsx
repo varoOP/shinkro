@@ -16,6 +16,7 @@ import {Dashboard} from "@screens/Dashboard";
 import {Logs} from "@screens/Logs";
 import {Settings} from "@screens/Settings";
 import {PlexPayloads} from "@screens/PlexPayloads";
+import {AnimeUpdates} from "@screens/AnimeUpdates";
 import {Application} from "@screens/settings/Application";
 import {User} from "@screens/settings/User";
 import {Api} from "@screens/settings/Api";
@@ -29,16 +30,29 @@ import {TanStackRouterDevtools} from "@tanstack/react-router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {queryClient} from "@api/QueryClient";
 import {MalAuthCallback} from "@screens/MalAuthCallback.tsx";
+import {Loader, Center} from "@mantine/core";
+import {
+    plexCountsQueryOptions,
+    animeUpdateCountQueryOptions,
+    recentAnimeUpdatesQueryOptions,
+    plexHistoryQueryOptions,
+} from "@api/queries";
 
 const DashboardRoute = createRoute({
     getParentRoute: () => AuthIndexRoute,
     path: "/",
-    loader: () => {
-        // https://tanstack.com/router/v1/docs/guide/deferred-data-loading#deferred-data-loading-with-defer-and-await
-        // TODO load stats
-
-        // TODO load recent releases
-
+    loader: async ({ context }) => {
+        // Prefetch dashboard data for smoother loading
+        const settings = SettingsContext.get();
+        const limit = settings.timelineLimit || 5;
+        
+        await Promise.all([
+            context.queryClient.ensureQueryData(plexCountsQueryOptions()),
+            context.queryClient.ensureQueryData(animeUpdateCountQueryOptions()),
+            context.queryClient.ensureQueryData(recentAnimeUpdatesQueryOptions(8)),
+            context.queryClient.ensureQueryData(plexHistoryQueryOptions({ limit })),
+        ]);
+        
         return {};
     },
     component: Dashboard,
@@ -51,11 +65,21 @@ const LogsRoute = createRoute({
     component: Logs,
 });
 
-const PlexPayloadsRoute = createRoute({
+export const PlexPayloadsRoute = createRoute({
     getParentRoute: () => AuthIndexRoute,
     path: "plex-payloads",
     pendingMs: 3000,
+    validateSearch: z.object({
+        highlight: z.coerce.string().optional(),
+    }),
     component: PlexPayloads,
+});
+
+const AnimeUpdatesRoute = createRoute({
+    getParentRoute: () => AuthIndexRoute,
+    path: "anime-updates",
+    pendingMs: 3000,
+    component: AnimeUpdates,
 });
 
 export const OnboardRoute = createRoute({
@@ -254,7 +278,7 @@ const settingsRouteTree = SettingsRoute.addChildren([
     SettingsMappingRoute,
 ]);
 const authenticatedTree = AuthRoute.addChildren([
-    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, PlexPayloadsRoute, settingsRouteTree]),
+    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, PlexPayloadsRoute, AnimeUpdatesRoute, settingsRouteTree]),
 ]);
 const routeTree = RootRoute.addChildren([
     LoginRoute,
@@ -265,6 +289,11 @@ const routeTree = RootRoute.addChildren([
 
 export const Router = createRouter({
     routeTree,
+    defaultPendingComponent: () => (
+        <Center style={{ minHeight: "100vh" }}>
+            <Loader size="lg" />
+        </Center>
+    ),
     context: {
         queryClient,
     },

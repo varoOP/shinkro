@@ -16,6 +16,7 @@ type AnimeUpdateRepo interface {
 	GetRecentUnique(ctx context.Context, limit int) ([]*AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*AnimeUpdate, error)
 	GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*AnimeUpdate, error)
+	FindAllWithFilters(ctx context.Context, params AnimeUpdateQueryParams) (*FindAnimeUpdatesResponse, error)
 }
 
 type AnimeUpdate struct {
@@ -74,6 +75,26 @@ const (
 
 type GetAnimeUpdateRequest struct {
 	Id int
+}
+
+type AnimeUpdateQueryParams struct {
+	Limit   uint64
+	Offset  uint64
+	Search  string
+	Filters struct {
+		Status    AnimeUpdateStatusType
+		ErrorType AnimeUpdateErrorType
+		Source    PlexSupportedDBs
+	}
+}
+
+type AnimeUpdateListItem struct {
+	AnimeUpdate *AnimeUpdate `json:"animeUpdate"`
+}
+
+type FindAnimeUpdatesResponse struct {
+	Data       []AnimeUpdateListItem `json:"data"`
+	TotalCount int                    `json:"count"`
 }
 
 // UpdateRatingWithStatus updates the rating using the provided list status from MAL API.

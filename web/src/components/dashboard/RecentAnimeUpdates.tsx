@@ -21,7 +21,7 @@ export const RecentlyUpdatedAnimeCarousel = ({
     return (
         <Box className={classes.carouselWrapper}>
             <Carousel
-                style={{width: "100%"}}
+                style={{width: "100%", paddingBottom: "32px"}}
                 slideSize={{base: "100%", sm: "50%", md: "33.333%", lg: "25%"}}
                 slideGap="md"
                 controlSize={40}
@@ -61,7 +61,7 @@ export const RecentlyUpdatedAnimeCarousel = ({
                                 <Image
                                     src={anime.pictureUrl}
                                     alt={anime.title}
-                                    height={240}
+                                    height={270}
                                     fit="contain"
                                     radius="sm"
                                     mb="sm"

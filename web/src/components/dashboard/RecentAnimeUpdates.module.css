@@ -14,3 +14,10 @@
   pointer-events: auto;
 }
 
+/* Add spacing to carousel indicators */
+.carouselWrapper :global(.mantine-Carousel-indicators) {
+  margin-top: 16px !important;
+  padding-top: 4px !important;
+  gap: 4px;
+}
+

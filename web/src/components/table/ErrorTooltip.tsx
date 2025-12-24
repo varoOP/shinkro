@@ -20,7 +20,7 @@ export const ErrorTooltip = ({ errorType, errorMessage, children }: ErrorTooltip
     const formattedErrorType = errorType ? errorType.replace(/_/g, " ") : undefined;
 
     const tooltipContent = (
-        <Paper p="sm" style={{ width: 300, maxHeight: 400, overflow: "auto" }}>
+        <div>
             <Stack gap="xs">
                 {formattedErrorType && (
                     <Text size="sm" fw={600} c="red.6">
@@ -32,9 +32,8 @@ export const ErrorTooltip = ({ errorType, errorMessage, children }: ErrorTooltip
                     <Text 
                         size="xs" 
                         fw={600}
-                        c="dimmed" 
-                        style={{ 
-                            wordBreak: "normal", 
+                        style={{
+                            wordBreak: "normal",
                             overflowWrap: "break-word",
                             whiteSpace: "pre-wrap"
                         }}
@@ -43,21 +42,18 @@ export const ErrorTooltip = ({ errorType, errorMessage, children }: ErrorTooltip
                     </Text>
                 )}
             </Stack>
-        </Paper>
+        </div>
     );
 
     return (
         <Tooltip
             label={tooltipContent}
-            position="right"
+            position="top"
+            multiline={true}
             withArrow={true}
-            maw={350}
-            styles={{
-                tooltip: {
-                    padding: 0,
-                    backgroundColor: "transparent",
-                }
-            }}
+            maw={320}
+            arrowSize={8}
+            arrowPosition="center"
         >
             {children}
         </Tooltip>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import {
@@ -32,6 +32,59 @@ import { formatEventName } from "@utils";
 import { APIClient } from "@api/APIClient";
 import { AgeCell, StatusBadge, TablePagination, ActionsCell, ViewDetailsModal, InfoTooltip } from "@components/table";
 import { useDisclosure } from "@mantine/hooks";
+
+const TruncatedPlexTitle = ({ value }: { value: string }) => {
+    const textRef = useRef<HTMLDivElement | null>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    const checkTruncation = (element: HTMLDivElement | null) => {
+        if (element) {
+            requestAnimationFrame(() => {
+                const isOverflowing = element.scrollWidth > element.clientWidth;
+                setIsTruncated(isOverflowing);
+            });
+        }
+    };
+
+    const setRef = (element: HTMLDivElement | null) => {
+        textRef.current = element;
+        checkTruncation(element);
+    };
+
+    useLayoutEffect(() => {
+        checkTruncation(textRef.current);
+    }, [value]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            checkTruncation(textRef.current);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const textElement = (
+        <Text
+            ref={setRef}
+            fw={600}
+            size="sm"
+            style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "100%",
+            }}
+        >
+            {value}
+        </Text>
+    );
+
+    if (isTruncated) {
+        return <InfoTooltip label={value}>{textElement}</InfoTooltip>;
+    }
+
+    return textElement;
+};
 
 function PlexPayloadsTableContent({
     pagination,
@@ -234,19 +287,7 @@ export const PlexPayloads = () => {
 
                     return (
                         <Stack gap={4} style={{ maxWidth: "500px" }}>
-                            <InfoTooltip label={title}>
-                                <Text 
-                                    fw={600} 
-                                    size="sm" 
-                                    style={{ 
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap"
-                                    }}
-                                >
-                                    {title}
-                                </Text>
-                            </InfoTooltip>
+                            <TruncatedPlexTitle value={title} />
                             <Group gap="xs">
                                 {library && (
                                     <Badge size="xs" variant="transparent" color="gray">

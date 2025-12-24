@@ -1,4 +1,4 @@
-import {createTheme, virtualColor, Button} from "@mantine/core";
+import {createTheme, virtualColor, Button, Tooltip} from "@mantine/core";
 
 export const theme = createTheme({
     primaryColor: "primary",
@@ -29,9 +29,28 @@ export const theme = createTheme({
             "#121F51",
         ],
 
+        black: [
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+        ],
+
         primary: virtualColor({
             name: "primary",
             dark: "plex",
+            light: "mal",
+        }),
+
+        secondary: virtualColor({
+            name: "secondary",
+            dark: "black",
             light: "mal",
         }),
     },
@@ -42,6 +61,11 @@ export const theme = createTheme({
         Button: Button.extend({
             defaultProps: {
                 variant: "outline",
+            },
+        }),
+        Tooltip: Tooltip.extend({
+            defaultProps: {
+                color: "secondary",
             },
         }),
     },

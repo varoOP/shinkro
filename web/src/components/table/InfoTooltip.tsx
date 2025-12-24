@@ -1,4 +1,4 @@
-import { Tooltip, Paper, Text } from "@mantine/core";
+import { Tooltip, Text } from "@mantine/core";
 import { ReactNode } from "react";
 
 interface InfoTooltipProps {
@@ -8,24 +8,20 @@ interface InfoTooltipProps {
 
 export const InfoTooltip = ({ label, children }: InfoTooltipProps) => {
     const tooltipContent = (
-        <Paper p="sm" style={{ width: "auto", maxWidth: 300 }}>
-            <Text size="xs" c="dimmed" fw={600}>
+            <Text size="xs" fw={600}>
                 {label}
-            </Text>
-        </Paper>
+            </Text> 
     );
 
     return (
         <Tooltip
             label={tooltipContent}
             position="top"
-            withArrow
-            styles={{
-                tooltip: {
-                    padding: 0,
-                    backgroundColor: "transparent",
-                }
-            }}
+            maw={320}
+            multiline={true}
+            withArrow={true}
+            arrowSize={8}
+            arrowPosition="center"
         >
             {children}
         </Tooltip>

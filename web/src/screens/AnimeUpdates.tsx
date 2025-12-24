@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useLayoutEffect, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
     useReactTable,
@@ -30,6 +30,59 @@ import type { AnimeUpdateListItem } from "@app/types/Anime";
 import { AgeCell, StatusBadge, SourceBadge, TablePagination, ActionsCell, ViewDetailsModal, InfoTooltip } from "@components/table";
 import { useDisclosure } from "@mantine/hooks";
 import { getMALLink } from "@utils/sourceLinks";
+
+const TruncatedTitle = ({ value }: { value: string }) => {
+    const textRef = useRef<HTMLDivElement | null>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    const checkTruncation = (element: HTMLDivElement | null) => {
+        if (element) {
+            requestAnimationFrame(() => {
+                const isOverflowing = element.scrollWidth > element.clientWidth;
+                setIsTruncated(isOverflowing);
+            });
+        }
+    };
+
+    const setRef = (element: HTMLDivElement | null) => {
+        textRef.current = element;
+        checkTruncation(element);
+    };
+
+    useLayoutEffect(() => {
+        checkTruncation(textRef.current);
+    }, [value]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            checkTruncation(textRef.current);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const textElement = (
+        <Text
+            ref={setRef}
+            fw={600}
+            size="sm"
+            style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "100%",
+            }}
+        >
+            {value}
+        </Text>
+    );
+
+    if (isTruncated) {
+        return <InfoTooltip label={value}>{textElement}</InfoTooltip>;
+    }
+
+    return textElement;
+};
 
 function AnimeUpdatesTableContent({
     pagination,
@@ -113,19 +166,7 @@ function AnimeUpdatesTableContent({
 
                     return (
                         <Stack gap={4} style={{ maxWidth: "500px" }}>
-                            <InfoTooltip label={title}>
-                                <Text 
-                                    fw={600} 
-                                    size="sm" 
-                                    style={{ 
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap"
-                                    }}
-                                >
-                                    {title}
-                                </Text>
-                            </InfoTooltip>
+                            <TruncatedTitle value={title} />
                             <Group gap="xs">
                                 {!isFailed && malId > 0 && malLink && (
                                     <Button
@@ -134,9 +175,14 @@ function AnimeUpdatesTableContent({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         variant="subtle"
-                                        size="xs"
+                                        size="compact-xs"
                                         color="blue"
-                                        style={{ height: "18px", padding: "0 6px", fontSize: "10px", lineHeight: "1.2" }}
+                                        style={{
+                                            height: 16,
+                                            padding: "0 4px",
+                                            fontSize: "9px",
+                                            lineHeight: 1.1,
+                                        }}
                                     >
                                         MAL: {malId}
                                     </Button>

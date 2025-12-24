@@ -38,10 +38,6 @@ function PlexPayloadsTableContent({
     setPagination,
     columnFilters,
     setColumnFilters,
-    selectedPayload,
-    setSelectedPayload,
-    open,
-    deleteMutation,
     highlightedRowId,
     columns,
 }: {
@@ -49,14 +45,10 @@ function PlexPayloadsTableContent({
     setPagination: (state: PaginationState) => void;
     columnFilters: ColumnFilter[];
     setColumnFilters: (filters: ColumnFilter[]) => void;
-    selectedPayload: PlexPayloadListItem | null;
-    setSelectedPayload: (payload: PlexPayloadListItem | null) => void;
-    open: () => void;
-    deleteMutation: any;
     highlightedRowId: number | null;
     columns: ColumnDef<PlexPayloadListItem>[];
 }) {
-    const { data, error, isFetching } = useQuery(
+    const { data, error } = useQuery(
         plexPayloadsQueryOptions(pagination.pageIndex, pagination.pageSize, columnFilters)
     );
 
@@ -71,8 +63,12 @@ function PlexPayloadsTableContent({
             columnFilters,
             pagination,
         },
-        onPaginationChange: setPagination,
-        onColumnFiltersChange: setColumnFilters,
+        onPaginationChange: (updater) => {
+            setPagination(typeof updater === "function" ? updater(pagination) : updater);
+        },
+        onColumnFiltersChange: (updater) => {
+            setColumnFilters(typeof updater === "function" ? updater(columnFilters) : updater);
+        },
     });
 
     if (error) {
@@ -403,10 +399,6 @@ export const PlexPayloads = () => {
                     setPagination={setPagination}
                     columnFilters={columnFilters}
                     setColumnFilters={setColumnFilters}
-                    selectedPayload={selectedPayload}
-                    setSelectedPayload={setSelectedPayload}
-                    open={open}
-                    deleteMutation={deleteMutation}
                     highlightedRowId={highlightedRowId}
                     columns={columns}
                 />

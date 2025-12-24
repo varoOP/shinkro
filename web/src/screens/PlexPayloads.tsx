@@ -20,7 +20,6 @@ import {
     Text,
     Select,
     TextInput,
-    Tooltip,
 } from "@mantine/core";
 import { AuthContext } from "@utils/Context";
 import { Navigate } from "@tanstack/react-router";
@@ -31,7 +30,7 @@ import type { PlexPayloadListItem } from "@app/types/Plex";
 import { displayNotification } from "@components/notifications";
 import { formatEventName } from "@utils";
 import { APIClient } from "@api/APIClient";
-import { AgeCell, StatusBadge, TablePagination, ActionsCell, ViewDetailsModal } from "@components/table";
+import { AgeCell, StatusBadge, TablePagination, ActionsCell, ViewDetailsModal, InfoTooltip } from "@components/table";
 import { useDisclosure } from "@mantine/hooks";
 
 export const PlexPayloads = () => {
@@ -166,7 +165,7 @@ export const PlexPayloads = () => {
 
                     return (
                         <Stack gap={4} style={{ maxWidth: "500px" }}>
-                            <Tooltip label={title} disabled={title.length <= 50}>
+                            <InfoTooltip label={title}>
                                 <Text 
                                     fw={600} 
                                     size="sm" 
@@ -178,7 +177,7 @@ export const PlexPayloads = () => {
                                 >
                                     {title}
                                 </Text>
-                            </Tooltip>
+                            </InfoTooltip>
                             <Group gap="xs">
                                 {library && (
                                     <Badge size="xs" variant="transparent" color="gray">

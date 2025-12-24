@@ -19,7 +19,6 @@ import {
     Text,
     Select,
     TextInput,
-    Tooltip,
     Button,
     ActionIcon,
 } from "@mantine/core";
@@ -115,7 +114,7 @@ export const AnimeUpdates = () => {
 
                     return (
                         <Stack gap={4} style={{ maxWidth: "500px" }}>
-                            <Tooltip label={title} disabled={title.length <= 50}>
+                            <InfoTooltip label={title}>
                                 <Text 
                                     fw={600} 
                                     size="sm" 
@@ -127,7 +126,7 @@ export const AnimeUpdates = () => {
                                 >
                                     {title}
                                 </Text>
-                            </Tooltip>
+                            </InfoTooltip>
                             <Group gap="xs">
                                 {!isFailed && malId > 0 && malLink && (
                                     <Button

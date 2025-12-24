@@ -22,6 +22,7 @@ type Service interface {
 	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
 	GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.AnimeUpdate, error)
+	FindAllWithFilters(ctx context.Context, params domain.AnimeUpdateQueryParams) (*domain.FindAnimeUpdatesResponse, error)
 }
 
 type service struct {
@@ -283,4 +284,8 @@ func (s *service) GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.
 		return []*domain.AnimeUpdate{}, nil
 	}
 	return s.repo.GetByPlexIDs(ctx, plexIDs)
+}
+
+func (s *service) FindAllWithFilters(ctx context.Context, params domain.AnimeUpdateQueryParams) (*domain.FindAnimeUpdatesResponse, error) {
+	return s.repo.FindAllWithFilters(ctx, params)
 }

@@ -1,3 +1,5 @@
+import type { AnimeUpdateStatusType, AnimeUpdateErrorType } from "./Plex";
+
 export interface RecentAnimeItem {
     animeStatus: 'watching' | 'completed' | 'on_hold' | 'dropped' | 'plan_to_watch' | string;
     finishDate: string;
@@ -32,4 +34,41 @@ export interface TimelineAnimeUpdate {
     sourceID?: number;
     seasonNum?: number;
     episodeNum?: number;
+}
+
+export interface AnimeUpdateListItem {
+    animeUpdate: AnimeUpdate;
+}
+
+export interface AnimeUpdate {
+    id: number;
+    malid: number;
+    sourceDB: string;
+    sourceID: number;
+    episodeNum: number;
+    seasonNum: number;
+    timestamp: string;
+    listDetails: {
+        animeStatus: string;
+        rewatchNum: number;
+        totalEpisodeNum: number;
+        watchedNum: number;
+        title: string;
+        pictureUrl: string;
+    };
+    listStatus: {
+        status: string;
+        score: number;
+        num_episodes_watched: number;
+        updated_at: string;
+    };
+    plexID: number;
+    status?: AnimeUpdateStatusType;
+    errorType?: AnimeUpdateErrorType;
+    errorMessage?: string;
+}
+
+export interface FindAnimeUpdatesResponse {
+    data: AnimeUpdateListItem[];
+    count: number;
 }

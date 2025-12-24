@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "@tanstack/react-router";
 import {
     useReactTable,
     getCoreRowModel,
@@ -17,27 +18,21 @@ import {
     Badge,
     Group,
     Text,
-    Button,
     Select,
     TextInput,
-    Modal,
-    Code,
-    ScrollArea,
-    ActionIcon,
     Tooltip,
 } from "@mantine/core";
-import { formatDistanceToNowStrict } from "date-fns";
-import { FaEye, FaCheckCircle, FaTimesCircle, FaCopy, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight } from "react-icons/fa";
-import { useDisclosure } from "@mantine/hooks";
 import { AuthContext } from "@utils/Context";
 import { Navigate } from "@tanstack/react-router";
+import { PlexPayloadsRoute } from "@app/routes";
 import { plexPayloadsQueryOptions } from "@api/queries";
 import { PlexKeys } from "@api/query_keys";
 import type { PlexPayloadListItem } from "@app/types/Plex";
 import { displayNotification } from "@components/notifications";
 import { formatEventName } from "@utils";
 import { APIClient } from "@api/APIClient";
-import { ConfirmDeleteIcon } from "@components/alerts/ConfirmDeleteIcon";
+import { AgeCell, StatusBadge, TablePagination, ActionsCell, ViewDetailsModal } from "@components/table";
+import { useDisclosure } from "@mantine/hooks";
 
 export const PlexPayloads = () => {
     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
@@ -54,10 +49,67 @@ export const PlexPayloads = () => {
     const [selectedPayload, setSelectedPayload] = useState<PlexPayloadListItem | null>(null);
     const [opened, { open, close }] = useDisclosure(false);
     const queryClient = useQueryClient();
+    const search = useSearch({ from: PlexPayloadsRoute.id, strict: true });
+    const highlightId = search.highlight ? parseInt(search.highlight, 10) : null;
+    const [highlightedRowId, setHighlightedRowId] = useState<number | null>(highlightId);
+    const [hasNavigatedToHighlight, setHasNavigatedToHighlight] = useState(false);
 
     const { isLoading, error, data } = useQuery(
         plexPayloadsQueryOptions(pagination.pageIndex, pagination.pageSize, columnFilters)
     );
+
+    useEffect(() => {
+        if (highlightId !== null && data?.data && !hasNavigatedToHighlight) {
+            // Check if the highlighted payload is in the current page
+            const isInCurrentPage = data.data.some(item => item.plex.id === highlightId);
+            
+            if (!isInCurrentPage && data.count > 0) {
+                // Find the payload by searching through pages
+                // Since payloads are ordered by ID DESC, we can estimate the page
+                const findPayloadPage = async () => {
+                    try {
+                        // Fetch first page to get max ID
+                        const firstPageData = await queryClient.fetchQuery(
+                            plexPayloadsQueryOptions(0, 1, [])
+                        );
+                        
+                        if (firstPageData?.data && firstPageData.data.length > 0) {
+                            const maxId = firstPageData.data[0].plex.id;
+                            // Since IDs are ordered DESC, estimate page
+                            // This assumes IDs are roughly sequential
+                            if (highlightId <= maxId) {
+                                const idDiff = maxId - highlightId;
+                                const estimatedPage = Math.max(0, Math.floor(idDiff / pagination.pageSize));
+                                setPagination(prev => ({ ...prev, pageIndex: estimatedPage }));
+                                setHasNavigatedToHighlight(true);
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error finding payload page:", error);
+                    }
+                };
+                
+                findPayloadPage();
+            } else if (isInCurrentPage) {
+                setHasNavigatedToHighlight(true);
+            }
+        }
+    }, [highlightId, data, pagination.pageSize, queryClient, hasNavigatedToHighlight]);
+
+    useEffect(() => {
+        if (highlightId !== null) {
+            setHighlightedRowId(highlightId);
+            const timer = setTimeout(() => {
+                setHighlightedRowId(null);
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightId]);
+
+    // Reset navigation flag when highlightId changes
+    useEffect(() => {
+        setHasNavigatedToHighlight(false);
+    }, [highlightId]);
 
     const deleteMutation = useMutation({
         mutationFn: (id: number) => APIClient.plex.deletePayload(id),
@@ -86,14 +138,9 @@ export const PlexPayloads = () => {
             {
                 header: "Age",
                 accessorKey: "plex.timestamp",
-                cell: ({ row }) => {
-                    const timestamp = row.original.plex.timestamp;
-                    return (
-                        <Text size="sm" ta="center">
-                            {timestamp ? formatDistanceToNowStrict(new Date(timestamp), { addSuffix: false }) : "-"}
-                        </Text>
-                    );
-                },
+                cell: ({ row }) => (
+                    <AgeCell timestamp={row.original.plex.timestamp} />
+                ),
             },
             {
                 header: "Plex Payload",
@@ -162,26 +209,16 @@ export const PlexPayloads = () => {
                 cell: ({ row }) => {
                     const plexId = row.original.plex.id;
                     return (
-                        <Group gap="xs" justify="center">
-                            <Tooltip label="View full payload">
-                                <ActionIcon
-                                    variant="outline"
-                                    onClick={() => {
-                                        setSelectedPayload(row.original);
-                                        open();
-                                    }}
-                                >
-                                    <FaEye size={16} />
-                                </ActionIcon>
-                            </Tooltip>
-                            <ConfirmDeleteIcon
-                                onConfirm={() => deleteMutation.mutate(plexId)}
-                                title="Delete Plex Payload"
-                                message="This will also delete the related anime update record if it exists."
-                                loading={deleteMutation.isPending}
-                                variant="outline"
-                            />
-                        </Group>
+                        <ActionsCell
+                            onView={() => {
+                                setSelectedPayload(row.original);
+                                open();
+                            }}
+                            onDelete={() => deleteMutation.mutate(plexId)}
+                            deleteTitle="Delete Plex Payload"
+                            deleteMessage="This will also delete the related anime update record if it exists."
+                            isDeleting={deleteMutation.isPending}
+                        />
                     );
                 },
             },
@@ -190,34 +227,14 @@ export const PlexPayloads = () => {
                 accessorKey: "status",
                 id: "status",
                 cell: ({ row }) => {
-                    // Read from consolidated fields
                     const plex = row.original.plex;
-                    const plexSuccess = plex?.success;
-                    const errorType = plex?.errorType;
-                    const errorMsg = plex?.errorMsg;
-                    
-                    if (plexSuccess === undefined || plexSuccess === null) {
-                        return (
-                            <Tooltip label="Failed">
-                                <FaTimesCircle size={20} color="red" />
-                            </Tooltip>
-                        );
-                    }
-                    if (plexSuccess === true) {
-                        return (
-                            <Tooltip label="Success">
-                                <FaCheckCircle size={20} color="green" />
-                            </Tooltip>
-                        );
-                    }
-                    // Build tooltip with errorType and errorMessage
-                    const tooltipLabel = errorType && errorMsg
-                        ? `${errorType}: ${errorMsg}`
-                        : errorMsg || errorType || "Failed";
                     return (
-                        <Tooltip label={tooltipLabel}>
-                            <FaTimesCircle size={20} color="red" />
-                        </Tooltip>
+                        <StatusBadge
+                            status={plex?.success}
+                            errorType={plex?.errorType}
+                            errorMessage={plex?.errorMsg}
+                            variant="icon"
+                        />
                     );
                 },
             },
@@ -253,17 +270,6 @@ export const PlexPayloads = () => {
         onColumnFiltersChange: setColumnFilters,
     });
 
-    const handleCopyPayload = () => {
-        if (selectedPayload) {
-            const payloadJson = JSON.stringify(selectedPayload, null, 2);
-            navigator.clipboard.writeText(payloadJson);
-            displayNotification({
-                title: "Copied",
-                message: "Payload copied to clipboard",
-                type: "success",
-            });
-        }
-    };
 
     return (
         <Container size={1200} px="md" component="main">
@@ -371,25 +377,38 @@ export const PlexPayloads = () => {
                                         </Table.Td>
                                     </Table.Tr>
                                 ) : (
-                                    tableInstance.getRowModel().rows.map((row) => (
-                                        <Table.Tr key={row.id}>
-                                            {row.getVisibleCells().map((cell) => {
-                                                const shouldCenter = cell.column.id !== "payload";
-                                                const isSourceColumn = cell.column.id === "source";
-                                                return (
-                                                    <Table.Td 
-                                                        key={cell.id} 
-                                                        style={{ 
-                                                            textAlign: shouldCenter ? "center" : "left",
-                                                            whiteSpace: isSourceColumn ? "nowrap" : "normal"
-                                                        }}
-                                                    >
-                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                    </Table.Td>
-                                                );
-                                            })}
-                                        </Table.Tr>
-                                    ))
+                                    tableInstance.getRowModel().rows.map((row) => {
+                                        const plexId = row.original.plex.id;
+                                        const isHighlighted = highlightedRowId !== null && plexId === highlightedRowId;
+                                        const highlightColor = isHighlighted 
+                                            ? "rgba(100, 116, 139, 0.15)"
+                                            : "transparent";
+                                        return (
+                                            <Table.Tr 
+                                                key={row.id}
+                                                style={{
+                                                    backgroundColor: highlightColor,
+                                                    transition: "background-color 2s ease-out",
+                                                }}
+                                            >
+                                                {row.getVisibleCells().map((cell) => {
+                                                    const shouldCenter = cell.column.id !== "payload";
+                                                    const isSourceColumn = cell.column.id === "source";
+                                                    return (
+                                                        <Table.Td 
+                                                            key={cell.id} 
+                                                            style={{ 
+                                                                textAlign: shouldCenter ? "center" : "left",
+                                                                whiteSpace: isSourceColumn ? "nowrap" : "normal"
+                                                            }}
+                                                        >
+                                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                        </Table.Td>
+                                                    );
+                                                })}
+                                            </Table.Tr>
+                                        );
+                                    })
                                 )}
                             </Table.Tbody>
                         </Table>
@@ -397,93 +416,23 @@ export const PlexPayloads = () => {
                 )}
 
                 {/* Pagination */}
-                <Group justify="space-between">
-                    <Group>
-                        <Text size="sm">
-                            Page <strong>{pagination.pageIndex + 1}</strong> of{" "}
-                            <strong>{Math.ceil((data?.count || 0) / pagination.pageSize)}</strong>
-                        </Text>
-                        <Select
-                            value={pagination.pageSize.toString()}
-                            onChange={(value) =>
-                                setPagination({ ...pagination, pageSize: parseInt(value || "20"), pageIndex: 0 })
-                            }
-                            data={[
-                                { value: "5", label: "5 entries" },
-                                { value: "10", label: "10 entries" },
-                                { value: "20", label: "20 entries" },
-                                { value: "50", label: "50 entries" },
-                            ]}
-                            style={{ width: 150 }}
-                        />
-                    </Group>
-                    <Group>
-                        <Tooltip label="First">
-                            <ActionIcon
-                                variant="outline"
-                                onClick={() => tableInstance.setPageIndex(0)}
-                                disabled={!tableInstance.getCanPreviousPage()}
-                            >
-                                <FaAngleDoubleLeft size={16} />
-                            </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label="Previous">
-                            <ActionIcon
-                                variant="outline"
-                                onClick={() => tableInstance.previousPage()}
-                                disabled={!tableInstance.getCanPreviousPage()}
-                            >
-                                <FaChevronLeft size={16} />
-                            </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label="Next">
-                            <ActionIcon
-                                variant="outline"
-                                onClick={() => tableInstance.nextPage()}
-                                disabled={!tableInstance.getCanNextPage()}
-                            >
-                                <FaChevronRight size={16} />
-                            </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label="Last">
-                            <ActionIcon
-                                variant="outline"
-                                onClick={() => tableInstance.setPageIndex(tableInstance.getPageCount() - 1)}
-                                disabled={!tableInstance.getCanNextPage()}
-                            >
-                                <FaAngleDoubleRight size={16} />
-                            </ActionIcon>
-                        </Tooltip>
-                    </Group>
-                </Group>
+                {data && data.count > 0 && (
+                    <TablePagination
+                        table={tableInstance}
+                        totalCount={data.count}
+                    />
+                )}
             </Stack>
             </Paper>
             </Stack>
 
             {/* Payload View Modal */}
-            <Modal
+            <ViewDetailsModal
                 opened={opened}
                 onClose={close}
                 title="Plex Payload"
-                size="xl"
-            >
-                {selectedPayload && (
-                    <Stack>
-                        <Group justify="flex-end">
-                            <Button
-                                leftSection={<FaCopy size={14} />}
-                                variant="outline"
-                                onClick={handleCopyPayload}
-                            >
-                                Copy JSON
-                            </Button>
-                        </Group>
-                        <ScrollArea h={500}>
-                            <Code block>{JSON.stringify(selectedPayload, null, 2)}</Code>
-                        </ScrollArea>
-                    </Stack>
-                )}
-            </Modal>
+                data={selectedPayload}
+            />
         </Container>
     );
 };

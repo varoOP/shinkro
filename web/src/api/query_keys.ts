@@ -57,3 +57,12 @@ export const PlexKeys = {
         params,
     ] as const,
 };
+
+export const AnimeUpdateKeys = {
+    all: ["animeUpdate"] as const,
+    lists: (params: Record<string, unknown>) => [
+        ...AnimeUpdateKeys.all,
+        "list",
+        params,
+    ] as const,
+};

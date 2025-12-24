@@ -13,6 +13,7 @@ type animeupdateService interface {
 	Count(ctx context.Context) (int, error)
 	GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error)
 	GetByPlexID(ctx context.Context, plexID int64) (*domain.AnimeUpdate, error)
+	FindAllWithFilters(ctx context.Context, params domain.AnimeUpdateQueryParams) (*domain.FindAnimeUpdatesResponse, error)
 }
 
 type animeupdateHandler struct {
@@ -31,6 +32,7 @@ func (h animeupdateHandler) Routes(r chi.Router) {
 	r.Get("/count", h.getCount)
 	r.Get("/recent", h.getRecent)
 	r.Get("/byPlexId", h.getByPlexID)
+	r.Get("/list", h.getList)
 }
 
 func (h animeupdateHandler) getCount(w http.ResponseWriter, r *http.Request) {
@@ -99,4 +101,71 @@ func (h animeupdateHandler) getByPlexID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	h.encoder.StatusResponse(w, http.StatusOK, update)
+}
+
+func (h animeupdateHandler) getList(w http.ResponseWriter, r *http.Request) {
+	// Parse limit parameter
+	limit := uint64(20)
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.ParseUint(l, 10, 64); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	// Parse offset parameter
+	offset := uint64(0)
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.ParseUint(o, 10, 64); err == nil {
+			offset = n
+		}
+	}
+
+	// Parse search parameter
+	search := r.URL.Query().Get("q")
+
+	// Parse filters
+	statusStr := r.URL.Query().Get("status")
+	errorTypeStr := r.URL.Query().Get("errorType")
+	sourceStr := r.URL.Query().Get("source")
+
+	var status domain.AnimeUpdateStatusType
+	if statusStr != "" {
+		status = domain.AnimeUpdateStatusType(statusStr)
+	}
+
+	var errorType domain.AnimeUpdateErrorType
+	if errorTypeStr != "" {
+		errorType = domain.AnimeUpdateErrorType(errorTypeStr)
+	}
+
+	var source domain.PlexSupportedDBs
+	if sourceStr != "" {
+		source = domain.PlexSupportedDBs(sourceStr)
+	}
+
+	params := domain.AnimeUpdateQueryParams{
+		Limit:  limit,
+		Offset: offset,
+		Search: search,
+		Filters: struct {
+			Status    domain.AnimeUpdateStatusType
+			ErrorType domain.AnimeUpdateErrorType
+			Source    domain.PlexSupportedDBs
+		}{
+			Status:    status,
+			ErrorType: errorType,
+			Source:    source,
+		},
+	}
+
+	resp, err := h.service.FindAllWithFilters(r.Context(), params)
+	if err != nil {
+		h.encoder.StatusResponse(w, http.StatusInternalServerError, map[string]interface{}{
+			"code":    "INTERNAL_SERVER_ERROR",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	h.encoder.StatusResponse(w, http.StatusOK, resp)
 }

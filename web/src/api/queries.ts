@@ -9,6 +9,7 @@ import {
     MappingKeys,
     LogKeys,
     PlexKeys,
+    AnimeUpdateKeys,
 } from "@api/query_keys";
 import { baseUrl } from "@utils";
 import type { ColumnFilter } from "@tanstack/react-table";
@@ -109,6 +110,20 @@ export const recentAnimeUpdatesQueryOptions = (limit: number = 5) =>
     queryOptions({
         queryKey: ["recentAnimeUpdates", limit],
         queryFn: () => APIClient.animeupdate.getRecent(limit),
+    });
+
+export const animeUpdateListQueryOptions = (params: {
+    limit?: number;
+    offset?: number;
+    q?: string;
+    status?: string;
+    errorType?: string;
+    source?: string;
+}) =>
+    queryOptions({
+        queryKey: AnimeUpdateKeys.lists(params),
+        queryFn: () => APIClient.animeupdate.getList(params),
+        placeholderData: keepPreviousData,
     });
 
 export const latestReleaseQueryOptions = () =>

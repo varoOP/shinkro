@@ -1,5 +1,4 @@
-import { MdSpaceDashboard, MdSettings, MdHistory } from "react-icons/md";
-import { BsStack } from "react-icons/bs";
+import { MdSpaceDashboard, MdSettings, MdHistory , MdSync, MdArticle} from "react-icons/md";
 import { IconType } from "react-icons";
 
 interface NavItem {
@@ -12,6 +11,7 @@ interface NavItem {
 export const NAV_ROUTES: Array<NavItem> = [
   { name: "Dashboard", path: "/", exact: true, icon: MdSpaceDashboard },
   { name: "Plex Payloads", path: "/plex-payloads", icon: MdHistory },
-  { name: "Logs", path: "/logs", icon: BsStack },
+  { name: "Anime Updates", path: "/anime-updates", icon: MdSync },
+  { name: "Logs", path: "/logs", icon: MdArticle },
   { name: "Settings", path: "/settings", icon: MdSettings },
 ];

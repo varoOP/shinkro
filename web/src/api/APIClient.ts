@@ -11,7 +11,7 @@ import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
 import {Mapping, ValidateMap} from "@app/types/Mapping";
 import {FileSystem, LogFileResponse} from "@app/types/FileSystem";
-import { RecentAnimeItem } from "@app/types/Anime";
+import { RecentAnimeItem, FindAnimeUpdatesResponse } from "@app/types/Anime";
 
 type RequestBody = BodyInit | object | Record<string, unknown> | null;
 type Primitive = string | number | boolean | symbol | undefined;
@@ -415,6 +415,15 @@ export const APIClient = {
             appClient.Get<{count: number}>("api/animeupdate/count"),
         getRecent: (limit = 5) =>
             appClient.Get<RecentAnimeItem[]>("api/animeupdate/recent", { queryString: { limit } }),
+        getList: (params?: {
+            limit?: number;
+            offset?: number;
+            q?: string;
+            status?: string;
+            errorType?: string;
+            source?: string;
+        }) =>
+            appClient.Get<FindAnimeUpdatesResponse>("api/animeupdate/list", { queryString: params }),
     },
 
     events: {

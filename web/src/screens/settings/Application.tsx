@@ -29,7 +29,7 @@ export const Application = () => {
     return (
         <main>
             <SettingsSectionHeader
-                title="Application Settings"
+                title="Application"
                 description="To change settings, edit config.toml found in the config directory and restart the application."
             />
             

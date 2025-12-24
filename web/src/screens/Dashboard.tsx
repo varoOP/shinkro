@@ -1,5 +1,6 @@
-import {useQuery} from "@tanstack/react-query";
-import {Container, Stack, Title, Group, Select} from "@mantine/core";
+import {Suspense} from "react";
+import {useSuspenseQuery} from "@tanstack/react-query";
+import {Container, Stack, Title, Group, Select, Loader, Center} from "@mantine/core";
 import {
     plexCountsQueryOptions,
     animeUpdateCountQueryOptions,
@@ -11,20 +12,48 @@ import {Navigate} from "@tanstack/react-router";
 import {StatisticsSection, RecentlyUpdatedAnimeCarousel, RecentTimeline} from "@components/dashboard";
 import type { RecentAnimeItem } from "@app/types/Anime";
 
+function StatisticsContent() {
+    const {data: plexCounts} = useSuspenseQuery(plexCountsQueryOptions());
+    const {data: animeUpdateCount} = useSuspenseQuery(animeUpdateCountQueryOptions());
+
+    return (
+        <StatisticsSection
+            plexCounts={plexCounts}
+            animeUpdateCount={animeUpdateCount}
+        />
+    );
+}
+
+function RecentAnimeContent() {
+    const {data: recentAnime} = useSuspenseQuery(recentAnimeUpdatesQueryOptions(8));
+
+    return (
+        <RecentlyUpdatedAnimeCarousel
+            items={recentAnime as RecentAnimeItem[] | undefined}
+        />
+    );
+}
+
+function TimelineContent() {
+    const [settings] = SettingsContext.use();
+    const limit = settings.timelineLimit;
+    const {data: timelineData} = useSuspenseQuery(plexHistoryQueryOptions({ limit }));
+
+    return (
+        <RecentTimeline 
+            timelineItems={timelineData || []}
+        />
+    );
+}
+
 export const Dashboard = () => {
     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
     if (!isLoggedIn) {
         return <Navigate to="/login"/>;
     }
 
-    const {data: plexCounts, isLoading: plexLoading} = useQuery(plexCountsQueryOptions());
-    const {data: animeUpdateCount, isLoading: animeUpdateLoading} = useQuery(animeUpdateCountQueryOptions());
-    const {data: recentAnime, isLoading: recentLoading} = useQuery(recentAnimeUpdatesQueryOptions(8));
-
     const [settings, setSettings] = SettingsContext.use();
     const limit = settings.timelineLimit;
-    
-    const {data: timelineData, isLoading: timelineLoading} = useQuery(plexHistoryQueryOptions({ limit }));
 
     return (
         <Container size={1200} px="md" component="main">
@@ -32,19 +61,23 @@ export const Dashboard = () => {
                 <Title order={2}>
                     Statistics
                 </Title>
-                <StatisticsSection
-                    plexCounts={plexCounts}
-                    animeUpdateCount={animeUpdateCount}
-                    plexLoading={plexLoading}
-                    animeUpdateLoading={animeUpdateLoading}
-                />
+                <Suspense fallback={
+                    <Center py="xl">
+                        <Loader size="lg" />
+                    </Center>
+                }>
+                    <StatisticsContent />
+                </Suspense>
             </Stack>
             <Stack gap="md" mt="xl" p="md">
                 <Title order={2}>Recently Updated Anime</Title>
-                <RecentlyUpdatedAnimeCarousel
-                    items={recentAnime as RecentAnimeItem[] | undefined}
-                    loading={recentLoading}
-                />
+                <Suspense fallback={
+                    <Center py="xl">
+                        <Loader size="lg" />
+                    </Center>
+                }>
+                    <RecentAnimeContent />
+                </Suspense>
             </Stack>
 
             {/* Timeline Section */}
@@ -71,10 +104,13 @@ export const Dashboard = () => {
                         style={{ width: 115 }}
                     />
                 </Group>
-                <RecentTimeline 
-                    timelineItems={timelineData || []}
-                    isLoading={timelineLoading}
-                />
+                <Suspense fallback={
+                    <Center py="xl">
+                        <Loader size="lg" />
+                    </Center>
+                }>
+                    <TimelineContent />
+                </Suspense>
             </Stack>
         </Container>
     );

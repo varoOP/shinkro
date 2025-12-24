@@ -30,16 +30,29 @@ import {TanStackRouterDevtools} from "@tanstack/react-router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {queryClient} from "@api/QueryClient";
 import {MalAuthCallback} from "@screens/MalAuthCallback.tsx";
+import {Loader, Center} from "@mantine/core";
+import {
+    plexCountsQueryOptions,
+    animeUpdateCountQueryOptions,
+    recentAnimeUpdatesQueryOptions,
+    plexHistoryQueryOptions,
+} from "@api/queries";
 
 const DashboardRoute = createRoute({
     getParentRoute: () => AuthIndexRoute,
     path: "/",
-    loader: () => {
-        // https://tanstack.com/router/v1/docs/guide/deferred-data-loading#deferred-data-loading-with-defer-and-await
-        // TODO load stats
-
-        // TODO load recent releases
-
+    loader: async ({ context }) => {
+        // Prefetch dashboard data for smoother loading
+        const settings = SettingsContext.get();
+        const limit = settings.timelineLimit || 5;
+        
+        await Promise.all([
+            context.queryClient.ensureQueryData(plexCountsQueryOptions()),
+            context.queryClient.ensureQueryData(animeUpdateCountQueryOptions()),
+            context.queryClient.ensureQueryData(recentAnimeUpdatesQueryOptions(8)),
+            context.queryClient.ensureQueryData(plexHistoryQueryOptions({ limit })),
+        ]);
+        
         return {};
     },
     component: Dashboard,
@@ -276,6 +289,11 @@ const routeTree = RootRoute.addChildren([
 
 export const Router = createRouter({
     routeTree,
+    defaultPendingComponent: () => (
+        <Center style={{ minHeight: "100vh" }}>
+            <Loader size="lg" />
+        </Center>
+    ),
     context: {
         queryClient,
     },

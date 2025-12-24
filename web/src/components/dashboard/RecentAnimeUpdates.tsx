@@ -7,13 +7,9 @@ import classes from './RecentAnimeUpdates.module.css';
 
 export const RecentlyUpdatedAnimeCarousel = ({
     items,
-    loading,
 }: {
     items?: RecentAnimeItem[];
-    loading: boolean;
 }) => {
-    if (loading) return <Text>Loading...</Text>;
-
     if (!items || items.length === 0) {
         return <Text>No Updates yet! Start watching some anime and sync your progress to MyAnimeList.</Text>;
     }

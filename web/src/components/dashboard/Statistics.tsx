@@ -5,15 +5,11 @@ import {SiMyanimelist} from "react-icons/si";
 type StatisticsProps = {
     plexCounts?: { countScrobble?: number; countRate?: number };
     animeUpdateCount?: { count?: number };
-    plexLoading: boolean;
-    animeUpdateLoading: boolean;
 };
 
 export const StatisticsSection = ({
     plexCounts,
     animeUpdateCount,
-    plexLoading,
-    animeUpdateLoading,
 }: StatisticsProps) => {
     return (
         <Group gap="lg" justify="start">
@@ -25,15 +21,9 @@ export const StatisticsSection = ({
                     </Text>
                 </Group>
 
-                {plexLoading ? (
-                    <Text size="xl" fw={700} c="dimmed" ta="center">
-                        Loading...
-                    </Text>
-                ) : (
-                    <Text size="xl" fw={700} ta="center">
-                        {plexCounts?.countScrobble?.toLocaleString() || 0}
-                    </Text>
-                )}
+                <Text size="xl" fw={700} ta="center">
+                    {plexCounts?.countScrobble?.toLocaleString() || 0}
+                </Text>
 
                 <Text size="sm" c="dimmed" mt="xs" ta="center">
                     Total Scrobble events
@@ -48,15 +38,9 @@ export const StatisticsSection = ({
                         Plex Ratings
                     </Text>
                 </Group>
-                {plexLoading ? (
-                    <Text size="xl" fw={700} c="dimmed" ta="center">
-                        Loading...
-                    </Text>
-                ) : (
-                    <Text size="xl" fw={700} ta="center">
-                        {plexCounts?.countRate?.toLocaleString() || 0}
-                    </Text>
-                )}
+                <Text size="xl" fw={700} ta="center">
+                    {plexCounts?.countRate?.toLocaleString() || 0}
+                </Text>
                 <Text size="sm" c="dimmed" mt="xs" ta="center">
                     Total Rate Events
                 </Text>
@@ -70,15 +54,9 @@ export const StatisticsSection = ({
                         Anime Updates
                     </Text>
                 </Group>
-                {animeUpdateLoading ? (
-                    <Text size="xl" fw={700} c="dimmed" ta="center">
-                        Loading...
-                    </Text>
-                ) : (
-                    <Text size="xl" fw={700} ta="center">
-                        {animeUpdateCount?.count?.toLocaleString() || 0}
-                    </Text>
-                )}
+                <Text size="xl" fw={700} ta="center">
+                    {animeUpdateCount?.count?.toLocaleString() || 0}
+                </Text>
                 <Text size="sm" c="dimmed" mt="xs" ta="center">
                     Successful MAL Updates
                 </Text>

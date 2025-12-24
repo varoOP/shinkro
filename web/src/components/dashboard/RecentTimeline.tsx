@@ -6,7 +6,6 @@ import { formatStatusLabel, formatEventName } from "@utils/index";
 
 export type RecentTimelineProps = {
     timelineItems: PlexHistoryItem[];
-    isLoading?: boolean;
 };
 
 function formatAnimeUpdateErrorType(errorType?: AnimeUpdateErrorType): string {
@@ -61,11 +60,7 @@ function getPlexErrorMessage(errorType?: PlexErrorType): string | null {
     return helpMessages[errorType] || null;
 }
 
-export function RecentTimeline({timelineItems, isLoading}: RecentTimelineProps) {
-    if (isLoading) {
-        return <Text>Loading timeline...</Text>;
-    }
-
+export function RecentTimeline({timelineItems}: RecentTimelineProps) {
     if (!timelineItems || timelineItems.length === 0) {
         return <Text>No recent activity found.</Text>;
     }

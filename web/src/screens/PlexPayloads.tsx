@@ -33,6 +33,127 @@ import { APIClient } from "@api/APIClient";
 import { AgeCell, StatusBadge, TablePagination, ActionsCell, ViewDetailsModal, InfoTooltip } from "@components/table";
 import { useDisclosure } from "@mantine/hooks";
 
+function PlexPayloadsTableContent({
+    pagination,
+    setPagination,
+    columnFilters,
+    setColumnFilters,
+    selectedPayload,
+    setSelectedPayload,
+    open,
+    deleteMutation,
+    highlightedRowId,
+    columns,
+}: {
+    pagination: PaginationState;
+    setPagination: (state: PaginationState) => void;
+    columnFilters: ColumnFilter[];
+    setColumnFilters: (filters: ColumnFilter[]) => void;
+    selectedPayload: PlexPayloadListItem | null;
+    setSelectedPayload: (payload: PlexPayloadListItem | null) => void;
+    open: () => void;
+    deleteMutation: any;
+    highlightedRowId: number | null;
+    columns: ColumnDef<PlexPayloadListItem>[];
+}) {
+    const { data, error, isFetching } = useQuery(
+        plexPayloadsQueryOptions(pagination.pageIndex, pagination.pageSize, columnFilters)
+    );
+
+    const tableInstance = useReactTable({
+        columns,
+        data: data?.data || [],
+        getCoreRowModel: getCoreRowModel(),
+        manualFiltering: true,
+        manualPagination: true,
+        rowCount: data?.count || 0,
+        state: {
+            columnFilters,
+            pagination,
+        },
+        onPaginationChange: setPagination,
+        onColumnFiltersChange: setColumnFilters,
+    });
+
+    if (error) {
+        return <Text c="red">Error loading payloads</Text>;
+    }
+
+    return (
+        <>
+            <Table.ScrollContainer minWidth={800}>
+                <Table highlightOnHover>
+                    <Table.Thead>
+                        {tableInstance.getHeaderGroups().map((headerGroup) => (
+                            <Table.Tr key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => {
+                                    const shouldCenter = header.column.id !== "payload";
+                                    return (
+                                        <Table.Th key={header.id} style={{ textAlign: shouldCenter ? "center" : "left" }}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </Table.Th>
+                                    );
+                                })}
+                            </Table.Tr>
+                        ))}
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {tableInstance.getRowModel().rows.length === 0 ? (
+                            <Table.Tr>
+                                <Table.Td colSpan={columns.length} style={{ textAlign: "center" }}>
+                                    <Text c="dimmed">No payloads found</Text>
+                                </Table.Td>
+                            </Table.Tr>
+                        ) : (
+                            tableInstance.getRowModel().rows.map((row) => {
+                                const plexId = row.original.plex.id;
+                                const isHighlighted = highlightedRowId !== null && plexId === highlightedRowId;
+                                const highlightColor = isHighlighted 
+                                    ? "rgba(100, 116, 139, 0.15)"
+                                    : "transparent";
+                                return (
+                                    <Table.Tr 
+                                        key={row.id}
+                                        style={{
+                                            backgroundColor: highlightColor,
+                                            transition: "background-color 2s ease-out",
+                                        }}
+                                    >
+                                        {row.getVisibleCells().map((cell) => {
+                                            const shouldCenter = cell.column.id !== "payload";
+                                            const isSourceColumn = cell.column.id === "source";
+                                            return (
+                                                <Table.Td 
+                                                    key={cell.id} 
+                                                    style={{ 
+                                                        textAlign: shouldCenter ? "center" : "left",
+                                                        whiteSpace: isSourceColumn ? "nowrap" : "normal"
+                                                    }}
+                                                >
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </Table.Td>
+                                            );
+                                        })}
+                                    </Table.Tr>
+                                );
+                            })
+                        )}
+                    </Table.Tbody>
+                </Table>
+            </Table.ScrollContainer>
+
+            {data && data.count > 0 && (
+                <TablePagination
+                    table={tableInstance}
+                    totalCount={data.count}
+                />
+            )}
+        </>
+    );
+}
+
 export const PlexPayloads = () => {
     const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
     if (!isLoggedIn) {
@@ -47,53 +168,10 @@ export const PlexPayloads = () => {
     const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
     const [selectedPayload, setSelectedPayload] = useState<PlexPayloadListItem | null>(null);
     const [opened, { open, close }] = useDisclosure(false);
-    const queryClient = useQueryClient();
     const search = useSearch({ from: PlexPayloadsRoute.id, strict: true });
     const highlightId = search.highlight ? parseInt(search.highlight, 10) : null;
     const [highlightedRowId, setHighlightedRowId] = useState<number | null>(highlightId);
-    const [hasNavigatedToHighlight, setHasNavigatedToHighlight] = useState(false);
-
-    const { isLoading, error, data } = useQuery(
-        plexPayloadsQueryOptions(pagination.pageIndex, pagination.pageSize, columnFilters)
-    );
-
-    useEffect(() => {
-        if (highlightId !== null && data?.data && !hasNavigatedToHighlight) {
-            // Check if the highlighted payload is in the current page
-            const isInCurrentPage = data.data.some(item => item.plex.id === highlightId);
-            
-            if (!isInCurrentPage && data.count > 0) {
-                // Find the payload by searching through pages
-                // Since payloads are ordered by ID DESC, we can estimate the page
-                const findPayloadPage = async () => {
-                    try {
-                        // Fetch first page to get max ID
-                        const firstPageData = await queryClient.fetchQuery(
-                            plexPayloadsQueryOptions(0, 1, [])
-                        );
-                        
-                        if (firstPageData?.data && firstPageData.data.length > 0) {
-                            const maxId = firstPageData.data[0].plex.id;
-                            // Since IDs are ordered DESC, estimate page
-                            // This assumes IDs are roughly sequential
-                            if (highlightId <= maxId) {
-                                const idDiff = maxId - highlightId;
-                                const estimatedPage = Math.max(0, Math.floor(idDiff / pagination.pageSize));
-                                setPagination(prev => ({ ...prev, pageIndex: estimatedPage }));
-                                setHasNavigatedToHighlight(true);
-                            }
-                        }
-                    } catch (error) {
-                        console.error("Error finding payload page:", error);
-                    }
-                };
-                
-                findPayloadPage();
-            } else if (isInCurrentPage) {
-                setHasNavigatedToHighlight(true);
-            }
-        }
-    }, [highlightId, data, pagination.pageSize, queryClient, hasNavigatedToHighlight]);
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         if (highlightId !== null) {
@@ -103,11 +181,6 @@ export const PlexPayloads = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [highlightId]);
-
-    // Reset navigation flag when highlightId changes
-    useEffect(() => {
-        setHasNavigatedToHighlight(false);
     }, [highlightId]);
 
     const deleteMutation = useMutation({
@@ -254,22 +327,6 @@ export const PlexPayloads = () => {
         []
     );
 
-    const tableInstance = useReactTable({
-        columns,
-        data: data?.data || [],
-        getCoreRowModel: getCoreRowModel(),
-        manualFiltering: true,
-        manualPagination: true,
-        rowCount: data?.count || 0,
-        state: {
-            columnFilters,
-            pagination,
-        },
-        onPaginationChange: setPagination,
-        onColumnFiltersChange: setColumnFilters,
-    });
-
-
     return (
         <Container size={1200} px="md" component="main">
             <Stack gap="md" mt="md">
@@ -341,86 +398,18 @@ export const PlexPayloads = () => {
                 </Group>
 
                 {/* Table */}
-                {error ? (
-                    <Text c="red">Error loading payloads</Text>
-                ) : (
-                    <Table.ScrollContainer minWidth={800}>
-                        <Table highlightOnHover>
-                            <Table.Thead>
-                                {tableInstance.getHeaderGroups().map((headerGroup) => (
-                                    <Table.Tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => {
-                                            const shouldCenter = header.column.id !== "payload";
-                                            return (
-                                                <Table.Th key={header.id} style={{ textAlign: shouldCenter ? "center" : "left" }}>
-                                                    {header.isPlaceholder
-                                                        ? null
-                                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                                </Table.Th>
-                                            );
-                                        })}
-                                    </Table.Tr>
-                                ))}
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {isLoading ? (
-                                    <Table.Tr>
-                                        <Table.Td colSpan={columns.length} style={{ textAlign: "center" }}>
-                                            <Text>Loading...</Text>
-                                        </Table.Td>
-                                    </Table.Tr>
-                                ) : tableInstance.getRowModel().rows.length === 0 ? (
-                                    <Table.Tr>
-                                        <Table.Td colSpan={columns.length} style={{ textAlign: "center" }}>
-                                            <Text c="dimmed">No payloads found</Text>
-                                        </Table.Td>
-                                    </Table.Tr>
-                                ) : (
-                                    tableInstance.getRowModel().rows.map((row) => {
-                                        const plexId = row.original.plex.id;
-                                        const isHighlighted = highlightedRowId !== null && plexId === highlightedRowId;
-                                        const highlightColor = isHighlighted 
-                                            ? "rgba(100, 116, 139, 0.15)"
-                                            : "transparent";
-                                        return (
-                                            <Table.Tr 
-                                                key={row.id}
-                                                style={{
-                                                    backgroundColor: highlightColor,
-                                                    transition: "background-color 2s ease-out",
-                                                }}
-                                            >
-                                                {row.getVisibleCells().map((cell) => {
-                                                    const shouldCenter = cell.column.id !== "payload";
-                                                    const isSourceColumn = cell.column.id === "source";
-                                                    return (
-                                                        <Table.Td 
-                                                            key={cell.id} 
-                                                            style={{ 
-                                                                textAlign: shouldCenter ? "center" : "left",
-                                                                whiteSpace: isSourceColumn ? "nowrap" : "normal"
-                                                            }}
-                                                        >
-                                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                        </Table.Td>
-                                                    );
-                                                })}
-                                            </Table.Tr>
-                                        );
-                                    })
-                                )}
-                            </Table.Tbody>
-                        </Table>
-                    </Table.ScrollContainer>
-                )}
-
-                {/* Pagination */}
-                {data && data.count > 0 && (
-                    <TablePagination
-                        table={tableInstance}
-                        totalCount={data.count}
-                    />
-                )}
+                <PlexPayloadsTableContent
+                    pagination={pagination}
+                    setPagination={setPagination}
+                    columnFilters={columnFilters}
+                    setColumnFilters={setColumnFilters}
+                    selectedPayload={selectedPayload}
+                    setSelectedPayload={setSelectedPayload}
+                    open={open}
+                    deleteMutation={deleteMutation}
+                    highlightedRowId={highlightedRowId}
+                    columns={columns}
+                />
             </Stack>
             </Paper>
             </Stack>

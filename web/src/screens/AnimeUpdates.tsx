@@ -31,22 +31,21 @@ import { AgeCell, StatusBadge, SourceBadge, TablePagination, ActionsCell, ViewDe
 import { useDisclosure } from "@mantine/hooks";
 import { getMALLink } from "@utils/sourceLinks";
 
-export const AnimeUpdates = () => {
-    const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
-    if (!isLoggedIn) {
-        return <Navigate to="/login" />;
-    }
-
-    const [pagination, setPagination] = useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: 10,
-    });
-
-    const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
-    const [selectedUpdate, setSelectedUpdate] = useState<AnimeUpdateListItem | null>(null);
-    const [opened, { open, close }] = useDisclosure(false);
-
-    // Build query params from filters
+function AnimeUpdatesTableContent({
+    pagination,
+    setPagination,
+    columnFilters,
+    setColumnFilters,
+    setSelectedUpdate,
+    open,
+}: {
+    pagination: PaginationState;
+    setPagination: (state: PaginationState) => void;
+    columnFilters: ColumnFilter[];
+    setColumnFilters: (filters: ColumnFilter[]) => void;
+    setSelectedUpdate: (update: AnimeUpdateListItem | null) => void;
+    open: () => void;
+}) {
     const queryParams = useMemo(() => {
         const params: {
             limit?: number;
@@ -83,7 +82,7 @@ export const AnimeUpdates = () => {
         return params;
     }, [pagination, columnFilters]);
 
-    const { isLoading, error, data } = useQuery(
+    const { data, error } = useQuery(
         animeUpdateListQueryOptions(queryParams)
     );
 
@@ -144,7 +143,7 @@ export const AnimeUpdates = () => {
                                 )}
                                 {!isFailed && watchedNum !== undefined && totalEpisodeNum !== undefined && (
                                     <Badge size="xs" variant="transparent" color="gray">
-                                        {watchedNum}/{totalEpisodeNum}
+                                        {watchedNum}/{totalEpisodeNum === 0 ? "?" : totalEpisodeNum}
                                     </Badge>
                                 )}
                                 {!isFailed && score !== undefined && score > 0 && (
@@ -227,7 +226,7 @@ export const AnimeUpdates = () => {
                 },
             },
         ],
-        []
+        [setSelectedUpdate, open]
     );
 
     const tableInstance = useReactTable({
@@ -241,9 +240,93 @@ export const AnimeUpdates = () => {
             columnFilters,
             pagination,
         },
-        onPaginationChange: setPagination,
-        onColumnFiltersChange: setColumnFilters,
+        onPaginationChange: (updater) => {
+            setPagination(typeof updater === "function" ? updater(pagination) : updater);
+        },
+        onColumnFiltersChange: (updater) => {
+            setColumnFilters(typeof updater === "function" ? updater(columnFilters) : updater);
+        },
     });
+
+    if (error) {
+        return <Text c="red">Error loading anime updates</Text>;
+    }
+
+    return (
+        <>
+            <Table.ScrollContainer minWidth={800}>
+                <Table highlightOnHover>
+                    <Table.Thead>
+                        {tableInstance.getHeaderGroups().map((headerGroup) => (
+                            <Table.Tr key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => {
+                                    const shouldCenter = header.column.id !== "animeUpdate";
+                                    return (
+                                        <Table.Th
+                                            key={header.id}
+                                            style={{ textAlign: shouldCenter ? "center" : "left" }}
+                                        >
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </Table.Th>
+                                    );
+                                })}
+                            </Table.Tr>
+                        ))}
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {tableInstance.getRowModel().rows.length === 0 ? (
+                            <Table.Tr>
+                                <Table.Td colSpan={columns.length} style={{ textAlign: "center" }}>
+                                    <Text>No anime updates found</Text>
+                                </Table.Td>
+                            </Table.Tr>
+                        ) : (
+                            tableInstance.getRowModel().rows.map((row) => (
+                                <Table.Tr key={row.id}>
+                                    {row.getVisibleCells().map((cell) => {
+                                        const shouldCenter = cell.column.id !== "animeUpdate";
+                                        return (
+                                            <Table.Td
+                                                key={cell.id}
+                                                style={{ textAlign: shouldCenter ? "center" : "left" }}
+                                            >
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </Table.Td>
+                                        );
+                                    })}
+                                </Table.Tr>
+                            ))
+                        )}
+                    </Table.Tbody>
+                </Table>
+            </Table.ScrollContainer>
+
+            {data && data.count > 0 && (
+                <TablePagination
+                    table={tableInstance}
+                    totalCount={data.count}
+                />
+            )}
+        </>
+    );
+}
+
+export const AnimeUpdates = () => {
+    const isLoggedIn = AuthContext.useSelector((s) => s.isLoggedIn);
+    if (!isLoggedIn) {
+        return <Navigate to="/login" />;
+    }
+
+    const [pagination, setPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: 10,
+    });
+
+    const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
+    const [selectedUpdate, setSelectedUpdate] = useState<AnimeUpdateListItem | null>(null);
+    const [opened, { open, close }] = useDisclosure(false);
 
     return (
         <Container size={1200} px="md" component="main">
@@ -323,72 +406,14 @@ export const AnimeUpdates = () => {
                         </Group>
 
                         {/* Table */}
-                        {error ? (
-                            <Text c="red">Error loading anime updates</Text>
-                        ) : (
-                            <Table.ScrollContainer minWidth={800}>
-                                <Table highlightOnHover>
-                                    <Table.Thead>
-                                        {tableInstance.getHeaderGroups().map((headerGroup) => (
-                                            <Table.Tr key={headerGroup.id}>
-                                                {headerGroup.headers.map((header) => {
-                                                    const shouldCenter = header.column.id !== "animeUpdate";
-                                                    return (
-                                                        <Table.Th
-                                                            key={header.id}
-                                                            style={{ textAlign: shouldCenter ? "center" : "left" }}
-                                                        >
-                                                            {header.isPlaceholder
-                                                                ? null
-                                                                : flexRender(header.column.columnDef.header, header.getContext())}
-                                                        </Table.Th>
-                                                    );
-                                                })}
-                                            </Table.Tr>
-                                        ))}
-                                    </Table.Thead>
-                                    <Table.Tbody>
-                                        {isLoading ? (
-                                            <Table.Tr>
-                                                <Table.Td colSpan={columns.length} style={{ textAlign: "center" }}>
-                                                    <Text>Loading...</Text>
-                                                </Table.Td>
-                                            </Table.Tr>
-                                        ) : tableInstance.getRowModel().rows.length === 0 ? (
-                                            <Table.Tr>
-                                                <Table.Td colSpan={columns.length} style={{ textAlign: "center" }}>
-                                                    <Text>No anime updates found</Text>
-                                                </Table.Td>
-                                            </Table.Tr>
-                                        ) : (
-                                            tableInstance.getRowModel().rows.map((row) => (
-                                                <Table.Tr key={row.id}>
-                                                    {row.getVisibleCells().map((cell) => {
-                                                        const shouldCenter = cell.column.id !== "animeUpdate";
-                                                        return (
-                                                            <Table.Td
-                                                                key={cell.id}
-                                                                style={{ textAlign: shouldCenter ? "center" : "left" }}
-                                                            >
-                                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                            </Table.Td>
-                                                        );
-                                                    })}
-                                                </Table.Tr>
-                                            ))
-                                        )}
-                                    </Table.Tbody>
-                                </Table>
-                            </Table.ScrollContainer>
-                        )}
-
-                        {/* Pagination */}
-                        {data && data.count > 0 && (
-                            <TablePagination
-                                table={tableInstance}
-                                totalCount={data.count}
-                            />
-                        )}
+                        <AnimeUpdatesTableContent
+                            pagination={pagination}
+                            setPagination={setPagination}
+                            columnFilters={columnFilters}
+                            setColumnFilters={setColumnFilters}
+                            setSelectedUpdate={setSelectedUpdate}
+                            open={open}
+                        />
                     </Stack>
                 </Paper>
             </Stack>

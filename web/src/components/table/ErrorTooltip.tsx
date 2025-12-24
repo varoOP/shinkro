@@ -1,4 +1,4 @@
-import { Tooltip, Paper, Stack, Text, Divider } from "@mantine/core";
+import { Tooltip, Stack, Text, Divider } from "@mantine/core";
 import { ReactNode } from "react";
 
 interface ErrorTooltipProps {

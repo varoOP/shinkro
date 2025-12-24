@@ -5,7 +5,7 @@ import {
     Table,
 } from "@mantine/core";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useEffect, useState} from "react";
+import {useEffect, useState, useRef, useLayoutEffect} from "react";
 import {useDisclosure} from "@mantine/hooks";
 
 import {APIClient} from "@api/APIClient";
@@ -14,11 +14,66 @@ import {PlexSettingsKeys} from "@api/query_keys";
 import {displayNotification} from "@components/notifications";
 import {PlexSettings} from "@forms/settings/PlexSettings";
 import {ConfirmDeleteButton} from "@components/alerts/ConfirmDeleteButton";
+import {InfoTooltip} from "@components/table/InfoTooltip";
 import {
     SettingsSectionHeader,
     StatusIndicator,
     CenteredEmptyState,
 } from "./components";
+
+const TruncatedText = ({ value }: { value: string }) => {
+    const textRef = useRef<HTMLDivElement>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    const checkTruncation = (element: HTMLDivElement | null) => {
+        if (element) {
+            // Use requestAnimationFrame to ensure layout is complete
+            requestAnimationFrame(() => {
+                const isOverflowing = element.scrollWidth > element.clientWidth;
+                setIsTruncated(isOverflowing);
+            });
+        }
+    };
+
+    const setRef = (element: HTMLDivElement | null) => {
+        textRef.current = element;
+        checkTruncation(element);
+    };
+
+    useLayoutEffect(() => {
+        checkTruncation(textRef.current);
+    }, [value]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            checkTruncation(textRef.current);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const textElement = (
+        <div
+            ref={setRef}
+            style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'block',
+                width: '100%',
+                minWidth: 0,
+            }}
+        >
+            {value}
+        </div>
+    );
+
+    if (isTruncated) {
+        return <InfoTooltip label={value}>{textElement}</InfoTooltip>;
+    }
+
+    return textElement;
+};
 
 export const Plex = () => {
     const queryClient = useQueryClient();
@@ -86,16 +141,20 @@ export const Plex = () => {
                             status={isReachable}
                             loadStatus={isReachable === null}
                         />
-                        <Table variant="vertical" verticalSpacing="sm" withTableBorder>
-                            <Table.Tbody>
-                                {rows.map((row, index) => (
-                                    <Table.Tr key={index}>
-                                        <Table.Th w={180}>{row.label}</Table.Th>
-                                        <Table.Td>{row.value}</Table.Td>
-                                    </Table.Tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
+                        <div style={{ overflowX: 'auto', width: '100%' }}>
+                            <Table variant="vertical" verticalSpacing="sm" withTableBorder style={{ minWidth: '100%' }}>
+                                <Table.Tbody>
+                                    {rows.map((row, index) => (
+                                        <Table.Tr key={index}>
+                                            <Table.Th w={180} style={{ whiteSpace: 'nowrap' }}>{row.label}</Table.Th>
+                                            <Table.Td style={{ maxWidth: 0, width: '100%' }}>
+                                                <TruncatedText value={row.value} />
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    ))}
+                                </Table.Tbody>
+                            </Table>
+                        </div>
                         <Group justify="flex-end">
                             <ConfirmDeleteButton
                                 onConfirm={() => deleteMutation.mutate()}

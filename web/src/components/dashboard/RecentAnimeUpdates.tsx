@@ -3,6 +3,7 @@ import {Carousel} from '@mantine/carousel';
 import {formatDistanceToNow, parseISO} from "date-fns";
 import type { RecentAnimeItem } from "@app/types/Anime";
 import { safeDate, statusColor, formatStatusLabel } from "@utils/index";
+import classes from './RecentAnimeUpdates.module.css';
 
 export const RecentlyUpdatedAnimeCarousel = ({
     items,
@@ -18,22 +19,38 @@ export const RecentlyUpdatedAnimeCarousel = ({
     }
 
     return (
-        <Carousel
-            style={{width: "100%"}}
-            slideSize={{base: "100%", sm: "50%", md: "33.333%", lg: "25%"}}
-            slideGap="md"
-            controlSize={50}
-            withIndicators
-            draggable={true}
-            height={560}
-            emblaOptions={
-                {
-                    loop: true,
-                    dragFree: true,
-                    align: 'start',
+        <Box className={classes.carouselWrapper}>
+            <Carousel
+                style={{width: "100%"}}
+                slideSize={{base: "100%", sm: "50%", md: "33.333%", lg: "25%"}}
+                slideGap="md"
+                controlSize={40}
+                withIndicators
+                draggable={true}
+                height={420}
+                styles={{
+                    control: {
+                        transition: 'background-color 0.2s ease',
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        borderRadius: '50%',
+                        width: 40,
+                        height: 40,
+                        color: 'white',
+                        border: 'none',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                        '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                        },
+                    },
+                }}
+                emblaOptions={
+                    {
+                        loop: true,
+                        dragFree: true,
+                        align: 'start',
+                    }
                 }
-            }
-        >
+            >
             {items.map((anime) => (
                 <Carousel.Slide key={anime.malId}>
                     {/* Keep each card from stretching too wide */}
@@ -44,11 +61,11 @@ export const RecentlyUpdatedAnimeCarousel = ({
                                 <Image
                                     src={anime.pictureUrl}
                                     alt={anime.title}
-                                    height={360}
-                                    fit="cover"
+                                    height={240}
+                                    fit="contain"
                                     radius="sm"
                                     mb="sm"
-                                    style={{width: "100%", objectFit: "cover"}}
+                                    style={{width: "100%", objectFit: "contain"}}
                                 />
                             </Anchor>
 
@@ -77,6 +94,7 @@ export const RecentlyUpdatedAnimeCarousel = ({
                     </Box>
                 </Carousel.Slide>
             ))}
-        </Carousel>
+            </Carousel>
+        </Box>
     );
 }

@@ -1,6 +1,6 @@
 import {
-    Button, Stack, Group, Text, PasswordInput,
-    ActionIcon, useMantineColorScheme, Divider
+    Button, Stack, Group, Grid, PasswordInput,
+    ActionIcon, Text,
 } from "@mantine/core";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
 import {useQuery, useQueryClient, useMutation} from "@tanstack/react-query";
@@ -9,17 +9,61 @@ import {displayNotification} from "@components/notifications";
 import {useDisclosure} from "@mantine/hooks";
 import {APIClient} from "@api/APIClient.ts";
 import {ApiAddKey} from "@forms/settings/ApiAddKey.tsx";
-import {FaCopy} from "react-icons/fa";
+import {FaCopy, FaCheck} from "react-icons/fa";
 import {ConfirmDeleteIcon} from "@components/alerts/ConfirmDeleteIcon";
 import {CopyTextToClipboard} from "@utils/index";
 import {useState} from "react";
+
+interface KeyFieldProps {
+    value: string;
+}
+
+const KeyField = ({ value }: KeyFieldProps) => {
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await CopyTextToClipboard(value);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 1500);
+            displayNotification({
+                title: "Success",
+                message: "API key copied to clipboard!",
+                type: "success",
+            });
+        } catch (error) {
+            console.error('Copy failed:', error);
+            displayNotification({
+                title: "Copy Failed",
+                message: "Please manually copy the API key. Clipboard access may be restricted over HTTP.",
+                type: "error",
+            });
+        }
+    };
+
+    return (
+        <Group gap="xs" wrap="nowrap" style={{ width: '100%' }}>
+            <PasswordInput
+                value={value}
+                readOnly
+                variant="default"
+                style={{ flex: 1 }}
+            />
+            <ActionIcon
+                variant="outline"
+                color={isCopied ? 'teal' : 'primary'}
+                onClick={handleCopy}
+            >
+                {isCopied ? <FaCheck /> : <FaCopy />}
+            </ActionIcon>
+        </Group>
+    );
+};
 
 export const Api = () => {
     const [opened, {open, close}] = useDisclosure(false);
     const {data: keys} = useQuery(ApikeysQueryOptions());
     const queryClient = useQueryClient();
-    const {colorScheme} = useMantineColorScheme();
-    const isDark = colorScheme === 'dark';
 
     const mutation = useMutation({
         mutationFn: (key: string) => APIClient.apikeys.delete(key),
@@ -39,13 +83,55 @@ export const Api = () => {
                 description="Manage your shinkro API keys here."
             />
             {keys?.length ? (
-                <Stack mt={"md"} mb={"md"}>
-                    <KeyList keys={keys} onDelete={mutation.mutate} isDark={isDark}/>
+                <Stack mt="md" mb="md">
+                    {/* Header row - hidden on mobile */}
+                    <Grid
+                        visibleFrom="sm"
+                        gutter="md"
+                        mb="xs"
+                        pb="xs"
+                        style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}
+                    >
+                        <Grid.Col span={{ base: 12, sm: 3 }}>
+                            <Text
+                                size="xs"
+                                fw={700}
+                                c="dimmed"
+                                tt="uppercase"
+                                style={{ letterSpacing: '0.05em', paddingLeft: '0.75rem' }}
+                            >
+                                Name
+                            </Text>
+                        </Grid.Col>
+                        <Grid.Col span={{ base: 12, sm: 8 }}>
+                            <Text
+                                size="xs"
+                                fw={700}
+                                c="dimmed"
+                                tt="uppercase"
+                                style={{ letterSpacing: '0.05em', paddingLeft: '12rem' }}
+                            >
+                                Key
+                            </Text>
+                        </Grid.Col>
+                    </Grid>
+
+                    {/* API Key items */}
+                    <Stack gap={0}>
+                        {keys.map((keyItem) => (
+                            <KeyRow 
+                                key={keyItem.key} 
+                                name={keyItem.name} 
+                                value={keyItem.key} 
+                                onDelete={mutation.mutate}
+                            />
+                        ))}
+                    </Stack>
                 </Stack>
             ) : (
                 <CenteredEmptyState message="No API Keys Found"/>
             )}
-            <Group justify={"center"}>
+            <Group justify="center" mt="md">
                 <Button onClick={open} size="compact-xs">
                     ADD NEW
                 </Button>
@@ -55,77 +141,28 @@ export const Api = () => {
     );
 };
 
-interface KeyListProps {
-    keys: { name: string; key: string }[];
-    onDelete: (key: string) => void;
-    isDark: boolean;
-}
-
-const KeyList = ({keys, onDelete, isDark}: KeyListProps) => (
-    <div>
-        <Group justify="flex-start" grow gap="xl">
-            <div style={{minWidth: "180px", maxWidth: "640px"}}>
-                <Text fw={700}>Name</Text>
-            </div>
-            <Text fw={700}>API Key</Text>
-        </Group>
-        <Divider mt={"xs"}/>
-
-        {keys.map((key) => (
-            <KeyRow key={key.key} name={key.name} value={key.key} onDelete={onDelete} isDark={isDark}/>
-        ))}
-    </div>
-);
-
 interface KeyRowProps {
     name: string;
     value: string;
     onDelete: (key: string) => void;
-    isDark: boolean;
 }
 
-const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => {
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = async () => {
-        try {
-            await CopyTextToClipboard(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (error) {
-            console.error('Copy failed:', error);
-            displayNotification({
-                title: "Copy Failed",
-                message: "Please manually copy the API key. Clipboard access may be restricted over HTTP.",
-                type: "info",
-            });
-        }
-    };
-
+const KeyRow = ({name, value, onDelete}: KeyRowProps) => {
     return (
-        <Stack>
-            <Group gap="xl" justify="flex-start" grow mt="md">
-                <Stack justify="center" align="stretch" miw="150px" maw="500px">
-                    <Text fw={900} truncate c={isDark ? "plex" : "mal"}>
-                        {name}
-                    </Text>
-                </Stack>
-
-                <Stack justify="flex-start">
-                    <Group grow>
-                        <PasswordInput
-                            value={value}
-                            readOnly
-                            variant="filled"
-                            style={{ minWidth: 350, width: 360 }}
-                            leftSection={
-                                <div style={{pointerEvents: "all"}}>
-                                    <ActionIcon color={copied ? 'teal' : ''} onClick={handleCopy}>
-                                        <FaCopy/>
-                                    </ActionIcon>
-                                </div>
-                            }
-                        />
+        <>
+            <Grid gutter="md" align="center" py="sm" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+                <Grid.Col span={{ base: 12, sm: 3 }}>
+                    <Group justify="space-between" wrap="nowrap">
+                        <Text c="primary" tt="uppercase" fw={700} truncate style={{ flex: 1 }}>
+                            {name}
+                        </Text>
+                    </Group>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 8 }}>
+                    <KeyField value={value} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 1 }} visibleFrom="sm">
+                    <Group justify="center">
                         <ConfirmDeleteIcon
                             onConfirm={() => onDelete(value)}
                             title="Delete API Key"
@@ -134,9 +171,8 @@ const KeyRow = ({name, value, onDelete, isDark}: KeyRowProps) => {
                             variant="outline"
                         />
                     </Group>
-                </Stack>
-            </Group>
-            <Divider/>
-        </Stack>
+                </Grid.Col>
+            </Grid>
+        </>
     );
 };

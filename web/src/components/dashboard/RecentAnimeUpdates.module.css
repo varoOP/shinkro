@@ -1,0 +1,16 @@
+.carouselWrapper {
+  position: relative;
+}
+
+/* Hide carousel controls by default and show on hover */
+.carouselWrapper :global(.mantine-Carousel-control) {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.carouselWrapper:hover :global(.mantine-Carousel-control) {
+  opacity: 1;
+  pointer-events: auto;
+}
+

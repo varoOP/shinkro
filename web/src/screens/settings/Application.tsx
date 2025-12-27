@@ -1,9 +1,8 @@
 import {
     Stack,
     Table,
-    Text,
 } from "@mantine/core";
-import {useQuery} from "@tanstack/react-query";
+import {useSuspenseQuery} from "@tanstack/react-query";
 import {useRef, useState, useEffect, useLayoutEffect} from "react";
 import {ConfigQueryOptions} from "@api/queries.ts";
 import {SettingsSectionHeader} from "@screens/settings/components.tsx";
@@ -64,9 +63,9 @@ const TruncatedText = ({ value }: { value: string }) => {
 };
 
 export const Application = () => {
-    const {data: config} = useQuery(ConfigQueryOptions());
+    const {data: config} = useSuspenseQuery(ConfigQueryOptions());
 
-    const rows = config ? [
+    const rows = [
         {label: 'Binary', value: config.application || 'Not set'},
         {label: 'Config Directory', value: config.config_dir || 'Not set'},
         {label: 'Host', value: config.host || 'Not set'},
@@ -80,7 +79,7 @@ export const Application = () => {
         {label: 'Version', value: config.version || 'Not set'},
         {label: 'Commit', value: config.commit || 'Not set'},
         {label: 'Build Date', value: config.date || 'Not set'},
-    ] : [];
+    ];
 
     return (
         <main>
@@ -89,28 +88,22 @@ export const Application = () => {
                 description="To change settings, edit config.toml found in the config directory and restart the application."
             />
             
-            {config ? (
-                <Stack mt="md">
-                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                        <Table variant="vertical" verticalSpacing="sm" withTableBorder style={{ minWidth: '100%' }}>
-                            <Table.Tbody>
-                                {rows.map((row, index) => (
-                                    <Table.Tr key={index}>
-                                        <Table.Th w={180} style={{ whiteSpace: 'nowrap' }}>{row.label}</Table.Th>
-                                        <Table.Td style={{ maxWidth: 0, width: '100%' }}>
-                                            <TruncatedText value={row.value} />
-                                        </Table.Td>
-                                    </Table.Tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
-                    </div>
-                </Stack>
-            ) : (
-                <Stack mt="md">
-                    <Text c="dimmed">Loading application settings...</Text>
-                </Stack>
-            )}
+            <Stack mt="md">
+                <div style={{ overflowX: 'auto', width: '100%' }}>
+                    <Table variant="vertical" verticalSpacing="sm" withTableBorder style={{ minWidth: '100%' }}>
+                        <Table.Tbody>
+                            {rows.map((row, index) => (
+                                <Table.Tr key={index}>
+                                    <Table.Th w={180} style={{ whiteSpace: 'nowrap' }}>{row.label}</Table.Th>
+                                    <Table.Td style={{ maxWidth: 0, width: '100%' }}>
+                                        <TruncatedText value={row.value} />
+                                    </Table.Td>
+                                </Table.Tr>
+                            ))}
+                        </Table.Tbody>
+                    </Table>
+                </div>
+            </Stack>
         </main>
     );
 };

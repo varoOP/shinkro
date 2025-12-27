@@ -1,5 +1,5 @@
 import {SettingsSectionHeader, TMDBIcon, TVDBIcon} from "@screens/settings/components.tsx";
-import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useSuspenseQuery, useQueryClient} from "@tanstack/react-query";
 import {MappingQueryOptions} from "@api/queries.ts";
 import {APIClient} from "@api/APIClient.ts";
 import {
@@ -18,7 +18,7 @@ import {displayNotification} from "@components/notifications";
 import {ValidateMap} from "@app/types/Mapping";
 
 export const MapSettings = () => {
-    const {data: mapping} = useQuery(MappingQueryOptions());
+    const {data: mapping} = useSuspenseQuery(MappingQueryOptions());
     const queryClient = useQueryClient();
     const [modalOpen, {open, close}] = useDisclosure(false);
     const [settingTarget, setSettingTarget] = useState<"tvdb" | "tmdb" | null>(null);
@@ -84,8 +84,7 @@ export const MapSettings = () => {
                     </Stack>
                 }
             />
-            {mapping && (
-                <Stack gap="md" mt="md">
+            <Stack gap="md" mt="md">
                     <Group justify="flex-start" align="center" wrap="nowrap">
                         <Text w={100} fw={600}>Enabled</Text>
                         <Text w={80} fw={600}>Type</Text>
@@ -167,7 +166,6 @@ export const MapSettings = () => {
                         );
                     })}
                 </Stack>
-            )}
             <MapDirSelect
                 opened={modalOpen}
                 onClose={close}

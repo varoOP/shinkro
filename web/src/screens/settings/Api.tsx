@@ -3,7 +3,7 @@ import {
     ActionIcon, Text,
 } from "@mantine/core";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
-import {useQuery, useQueryClient, useMutation} from "@tanstack/react-query";
+import {useSuspenseQuery, useQueryClient, useMutation} from "@tanstack/react-query";
 import {ApikeysQueryOptions} from "@api/queries.ts";
 import {displayNotification} from "@components/notifications";
 import {useDisclosure} from "@mantine/hooks";
@@ -62,7 +62,7 @@ const KeyField = ({ value }: KeyFieldProps) => {
 
 export const Api = () => {
     const [opened, {open, close}] = useDisclosure(false);
-    const {data: keys} = useQuery(ApikeysQueryOptions());
+    const {data: keys} = useSuspenseQuery(ApikeysQueryOptions());
     const queryClient = useQueryClient();
 
     const mutation = useMutation({

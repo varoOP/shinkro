@@ -1,7 +1,7 @@
 import {Button, Stack, Paper, Text, Group, ActionIcon, Badge, Switch} from "@mantine/core";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
 import {NotificationsQueryOptions} from "@api/queries.ts";
-import {useQuery, useMutation, useQueryClient} from "@tanstack/react-query";
+import {useSuspenseQuery, useMutation, useQueryClient} from "@tanstack/react-query";
 import {AddNotification} from "@forms/settings/AddNotification";
 import {useState} from "react";
 import {APIClient} from "@api/APIClient.ts";
@@ -14,7 +14,7 @@ export const Notifications = () => {
     const [modalOpened, setModalOpened] = useState(false);
     const [editingNotification, setEditingNotification] = useState<ServiceNotification | undefined>();
     const queryClient = useQueryClient();
-    const {data: notifications} = useQuery(NotificationsQueryOptions());
+    const {data: notifications} = useSuspenseQuery(NotificationsQueryOptions());
 
     const deleteMutation = useMutation({
         mutationFn: (id: number) => APIClient.notifications.delete(id),
@@ -64,7 +64,7 @@ export const Notifications = () => {
                 description={"Manage your notification settings here."}
             />
             
-            {notifications && notifications.length > 0 ? (
+            {notifications.length > 0 ? (
                 <Stack mt="md">
                     {notifications.map((notification) => (
                         <Paper key={notification.id} p="md" withBorder>

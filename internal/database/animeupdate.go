@@ -61,6 +61,7 @@ func (repo *AnimeUpdateRepo) GetByID(ctx context.Context, req *domain.GetAnimeUp
 func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
 	queryBuilder := repo.db.squirrel.
 		Select("count(*)").
+		Where(sq.Eq{"status": string(domain.AnimeUpdateStatusSuccess)}).
 		From("anime_update")
 
 	query, args, err := queryBuilder.ToSql()

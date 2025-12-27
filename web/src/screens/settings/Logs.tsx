@@ -1,4 +1,4 @@
-import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useSuspenseQuery, useQueryClient} from "@tanstack/react-query";
 import {ConfigQueryOptions, LogQueryOptions} from "@api/queries.ts";
 import {CenteredEmptyState, SettingsSectionHeader} from "@screens/settings/components.tsx";
 import { Divider, Stack, Text, Select, Group, ActionIcon } from "@mantine/core";
@@ -11,7 +11,7 @@ import {baseUrl} from "@utils";
 
 export const Logs = () => {
     const queryClient = useQueryClient();
-    const {data} = useQuery(ConfigQueryOptions());
+    const {data} = useSuspenseQuery(ConfigQueryOptions());
 
     const mutation = useMutation({
         mutationFn: (config: ConfigUpdate) => APIClient.config.update(config),
@@ -34,8 +34,7 @@ export const Logs = () => {
             <SettingsSectionHeader title={"Logs"} description={"Manage shinkro logs here."}/>
             
             {/* Log Settings Section */}
-            {data && (
-                <Stack mt={"md"}>
+            <Stack mt={"md"}>
                     <Text fw={900} size={"xl"}>
                         Log Settings:
                     </Text>
@@ -56,7 +55,6 @@ export const Logs = () => {
                         />
                     </Group>
                 </Stack>
-            )}
             
             <Divider mt={"md"}/>
             
@@ -67,7 +65,7 @@ export const Logs = () => {
 }
 
 export const LogFiles = () => {
-    const {data: logs} = useQuery(LogQueryOptions());
+    const {data: logs} = useSuspenseQuery(LogQueryOptions());
     const [isDownloading, setIsDownloading] = useState(false);
     const isEmpty = !logs || !(logs.length > 0)
 

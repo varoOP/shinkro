@@ -6,7 +6,7 @@ import {
     Button,
     Group,
 } from "@mantine/core";
-import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useSuspenseQuery, useQueryClient} from "@tanstack/react-query";
 import {MalQueryOptions} from "@api/queries.ts";
 import {MalAuthKeys} from "@api/query_keys.ts";
 import {ConfirmDeleteButton} from "@components/alerts/ConfirmDeleteButton";
@@ -16,7 +16,7 @@ import {CenteredEmptyState, SettingsSectionHeader, StatusIndicator} from "@scree
 
 export const Mal = () => {
     const queryClient = useQueryClient();
-    const {data: malauth} = useQuery(MalQueryOptions());
+    const {data: malauth} = useSuspenseQuery(MalQueryOptions());
     const [loading, setLoading] = useState(false);
 
     const [opened, {open, close}] = useDisclosure(false);

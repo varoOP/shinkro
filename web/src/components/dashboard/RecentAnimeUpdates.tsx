@@ -1,5 +1,6 @@
 import {Anchor, Badge, Box, Card, Group, Image, Stack, Text} from "@mantine/core";
 import {Carousel} from '@mantine/carousel';
+import {IoMdArrowRoundForward, IoMdArrowRoundBack} from "react-icons/io";
 import {formatDistanceToNow, parseISO} from "date-fns";
 import type { RecentAnimeItem } from "@app/types/Anime";
 import { safeDate, statusColor, formatStatusLabel } from "@utils/index";
@@ -17,16 +18,18 @@ export const RecentlyUpdatedAnimeCarousel = ({
     return (
         <Box className={classes.carouselWrapper}>
             <Carousel
-                style={{width: "100%", paddingBottom: "32px"}}
+                style={{width: "100%"}}
                 slideSize={{base: "100%", sm: "50%", md: "33.333%", lg: "25%"}}
                 slideGap="md"
-                controlSize={40}
-                withIndicators
+                nextControlIcon={<IoMdArrowRoundForward size={24} />}
+                previousControlIcon={<IoMdArrowRoundBack size={24} />}
+                controlSize={50}
+                controlsOffset={0.5}
                 draggable={true}
-                height={420}
+                height={430}
                 styles={{
                     control: {
-                        transition: 'background-color 0.2s ease',
+                        transition: 'background-color 0.2s ease, opacity 0.2s ease',
                         backgroundColor: 'rgba(0, 0, 0, 0.5)',
                         borderRadius: '50%',
                         width: 40,
@@ -41,7 +44,7 @@ export const RecentlyUpdatedAnimeCarousel = ({
                 }}
                 emblaOptions={
                     {
-                        loop: true,
+                        loop: false,
                         dragFree: true,
                         align: 'start',
                     }

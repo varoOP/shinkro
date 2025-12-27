@@ -4,7 +4,7 @@ import {
     Group,
     Table,
 } from "@mantine/core";
-import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useSuspenseQuery, useQueryClient} from "@tanstack/react-query";
 import {useEffect, useState, useRef, useLayoutEffect} from "react";
 import {useDisclosure} from "@mantine/hooks";
 
@@ -79,7 +79,7 @@ export const Plex = () => {
     const queryClient = useQueryClient();
     const [isReachable, setIsReachable] = useState<boolean | null>(null);
     const [opened, {open, close}] = useDisclosure(false);
-    const {data: settings} = useQuery(PlexSettingsQueryOptions());
+    const {data: settings} = useSuspenseQuery(PlexSettingsQueryOptions());
     const isEmptySettings = !settings || Object.keys(settings).length === 0;
 
     useEffect(() => {

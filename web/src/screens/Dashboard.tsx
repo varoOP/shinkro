@@ -1,6 +1,5 @@
-import {Suspense} from "react";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {Container, Stack, Title, Group, Select, Loader, Center} from "@mantine/core";
+import {Container, Stack, Title, Group, Select} from "@mantine/core";
 import {
     plexCountsQueryOptions,
     animeUpdateCountQueryOptions,
@@ -25,7 +24,7 @@ function StatisticsContent() {
 }
 
 function RecentAnimeContent() {
-    const {data: recentAnime} = useSuspenseQuery(recentAnimeUpdatesQueryOptions(8));
+    const {data: recentAnime} = useSuspenseQuery(recentAnimeUpdatesQueryOptions(16));
 
     return (
         <RecentlyUpdatedAnimeCarousel
@@ -61,23 +60,11 @@ export const Dashboard = () => {
                 <Title order={2}>
                     Statistics
                 </Title>
-                <Suspense fallback={
-                    <Center py="xl">
-                        <Loader size="lg" />
-                    </Center>
-                }>
-                    <StatisticsContent />
-                </Suspense>
+                <StatisticsContent />
             </Stack>
             <Stack gap="md" mt="xl" p="md">
                 <Title order={2}>Recently Updated Anime</Title>
-                <Suspense fallback={
-                    <Center py="xl">
-                        <Loader size="lg" />
-                    </Center>
-                }>
-                    <RecentAnimeContent />
-                </Suspense>
+                <RecentAnimeContent />
             </Stack>
 
             {/* Timeline Section */}
@@ -104,13 +91,7 @@ export const Dashboard = () => {
                         style={{ width: 115 }}
                     />
                 </Group>
-                <Suspense fallback={
-                    <Center py="xl">
-                        <Loader size="lg" />
-                    </Center>
-                }>
-                    <TimelineContent />
-                </Suspense>
+                <TimelineContent />
             </Stack>
         </Container>
     );

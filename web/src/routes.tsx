@@ -36,6 +36,13 @@ import {
     animeUpdateCountQueryOptions,
     recentAnimeUpdatesQueryOptions,
     plexHistoryQueryOptions,
+    ConfigQueryOptions,
+    PlexSettingsQueryOptions,
+    MalQueryOptions,
+    MappingQueryOptions,
+    NotificationsQueryOptions,
+    ApikeysQueryOptions,
+    LogQueryOptions,
 } from "@api/queries";
 
 const DashboardRoute = createRoute({
@@ -49,7 +56,7 @@ const DashboardRoute = createRoute({
         await Promise.all([
             context.queryClient.ensureQueryData(plexCountsQueryOptions()),
             context.queryClient.ensureQueryData(animeUpdateCountQueryOptions()),
-            context.queryClient.ensureQueryData(recentAnimeUpdatesQueryOptions(8)),
+            context.queryClient.ensureQueryData(recentAnimeUpdatesQueryOptions(16)),
             context.queryClient.ensureQueryData(plexHistoryQueryOptions({ limit })),
         ]);
         
@@ -185,6 +192,7 @@ export const SettingsRoute = createRoute({
 export const SettingsApplicationRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "/",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(ConfigQueryOptions()),
     pendingMs: 3000,
     component: Application,
 });
@@ -199,6 +207,7 @@ export const SettingsUserRoute = createRoute({
 export const SettingsApiRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "api",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(ApikeysQueryOptions()),
     pendingMs: 3000,
     component: Api,
 });
@@ -206,6 +215,7 @@ export const SettingsApiRoute = createRoute({
 export const SettingsNotificationsRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "notifications",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(NotificationsQueryOptions()),
     pendingMs: 3000,
     component: Notifications,
 });
@@ -213,6 +223,12 @@ export const SettingsNotificationsRoute = createRoute({
 export const SettingsLogsRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "logs",
+    loader: async (opts) => {
+        await Promise.all([
+            opts.context.queryClient.ensureQueryData(ConfigQueryOptions()),
+            opts.context.queryClient.ensureQueryData(LogQueryOptions()),
+        ]);
+    },
     pendingMs: 3000,
     component: SettingsLogs,
 });
@@ -220,6 +236,7 @@ export const SettingsLogsRoute = createRoute({
 export const SettingsPlexRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "plex",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(PlexSettingsQueryOptions()),
     pendingMs: 3000,
     component: Plex,
 });
@@ -227,6 +244,7 @@ export const SettingsPlexRoute = createRoute({
 export const SettingsMalRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "mal",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(MalQueryOptions()),
     pendingMs: 3000,
     component: Mal,
 });
@@ -234,6 +252,7 @@ export const SettingsMalRoute = createRoute({
 export const SettingsMappingRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "mapping",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(MappingQueryOptions()),
     pendingMs: 3000,
     component: MapSettings,
 });
@@ -290,7 +309,7 @@ const routeTree = RootRoute.addChildren([
 export const Router = createRouter({
     routeTree,
     defaultPendingComponent: () => (
-        <Center style={{ minHeight: "100vh" }}>
+        <Center style={{ height: "400px" }}>
             <Loader size="lg" />
         </Center>
     ),

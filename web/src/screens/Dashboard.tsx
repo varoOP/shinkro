@@ -25,7 +25,7 @@ function StatisticsContent() {
 }
 
 function RecentAnimeContent() {
-    const {data: recentAnime} = useSuspenseQuery(recentAnimeUpdatesQueryOptions(8));
+    const {data: recentAnime} = useSuspenseQuery(recentAnimeUpdatesQueryOptions(16));
 
     return (
         <RecentlyUpdatedAnimeCarousel

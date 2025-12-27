@@ -112,7 +112,7 @@ export const animeUpdateCountQueryOptions = () =>
         refetchOnWindowFocus: true,
     });
 
-export const recentAnimeUpdatesQueryOptions = (limit: number = 5) =>
+export const recentAnimeUpdatesQueryOptions = (limit: number = 16) =>
     queryOptions({
         queryKey: ["recentAnimeUpdates", limit],
         queryFn: () => APIClient.animeupdate.getRecent(limit),

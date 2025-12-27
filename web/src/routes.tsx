@@ -49,7 +49,7 @@ const DashboardRoute = createRoute({
         await Promise.all([
             context.queryClient.ensureQueryData(plexCountsQueryOptions()),
             context.queryClient.ensureQueryData(animeUpdateCountQueryOptions()),
-            context.queryClient.ensureQueryData(recentAnimeUpdatesQueryOptions(8)),
+            context.queryClient.ensureQueryData(recentAnimeUpdatesQueryOptions(16)),
             context.queryClient.ensureQueryData(plexHistoryQueryOptions({ limit })),
         ]);
         

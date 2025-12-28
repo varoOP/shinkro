@@ -389,15 +389,24 @@ func (g *GUID) HamaMALAgent(agent PlexSupportedAgents) (PlexSupportedDBs, int, e
 		MALAgent: `.(m.*)://(\d+ ?)`,
 	}
 
+	pattern, exists := agentRegExMap[agent]
+	if !exists || pattern == "" {
+		return "", -1, errors.Errorf("unsupported agent type for HamaMALAgent: %v", agent)
+	}
+
 	guid := g.GUID
-	r := regexp.MustCompile(agentRegExMap[agent])
+	r := regexp.MustCompile(pattern)
 	if !r.MatchString(guid) {
 		return "", -1, errors.Errorf("unable to parse GUID: %v", guid)
 	}
 
 	mm := r.FindStringSubmatch(guid)
-	source := mm[1]
-	id, err := strconv.Atoi(mm[2])
+	if len(mm) < 3 {
+		return "", -1, errors.Errorf("unable to parse GUID: expected 2 capture groups, got %d", len(mm)-1)
+	}
+	source := strings.TrimSpace(mm[1])
+	idStr := strings.TrimSpace(mm[2])
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return "", -1, errors.Wrap(err, "conversion of id failed")
 	}

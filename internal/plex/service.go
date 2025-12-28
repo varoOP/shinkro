@@ -27,6 +27,7 @@ type Service interface {
 	GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexHistoryItem, error)
 	FindAllWithFilters(ctx context.Context, params domain.PlexPayloadQueryParams) (*domain.FindPlexPayloadsResponse, error)
 	Delete(ctx context.Context, req *domain.DeletePlexRequest) error
+	UpdateStatus(ctx context.Context, plexID int64, success *bool, errorType domain.PlexErrorType, errorMsg string) error
 }
 
 type service struct {
@@ -117,20 +118,14 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 		return err
 	}
 
-	// Publish success event - Plex processing succeeded (metadata extraction worked, animeupdate was attempted)
-	// The actual MAL update success/failure is tracked in animeUpdate.Status
+	// Publish success event - Plex processing succeeded (metadata extraction worked)
+	// Event subscriber will trigger MAL update asynchronously
 	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
-		PlexID:    plex.ID,
-		Plex:      plex,
-		Timestamp: time.Now(),
+		PlexID:      plex.ID,
+		Plex:        plex,
+		AnimeUpdate: a,
+		Timestamp:   time.Now(),
 	})
-
-	// Attempt MAL update - errors are handled by UpdateAnimeList and published as EventAnimeUpdateFailed
-	err = s.animeUpdateService.UpdateAnimeList(ctx, a, plex.Event)
-	if err != nil {
-		// Don't return error - Plex processing succeeded, MAL update failure is tracked separately
-		return nil
-	}
 
 	return nil
 }
@@ -220,4 +215,8 @@ func (s *service) FindAllWithFilters(ctx context.Context, params domain.PlexPayl
 
 func (s *service) Delete(ctx context.Context, req *domain.DeletePlexRequest) error {
 	return s.repo.Delete(ctx, req)
+}
+
+func (s *service) UpdateStatus(ctx context.Context, plexID int64, success *bool, errorType domain.PlexErrorType, errorMsg string) error {
+	return s.repo.UpdateStatus(ctx, plexID, success, errorType, errorMsg)
 }

@@ -6,8 +6,10 @@ import (
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"
+	"github.com/varoOP/shinkro/internal/animeupdate"
 	"github.com/varoOP/shinkro/internal/domain"
 	"github.com/varoOP/shinkro/internal/notification"
+	"github.com/varoOP/shinkro/internal/plex"
 )
 
 type Subscriber struct {
@@ -15,15 +17,17 @@ type Subscriber struct {
 	eventbus EventBus.Bus
 
 	notificationService notification.Service
-	plexRepo            domain.PlexRepo
+	plexService         plex.Service
+	animeUpdateService  animeupdate.Service
 }
 
-func NewSubscribers(log zerolog.Logger, eventbus EventBus.Bus, notificationSvc notification.Service, plexRepo domain.PlexRepo) *Subscriber {
+func NewSubscribers(log zerolog.Logger, eventbus EventBus.Bus, notificationSvc notification.Service, plexSvc plex.Service, animeUpdateSvc animeupdate.Service) *Subscriber {
 	s := &Subscriber{
 		log:                 log.With().Str("module", "events").Logger(),
 		eventbus:            eventbus,
 		notificationService: notificationSvc,
-		plexRepo:            plexRepo,
+		plexService:         plexSvc,
+		animeUpdateService:  animeUpdateSvc,
 	}
 
 	s.Register()
@@ -46,10 +50,20 @@ func (s *Subscriber) handlePlexProcessedSuccess(event *domain.PlexProcessedSucce
 		Msg("plex processed successfully (extraction complete)")
 
 	success := true
-	if err := s.plexRepo.UpdateStatus(context.Background(), event.PlexID, &success, "", ""); err != nil {
+	if err := s.plexService.UpdateStatus(context.Background(), event.PlexID, &success, "", ""); err != nil {
 		s.log.Error().Err(err).Msg("failed to store plex success status")
 	}
 
+	// Trigger MAL update asynchronously as a side effect
+	if event.AnimeUpdate != nil && event.Plex != nil {
+		go func() {
+			bgCtx := context.Background()
+			if err := s.animeUpdateService.UpdateAnimeList(bgCtx, event.AnimeUpdate, event.Plex.Event); err != nil {
+				// Error is already handled and published by UpdateAnimeList
+				s.log.Debug().Err(err).Msg("MAL update failed")
+			}
+		}()
+	}
 }
 
 func (s *Subscriber) handlePlexProcessedError(event *domain.PlexProcessedErrorEvent) {
@@ -61,7 +75,7 @@ func (s *Subscriber) handlePlexProcessedError(event *domain.PlexProcessedErrorEv
 
 	// Store error status with error type
 	success := false
-	if err := s.plexRepo.UpdateStatus(context.Background(), event.PlexID, &success, event.ErrorType, event.ErrorMessage); err != nil {
+	if err := s.plexService.UpdateStatus(context.Background(), event.PlexID, &success, event.ErrorType, event.ErrorMessage); err != nil {
 		s.log.Error().Err(err).Msg("failed to store plex error status")
 	}
 
@@ -91,9 +105,6 @@ func (s *Subscriber) handleAnimeUpdateSuccess(event *domain.AnimeUpdateSuccessEv
 		Int64("plexID", event.PlexID).
 		Int("malID", event.AnimeUpdate.MALId).
 		Msg("anime update succeeded")
-
-	// Note: anime_update record is already stored with status=SUCCESS by animeupdate service
-	// No need to create separate status record anymore
 
 	// Send success notification with detailed info
 	if event.AnimeUpdate != nil {
@@ -125,8 +136,6 @@ func (s *Subscriber) handleAnimeUpdateFailed(event *domain.AnimeUpdateFailedEven
 		Str("error", event.ErrorMessage).
 		Msg("anime update failed")
 
-	// Note: anime_update record is already stored with status=FAILED by animeupdate service
-	// No need to create separate status record anymore
 
 	// Extract anime title for better error messages
 	animeTitle := s.getAnimeTitle(event.AnimeUpdate)

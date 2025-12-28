@@ -13,9 +13,10 @@ const (
 
 // PlexProcessedSuccessEvent is published when a Plex payload is successfully processed (extraction complete, before MAL update)
 type PlexProcessedSuccessEvent struct {
-	PlexID    int64
-	Plex      *Plex
-	Timestamp time.Time
+	PlexID     int64
+	Plex       *Plex
+	AnimeUpdate *AnimeUpdate // Contains extracted anime info needed for MAL update
+	Timestamp  time.Time
 }
 
 // PlexProcessedErrorEvent is published when a Plex payload processing fails

@@ -112,34 +112,34 @@ func main() {
 
 		// Initialize repositories
 		var (
-			animeRepo             = database.NewAnimeRepo(log, db)
-			animeUpdateRepo       = database.NewAnimeUpdateRepo(log, db)
-			plexRepo              = database.NewPlexRepo(log, db)
-			plexSettingsRepo      = database.NewPlexSettingsRepo(log, db)
-			malauthRepo           = database.NewMalAuthRepo(log, db)
-			userRepo              = database.NewUserRepo(log, db)
-			apiRepo               = database.NewAPIRepo(log, db)
-			mappingRepo           = database.NewMappingRepo(log, db)
-			notificationRepo      = database.NewNotificationRepo(log, db)
+			animeRepo        = database.NewAnimeRepo(log, db)
+			animeUpdateRepo  = database.NewAnimeUpdateRepo(log, db)
+			plexRepo         = database.NewPlexRepo(log, db)
+			plexSettingsRepo = database.NewPlexSettingsRepo(log, db)
+			malauthRepo      = database.NewMalAuthRepo(log, db)
+			userRepo         = database.NewUserRepo(log, db)
+			apiRepo          = database.NewAPIRepo(log, db)
+			mappingRepo      = database.NewMappingRepo(log, db)
+			notificationRepo = database.NewNotificationRepo(log, db)
 		)
 
 		// Initialize services
 		var (
-			animeService             = anime.NewService(log, animeRepo)
-			malauthService           = malauth.NewService(cfg.Config, log, malauthRepo)
-			mapService               = mapping.NewService(log, mappingRepo)
-			plexSettingsService      = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
-			notificationService      = notification.NewService(log, notificationRepo)
-			animeUpdateService       = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
-			plexService              = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, bus)
-			userService              = user.NewService(userRepo, log)
-			authService              = auth.NewService(log, userService)
-			apiService               = api.NewService(log, apiRepo)
-			fsService                = filesystem.NewService(cfg.Config, log)
+			animeService        = anime.NewService(log, animeRepo)
+			malauthService      = malauth.NewService(cfg.Config, log, malauthRepo)
+			mapService          = mapping.NewService(log, mappingRepo)
+			plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
+			notificationService = notification.NewService(log, notificationRepo)
+			animeUpdateService  = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
+			plexService         = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, bus)
+			userService         = user.NewService(userRepo, log)
+			authService         = auth.NewService(log, userService)
+			apiService          = api.NewService(log, apiRepo)
+			fsService           = filesystem.NewService(cfg.Config, log)
 		)
 
 		// Register event subscribers
-		events.NewSubscribers(log, bus, notificationService, plexRepo)
+		events.NewSubscribers(log, bus, notificationService, plexService, animeUpdateService)
 
 		srv := server.NewServer(log, cfg.Config, animeService, mapService, bus)
 		if err := srv.Start(); err != nil {

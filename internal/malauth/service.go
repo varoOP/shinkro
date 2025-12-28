@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"encoding/hex"
 	"encoding/json"
+	"sync"
 
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
@@ -23,9 +24,10 @@ type Service interface {
 }
 
 type service struct {
-	config *domain.Config
-	log    zerolog.Logger
-	repo   domain.MalAuthRepo
+	config         *domain.Config
+	log            zerolog.Logger
+	repo           domain.MalAuthRepo
+	tokenRefreshMu sync.Mutex // Protects token refresh to prevent concurrent refreshes
 }
 
 func NewService(config *domain.Config, log zerolog.Logger, repo domain.MalAuthRepo) Service {
@@ -113,26 +115,52 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 		return nil, err
 	}
 
-	freshToken, err := ma.Config.TokenSource(ctx, token).Token()
-	if err != nil {
-		s.log.Err(errors.Wrap(err, "failed to refresh access token")).Msg("")
-		return nil, err
+	// Fast path: if token is still valid, return immediately without lock
+	if token.Valid() {
+		return mal.NewClient(ma.Config.Client(ctx, token)), nil
 	}
 
-	if freshToken.AccessToken != token.AccessToken {
-		token = freshToken
-		t, err := json.Marshal(token)
-		if err != nil {
-			s.log.Err(errors.Wrap(err, "failed to marshal access token")).Msg("")
-			return nil, err
-		}
+	// Slow path: token needs refresh, acquire lock
+	s.tokenRefreshMu.Lock()
+	defer s.tokenRefreshMu.Unlock()
 
-		ma.AccessToken = t
-		err = s.Store(ctx, ma)
-		if err != nil {
-			s.log.Err(errors.Wrap(err, "failed to store credentials to database")).Msg("")
-			return nil, err
-		}
+	// Double-check: another goroutine might have refreshed while we were waiting
+	// Re-fetch credentials to get the latest token
+	ma, err = s.GetDecrypted(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to re-fetch credentials for double-check")
+	}
+
+	dt, err = s.decrypt(ma.AccessToken, ma.TokenIV)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decrypt access token for double-check")
+	}
+
+	var currentToken oauth2.Token
+	if err = json.Unmarshal(dt, &currentToken); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal access token for double-check")
+	}
+
+	// If token is now valid (refreshed by another goroutine), use it
+	if currentToken.Valid() {
+		return mal.NewClient(ma.Config.Client(ctx, &currentToken)), nil
+	}
+
+	// Token still needs refresh, do it now
+	freshToken, err := ma.Config.TokenSource(ctx, &currentToken).Token()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to refresh access token")
+	}
+
+	// Store the refreshed token
+	t, err := json.Marshal(freshToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal access token")
+	}
+
+	ma.AccessToken = t
+	if err = s.Store(ctx, ma); err != nil {
+		return nil, errors.Wrap(err, "failed to store refreshed credentials")
 	}
 
 	return mal.NewClient(ma.Config.Client(ctx, freshToken)), nil

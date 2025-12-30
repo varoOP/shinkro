@@ -74,7 +74,7 @@ export const Login = () => {
     const [tooltipOpened, setTooltipOpened] = useState(false);
 
     const commandText =
-        "shinkro --config=${HOME}/.config/shinkro change-password ${USER}";
+        "shinkro --config=${HOME}/.config/shinkro change-password ${USER} --password <new_password>";
 
     const handleCopyCommand = () => {
         navigator.clipboard.writeText(commandText);
@@ -126,7 +126,7 @@ export const Login = () => {
                                     LOGIN
                                 </Button>
                                 <Tooltip
-                                    label={`Reset password using terminal command: ${commandText}`}
+                                    label={`Set new password using terminal command: ${commandText}`}
                                     opened={tooltipOpened}
                                     position="bottom"
                                     arrowOffset={50}

@@ -17,14 +17,14 @@ func TestLivenessHandler(t *testing.T) {
 	resp := w.Result()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
-	
+
 	body := w.Body.String()
 	assert.Equal(t, `{"status":"ok"}`, body)
 }
 
 func TestLivenessHandler_MultipleCalls(t *testing.T) {
 	// Test that the handler works consistently across multiple calls
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		req := httptest.NewRequest(http.MethodGet, "/healthz/liveness", nil)
 		w := httptest.NewRecorder()
 

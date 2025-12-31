@@ -22,11 +22,11 @@ func contentType(r *http.Request) domain.PlexPayloadSource {
 	var sourceType domain.PlexPayloadSource
 	if strings.Contains(contentType, "multipart/form-data") {
 		sourceType = domain.PlexWebhook
-	}
-
-	if strings.Contains(contentType, "application/json") {
+	} else if strings.Contains(contentType, "application/json") {
 		sourceType = domain.TautulliWebhook
 	}
+	// If neither matches, sourceType remains empty string (zero value)
+	// which indicates unsupported content type
 
 	return sourceType
 }

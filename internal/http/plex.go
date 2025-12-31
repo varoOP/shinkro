@@ -76,7 +76,25 @@ func (h plexHandler) getPlex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h plexHandler) postPlex(w http.ResponseWriter, r *http.Request) {
-	plex := r.Context().Value(domain.PlexPayload).(*domain.Plex)
+	// Safely extract plex payload from context
+	plexValue := r.Context().Value(domain.PlexPayload)
+	if plexValue == nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "BAD_REQUEST",
+			"message": "payload not found in request context",
+		})
+		return
+	}
+
+	plex, ok := plexValue.(*domain.Plex)
+	if !ok || plex == nil {
+		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{
+			"code":    "BAD_REQUEST",
+			"message": "invalid payload type in request context",
+		})
+		return
+	}
+
 	plexSettings, err := h.service.GetPlexSettings(r.Context())
 	if err != nil {
 		h.encoder.StatusResponse(w, http.StatusBadRequest, map[string]interface{}{

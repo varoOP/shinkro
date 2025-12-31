@@ -479,6 +479,15 @@ func NewMockCreateUserRequest() domain.CreateUserRequest {
 	}
 }
 
+// NewMockUpdateUserRequest creates UpdateUserRequest
+func NewMockUpdateUserRequest() domain.UpdateUserRequest {
+	return domain.UpdateUserRequest{
+		UsernameCurrent: "testuser",
+		UsernameNew:     "updateduser",
+		PasswordNewHash: "$argon2id$v=19$m=65536,t=3,p=4$newhashed",
+	}
+}
+
 // Helper Functions
 
 func getErrorMessageForErrorType(errorType domain.AnimeUpdateErrorType) string {

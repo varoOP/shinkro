@@ -24,7 +24,21 @@ func NewAnimeRepo(log zerolog.Logger, db *DB) domain.AnimeRepo {
 
 func (repo *AnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest) (*domain.Anime, error) {
 
-	id := "a." + string(req.IDtype) + "_id"
+	// Map PlexSupportedDBs to database column names
+	var columnName string
+	switch req.IDtype {
+	case domain.MAL:
+		columnName = "mal_id"
+	case domain.TVDB:
+		columnName = "tvdb_id"
+	case domain.TMDB:
+		columnName = "tmdb_id"
+	case domain.AniDB:
+		columnName = "anidb_id"
+	default:
+		columnName = string(req.IDtype) + "_id"
+	}
+	id := "a." + columnName
 
 	queryBuilder := repo.db.squirrel.
 		Select("a.mal_id", "a.title", "a.en_title", "a.anidb_id", "a.tvdb_id", "a.tmdb_id", "a.type", "a.releaseDate").

@@ -1,4 +1,4 @@
-.PHONY: test
+.PHONY: test test-integration
 .POSIX:
 .SUFFIXES:
 
@@ -20,6 +20,9 @@ deps:
 
 test:
 	go test $(go list ./... | grep -v test/integration)
+
+test-integration:
+	go test -tags=integration -v ./...
 
 build: deps build/web build/app
 

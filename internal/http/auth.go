@@ -76,6 +76,16 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 	// create new session
 	session, err := h.cookieStore.Get(r, "user_session")
 	if err != nil {
+		// clear any existing session cookie
+		http.SetCookie(w, &http.Cookie{
+			Name:     "user_session",
+			Value:    "",
+			Path:     h.config.BaseUrl,
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
+			SameSite: http.SameSiteLaxMode,
+		})
 		h.log.Error().Err(err).Msgf("Auth: Failed to create cookies with attempt username: [%s] ip: %s", data.Username, r.RemoteAddr)
 		h.encoder.StatusError(w, http.StatusInternalServerError, errors.New("could not create cookies"))
 		return
